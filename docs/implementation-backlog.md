@@ -67,7 +67,9 @@ keep the dependency direction from workers to application to domain intact.
 
 ### Billing and fulfillment
 
-- Add provider-neutral payment interfaces and deterministic fake provider.
+- Provider-neutral payment capabilities and adapter interfaces with a deterministic fake
+  provider for idempotent customers, payment methods, charges, refunds, signed webhooks, and
+  reconciliation fixtures.
 - Add payment attempts, webhook deduplication, refunds, and append-only ledger entries.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
