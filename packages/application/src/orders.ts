@@ -12,6 +12,11 @@ export type OrderRepository = Readonly<{
   save(order: LockedOrder): Promise<void>;
 }>;
 
+export type AtomicOrderRepository = OrderRepository &
+  Readonly<{
+    saveAndPublish(order: LockedOrder, event: OutboxEvent): Promise<void>;
+  }>;
+
 export type OutboxEvent = Readonly<{
   id: string;
   type: "order.locked";
@@ -149,14 +154,20 @@ export class DefaultCartLockService implements CartLockService {
       status: "locked",
       lockedAt: input.lockedAt,
     });
-    await this.orders.save(order);
-    await this.outbox.publish({
+    const event = {
       id: `order-locked:${order.id}`,
       type: "order.locked",
       aggregateId: order.id,
       occurredAt: input.lockedAt,
       payload: order,
-    });
+    } as const;
+    const atomicRepository = this.orders as Partial<AtomicOrderRepository>;
+    if (atomicRepository.saveAndPublish) {
+      await atomicRepository.saveAndPublish(order, event);
+    } else {
+      await this.orders.save(order);
+      await this.outbox.publish(event);
+    }
     return order;
   }
 }
