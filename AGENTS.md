@@ -22,6 +22,8 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
   explicit request.
 - Use conventional commits with a kebab-case scope, for example:
   `feat(carts): add persistent customer carts`.
+- Enforce commit-message and branch-name conventions through the local hooks in `.githooks`.
+  Do not add GitHub Actions for naming-convention validation.
 - Prefer existing package boundaries, interfaces, and patterns before adding abstractions.
 - Use ASCII by default and `apply_patch` for manual edits.
 - Keep admin-configurable values configurable. Do not encode current plan prices or other

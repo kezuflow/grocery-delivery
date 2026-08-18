@@ -2,9 +2,9 @@
 
 ## Git Workflow
 
-- `main` is the protected production branch.
-- Work is merged through pull requests; direct pushes to `main` should be disabled in GitHub settings.
-- Every pull request must pass the convention and CI checks before merge.
+- `main` is the delivery branch for completed slices.
+- Naming conventions are enforced locally through the repository Git hooks.
+- Do not add GitHub Actions that duplicate commit-message or branch-name validation.
 - Keep commits small, focused, and reversible.
 - Prefer one logical change per commit.
 
@@ -65,7 +65,7 @@ test(pricing): cover per-sku markup precedence
 
 Avoid a single commit such as `feat(app): build catalog pricing and admin workflows`. Use `git add -p`, separate working branches, or `git reset` to split a large working batch before committing. Feature commits may depend on earlier commits, but each should be understandable and revertible on its own.
 
-The hook and GitHub Action enforce the message format. Whether a commit contains one coherent feature is verified during pull-request review, so the pull-request checklist below is required.
+The local commit-message hook enforces the message format. Whether a commit contains one coherent feature is verified during review using the checklist below.
 
 ## Branch Names
 
