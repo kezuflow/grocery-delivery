@@ -14,7 +14,9 @@ This document is the implementation handoff for the production system. It target
 - Carts lock Friday night for Saturday-Sunday delivery.
 - SKU price is procurement cost plus markup; per-SKU markup overrides global markup.
 - Cost, markup, fees, and order lines are snapshotted at lock and cannot be mutated afterward.
-- Procurement is demand-driven from paid orders.
+- Procurement supports three admin-configurable fulfillment modes: `STOCKED`,
+  `DEMAND_DRIVEN`, and `MIXED`. The mode may be selected for a delivery cycle, with per-SKU
+  overrides so a basket can contain both stocked and demand-driven items.
 - Exceptional procurement failure requires an approved equal-value substitute or a line-item refund.
 - The initial delivery model is an owned fleet with admin dispatch.
 
@@ -151,6 +153,24 @@ Capabilities are explicit. A provider may support tokenized charges, mandates, i
 - Add a correlation ID to every request, job, webhook, and workflow step.
 - Apply WAF and rate limits to authentication, checkout, webhooks, and admin endpoints.
 - Enforce secure cookies, CSP, CSRF protection, origin checks, strict CORS, and session revocation.
+
+### Release and outage resilience
+
+- Use separate blue and green Worker deployments for the web, API, jobs, and workflows.
+- Route production traffic through a stable versioned entry point so a deployment can be
+  canaried, promoted, or rolled back without changing customer-facing URLs.
+- Keep blue and green versions backward-compatible with the current D1 schema and event
+  contracts. Apply forward-only migrations before relying on new fields, and do not remove
+  fields until the old version is retired.
+- Use health checks, error-rate monitoring, and an explicit admin/operator rollback procedure.
+- Cloudflare Load Balancing or weighted Worker deployments can provide release switching and
+  origin failover, but they cannot make a Cloudflare-wide edge/control-plane outage disappear.
+- A true provider-outage recovery plan requires an independently hosted fallback entry point and
+  replicated backups or a secondary data store. D1, R2, Queues, and Workflows remain Cloudflare-
+  specific until a separate multi-provider disaster-recovery design is approved.
+- Maintain tested D1 exports, R2 replication/retention, recovery-point objectives, and a runbook
+  for switching to the fallback mode. Do not describe a Cloudflare NLB as a complete disaster
+  recovery solution by itself.
 
 ## Authorization
 

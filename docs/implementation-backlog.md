@@ -111,7 +111,12 @@ reschedule, or return-to-depot.
 
 #### Phase 2: procurement and packing
 
-- Aggregate paid-order SKU demand by cycle and expose purchased quantity and quality-check state.
+- Add admin-configurable `STOCKED`, `DEMAND_DRIVEN`, and `MIXED` fulfillment modes. Keep the
+  cycle default separate from per-SKU overrides so a cycle can contain both stocked and sourced
+  items.
+- For stocked SKUs, track on-hand, reserved, available, receiving, and shortage quantities.
+- For demand-driven SKUs, aggregate paid-order demand by cycle and expose purchased quantity and
+  quality-check state.
 - Model shortages and admin-approved equal-value substitutions or line-item refunds.
 - Generate packing manifests and package records with human-readable codes and QR payloads.
 - Add package state transitions for packed, loaded, exception, delivered, and returned.
@@ -122,10 +127,15 @@ reschedule, or return-to-depot.
 
 - Model driver accounts, delivery permissions, vehicles, package capacity, shifts, route plans,
   route stops, publication state, and idempotent assignments.
+- Make driver and vehicle limits configurable at global, per-driver, and per-shift scope. Treat
+  planned stops, route minutes, overtime, and capacity as warning-producing policies that admins
+  may override with an explicit reason and audit event; retain hard validation for invalid windows,
+  duplicate assignments, and unauthorized access.
 - Add provider-neutral geocoding, travel-time matrix, and route-optimization interfaces.
 - Optimize asynchronously through workflows/jobs using driver shifts, vehicle/package capacity,
   zones, delivery windows, travel times, and depot start/end constraints.
-- Add admin review, manual adjustment, publish, reassign, and reopen operations with audit events.
+- Add admin review, manual adjustment, publish, force-publish, reassign, and reopen operations with
+  audit events and visible over-capacity/unassigned status.
 
 #### Phase 4: deliveryman PWA
 
@@ -148,6 +158,9 @@ reschedule, or return-to-depot.
 
 #### Cross-cutting prerequisites
 
+- Store customer-managed structured addresses with provider-neutral geocoding metadata, serviceability
+  results, and immutable order address snapshots. Interactive autocomplete/map providers remain
+  replaceable adapters; the provider is never the source of truth.
 - Add `weekly_cycle_id`, delivery snapshots, and operational projections before route planning.
 - Resolve charges from server-owned payment methods and provider customer records; do not trust
   client-supplied provider references.
@@ -161,8 +174,8 @@ reschedule, or return-to-depot.
 #### Operational acceptance tests
 
 - Address serviceability, geocode confidence, cycle cutoff, and concurrent window-capacity tests.
-- Procurement aggregation, shortage approval, substitution/refund, package state, QR scan, and
-  route-capacity/shift/window tests.
+- Stocked reservation, demand-driven aggregation, mixed-mode baskets, shortage approval,
+  substitution/refund, package state, QR scan, and route-capacity/shift/window tests.
 - Driver assignment authorization, offline event replay, failed-delivery decisions, proof upload,
   and outbox retry/dead-letter tests.
 - End-to-end coverage from address and window selection through lock, payment, procurement, packing,
@@ -172,5 +185,9 @@ reschedule, or return-to-depot.
 
 - Add service bindings between web and API Workers.
 - Add D1 migrations, R2 media policies, WAF/rate limits, and secrets.
+- Add blue/green Worker deployments with health-gated promotion, backward-compatible migrations,
+  rollback procedures, and documented Cloudflare outage recovery limits. Cloudflare Load Balancing
+  may switch release traffic or healthy origins, but an independent fallback entry point and
+  replicated data are required for provider-wide failover.
 - Add end-to-end customer checkout and admin operations journeys.
 - Add backup/restore rehearsal, Friday-cycle rehearsal, load tests, and incident runbooks.
