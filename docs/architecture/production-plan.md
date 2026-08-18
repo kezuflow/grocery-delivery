@@ -154,24 +154,6 @@ Capabilities are explicit. A provider may support tokenized charges, mandates, i
 - Apply WAF and rate limits to authentication, checkout, webhooks, and admin endpoints.
 - Enforce secure cookies, CSP, CSRF protection, origin checks, strict CORS, and session revocation.
 
-### Release and outage resilience
-
-- Use separate blue and green Worker deployments for the web, API, jobs, and workflows.
-- Route production traffic through a stable versioned entry point so a deployment can be
-  canaried, promoted, or rolled back without changing customer-facing URLs.
-- Keep blue and green versions backward-compatible with the current D1 schema and event
-  contracts. Apply forward-only migrations before relying on new fields, and do not remove
-  fields until the old version is retired.
-- Use health checks, error-rate monitoring, and an explicit admin/operator rollback procedure.
-- Cloudflare Load Balancing or weighted Worker deployments can provide release switching and
-  origin failover, but they cannot make a Cloudflare-wide edge/control-plane outage disappear.
-- A true provider-outage recovery plan requires an independently hosted fallback entry point and
-  replicated backups or a secondary data store. D1, R2, Queues, and Workflows remain Cloudflare-
-  specific until a separate multi-provider disaster-recovery design is approved.
-- Maintain tested D1 exports, R2 replication/retention, recovery-point objectives, and a runbook
-  for switching to the fallback mode. Do not describe a Cloudflare NLB as a complete disaster
-  recovery solution by itself.
-
 ## Authorization
 
 Top-level roles remain `customer`, `deliveryman`, and `admin`.

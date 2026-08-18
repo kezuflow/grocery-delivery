@@ -185,9 +185,5 @@ reschedule, or return-to-depot.
 
 - Add service bindings between web and API Workers.
 - Add D1 migrations, R2 media policies, WAF/rate limits, and secrets.
-- Add blue/green Worker deployments with health-gated promotion, backward-compatible migrations,
-  rollback procedures, and documented Cloudflare outage recovery limits. Cloudflare Load Balancing
-  may switch release traffic or healthy origins, but an independent fallback entry point and
-  replicated data are required for provider-wide failover.
 - Add end-to-end customer checkout and admin operations journeys.
 - Add backup/restore rehearsal, Friday-cycle rehearsal, load tests, and incident runbooks.
