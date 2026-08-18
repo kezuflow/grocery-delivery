@@ -66,7 +66,8 @@ keep the dependency direction from workers to application to domain intact.
 - Persistent customer cart drafts with D1 and in-memory repositories, protected `GET`/`PUT`
   `/api/v1/cart` routes, catalog price resolution, duplicate/unavailable SKU validation, and
   saved-cart checkout with post-lock cart clearing.
-- Remaining: lock retry integration tests against a live D1 binding.
+- Live D1 lock retry and concurrent idempotency integration tests now cover durable order/outbox
+  behavior.
 
 ### Billing and fulfillment
 
