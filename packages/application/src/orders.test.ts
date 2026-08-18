@@ -58,6 +58,28 @@ describe("cart locking", () => {
     expect(outbox.events).toHaveLength(1);
   });
 
+  it("replays when non-commerce plan metadata is omitted", async () => {
+    const outbox = new InMemoryOutboxPublisher();
+    const service = new DefaultCartLockService(
+      new InMemoryOrderRepository(),
+      outbox,
+      () => "order-1",
+    );
+
+    const first = await service.lock(input);
+    const replay = await service.lock({
+      ...input,
+      plan: {
+        id: input.plan.id,
+        weeklyFee: input.plan.weeklyFee,
+        weeklyCredit: input.plan.weeklyCredit,
+      },
+    });
+
+    expect(replay.id).toBe(first.id);
+    expect(outbox.events).toHaveLength(1);
+  });
+
   it("rejects reuse of a lock key for different cart contents", async () => {
     const service = new DefaultCartLockService(
       new InMemoryOrderRepository(),

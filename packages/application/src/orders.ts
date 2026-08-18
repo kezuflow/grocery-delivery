@@ -118,7 +118,11 @@ export class DefaultCartLockService implements CartLockService {
       customerId: input.customerId,
       subscriptionId: input.subscriptionId,
       cart: input.cart,
-      plan: input.plan,
+      plan: {
+        id: input.plan.id,
+        weeklyFee: input.plan.weeklyFee,
+        weeklyCredit: input.plan.weeklyCredit,
+      },
       deliveryFee: input.deliveryFee,
     });
     const existing = await this.orders.findByIdempotencyKey(input.customerId, key);

@@ -72,6 +72,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20260818.1
         version: 5.20260818.1
+      miniflare:
+        specifier: 5.20260811.1-alpha
+        version: 5.20260811.1-alpha
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
