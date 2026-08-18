@@ -90,6 +90,84 @@ keep the dependency direction from workers to application to domain intact.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
 
+### Operational delivery expansion
+
+The first operational release targets more than 1,000 weekend drops with admin-controlled
+dispatch, Saturday/Sunday delivery, broad morning/afternoon windows, and an offline-capable
+deliveryman PWA. Routing and geocoding remain provider-neutral adapters. Packages use QR labels;
+photo proof is the default delivery completion policy, with OTP/signature support configurable
+later. Drivers report failed attempts and dispatchers decide retry, Sunday reassignment,
+reschedule, or return-to-depot.
+
+#### Phase 1: delivery foundation
+
+- Add structured customer addresses with Philippine address fields, landmark/instructions,
+  latitude/longitude, geocode confidence, and service-zone validation.
+- Add weekly delivery cycles, Saturday/Sunday windows, capacity reservations, and immutable order
+  snapshots for cycle, address, zone, delivery day, and window.
+- Require a serviceable address and an idempotent capacity reservation before an order can lock.
+- Add customer APIs for address management, serviceability, available windows, and delivery
+  selection.
+
+#### Phase 2: procurement and packing
+
+- Aggregate paid-order SKU demand by cycle and expose purchased quantity and quality-check state.
+- Model shortages and admin-approved equal-value substitutions or line-item refunds.
+- Generate packing manifests and package records with human-readable codes and QR payloads.
+- Add package state transitions for packed, loaded, exception, delivered, and returned.
+- Add exception-first admin views for shortages, unpaid orders, capacity failures, and unassigned
+  work.
+
+#### Phase 3: dispatch and route planning
+
+- Model driver accounts, delivery permissions, vehicles, package capacity, shifts, route plans,
+  route stops, publication state, and idempotent assignments.
+- Add provider-neutral geocoding, travel-time matrix, and route-optimization interfaces.
+- Optimize asynchronously through workflows/jobs using driver shifts, vehicle/package capacity,
+  zones, delivery windows, travel times, and depot start/end constraints.
+- Add admin review, manual adjustment, publish, reassign, and reopen operations with audit events.
+
+#### Phase 4: deliveryman PWA
+
+- Add a role-scoped mobile workflow for shift start, vehicle/load checklist, assigned routes,
+  package scans, map launch, masked customer contact, delivery notes, and route progress.
+- Add delivered and failed-attempt events with photo proof, server timestamp, stop identity,
+  uploader identity, and approximate device location when available.
+- Queue delivery events offline and synchronize them idempotently with explicit conflict states.
+- Keep drivers limited to assigned delivery data; never expose payment details, unrelated customers,
+  or unassigned routes.
+
+#### Phase 5: tracking and notifications
+
+- Add customer order timelines, delivery day/window, route status, delay state, substitution or
+  refund decisions, and completion status.
+- Add idempotent email/SMS/push adapters and outbox jobs for payment, shortage, route, delay, and
+  completion notifications.
+- Store delivery photos in R2 with presigned upload authorization, metadata in D1, and retention
+  policies.
+
+#### Cross-cutting prerequisites
+
+- Add `weekly_cycle_id`, delivery snapshots, and operational projections before route planning.
+- Resolve charges from server-owned payment methods and provider customer records; do not trust
+  client-supplied provider references.
+- Include a non-reversible token digest in payment-method idempotency fingerprints without storing
+  raw tokens, and enforce cumulative refund limits in billing.
+- Validate persisted admin permissions, consume and retry outbox events, and split the API route
+  composition before adding the operational surface.
+- Add OpenAPI generation, rate limits, CSRF/origin controls, production Better Auth configuration,
+  metrics, backup/restore rehearsal, and provider sandbox contract tests.
+
+#### Operational acceptance tests
+
+- Address serviceability, geocode confidence, cycle cutoff, and concurrent window-capacity tests.
+- Procurement aggregation, shortage approval, substitution/refund, package state, QR scan, and
+  route-capacity/shift/window tests.
+- Driver assignment authorization, offline event replay, failed-delivery decisions, proof upload,
+  and outbox retry/dead-letter tests.
+- End-to-end coverage from address and window selection through lock, payment, procurement, packing,
+  dispatch, delivery proof, and customer tracking.
+
 ### Release hardening
 
 - Add service bindings between web and API Workers.
