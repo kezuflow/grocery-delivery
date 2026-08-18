@@ -20,8 +20,12 @@
     "wrangler": "4.123.0"
   },
   "dependencies": {
+    "@carbon/auth": "workspace:*",
+    "@carbon/application": "workspace:*",
     "@carbon/config": "workspace:*",
     "@carbon/contracts": "workspace:*",
+    "@carbon/db": "workspace:*",
+    "@carbon/domain": "workspace:*",
     "@carbon/observability": "workspace:*",
     "hono": "4.13.2"
   }

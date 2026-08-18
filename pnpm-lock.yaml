@@ -44,12 +44,24 @@ importers:
 
   apps/api:
     dependencies:
+      '@carbon/application':
+        specifier: workspace:*
+        version: link:../../packages/application
+      '@carbon/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@carbon/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@carbon/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@carbon/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@carbon/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@carbon/observability':
         specifier: workspace:*
         version: link:../../packages/observability
