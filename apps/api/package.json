@@ -1,0 +1,28 @@
+{
+  "name": "@carbon/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "wrangler dev",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260818.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "4.123.0"
+  },
+  "dependencies": {
+    "@carbon/config": "workspace:*",
+    "@carbon/contracts": "workspace:*",
+    "@carbon/observability": "workspace:*",
+    "hono": "4.13.2"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "carbon-food-delivery",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "build:web": "pnpm --filter @carbon/web build",
+    "dev": "turbo run dev",
+    "dev:api": "pnpm --filter @carbon/api dev",
+    "dev:web": "pnpm --filter @carbon/web dev",
+    "deploy:api:staging": "pnpm --filter @carbon/api deploy:staging",
+    "deploy:api:production": "pnpm --filter @carbon/api deploy:production",
+    "preview:web": "pnpm --filter @carbon/web preview",
+    "deploy:web:staging": "pnpm --filter @carbon/web deploy:staging",
+    "deploy:web:production": "pnpm --filter @carbon/web deploy:production",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "check": "pnpm format:check && turbo run lint typecheck test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

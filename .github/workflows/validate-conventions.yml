@@ -1,0 +1,59 @@
+name: Validate conventions
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  conventions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: node scripts/validate-branch-name.mjs "$BRANCH_NAME"
+
+      - name: Validate commit messages
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            range="$PR_BASE_SHA...$PR_HEAD_SHA"
+          elif [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            range="$CURRENT_SHA"
+          else
+            range="$BEFORE_SHA..$CURRENT_SHA"
+          fi
+
+          mapfile -t commits < <(git rev-list --no-merges "$range")
+          if [[ ${#commits[@]} -eq 0 ]]; then
+            echo "No non-merge commits to validate."
+            exit 0
+          fi
+
+          for commit in "${commits[@]}"; do
+            node scripts/validate-commit-message.mjs --commit "$commit"
+          done

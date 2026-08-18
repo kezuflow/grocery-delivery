@@ -1,0 +1,58 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "carbon-food-delivery-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-18",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "carbon-food-delivery-web",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "carbon-food-delivery-web-opennext-cache",
+    },
+  ],
+  "images": {
+    "binding": "IMAGES",
+  },
+  "env": {
+    "staging": {
+      "name": "carbon-food-delivery-web-staging",
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "carbon-food-delivery-web-staging",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "carbon-food-delivery-web-staging-opennext-cache",
+        },
+      ],
+    },
+    "production": {
+      "name": "carbon-food-delivery-web-production",
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "carbon-food-delivery-web-production",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "carbon-food-delivery-web-production-opennext-cache",
+        },
+      ],
+    },
+  },
+}

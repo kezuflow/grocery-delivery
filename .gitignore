@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build and test output
+.next/
+.open-next/
+.turbo/
+*.tsbuildinfo
+coverage/
+dist/
+
+# Cloudflare local state
+.dev.vars
+.wrangler/
+.wrangler-config/
+cloudflare-env.d.ts
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and operating-system files
+*.log
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

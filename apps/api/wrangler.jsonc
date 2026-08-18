@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "carbon-food-delivery-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "vars": {
+    "APP_ENV": "development",
+    "VERSION": "0.0.0-dev",
+  },
+  "env": {
+    "staging": {
+      "name": "carbon-food-delivery-api-staging",
+      "vars": {
+        "APP_ENV": "staging",
+      },
+    },
+    "production": {
+      "name": "carbon-food-delivery-api-production",
+      "vars": {
+        "APP_ENV": "production",
+      },
+    },
+  },
+}
