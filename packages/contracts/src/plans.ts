@@ -45,7 +45,28 @@ export const orderLineRequestSchema = z.object({
 });
 
 export const orderCreateRequestSchema = z.object({
-  lines: z.array(orderLineRequestSchema).min(1).max(100),
+  lines: z.array(orderLineRequestSchema).max(100).optional(),
+});
+
+export const cartLineRequestSchema = orderLineRequestSchema;
+
+export const cartUpdateRequestSchema = z.object({
+  lines: z.array(cartLineRequestSchema).max(100),
+});
+
+export const cartLineSchema = z.object({
+  skuId: z.string().min(1),
+  quantity: z.number().int().positive(),
+  unitPrice: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+});
+
+export const cartResponseSchema = z.object({
+  data: z.object({
+    lines: z.array(cartLineSchema),
+    subtotal: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+    updatedAt: z.string().datetime().nullable(),
+  }),
+  meta: responseMetaSchema,
 });
 
 export const orderLineSchema = z.object({
@@ -111,5 +132,6 @@ export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
 export type OrderResponse = z.infer<typeof orderResponseSchema>;
+export type CartResponse = z.infer<typeof cartResponseSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;

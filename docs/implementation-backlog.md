@@ -60,8 +60,10 @@ keep the dependency direction from workers to application to domain intact.
 - Durable D1 order/line snapshots and atomic order-plus-outbox writes are now available;
 - Customer order contracts and protected `/api/v1/orders` route now resolve server-side prices,
   credits, delivery fees, and subscription ownership.
-- Remaining: lock retry integration tests against a live D1 binding and customer cart persistence
-  before lock.
+- Persistent customer cart drafts with D1 and in-memory repositories, protected `GET`/`PUT`
+  `/api/v1/cart` routes, catalog price resolution, duplicate/unavailable SKU validation, and
+  saved-cart checkout with post-lock cart clearing.
+- Remaining: lock retry integration tests against a live D1 binding.
 
 ### Billing and fulfillment
 

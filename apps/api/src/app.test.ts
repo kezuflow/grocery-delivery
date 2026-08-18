@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   apiErrorResponseSchema,
+  cartResponseSchema,
   catalogListResponseSchema,
   currentSessionResponseSchema,
   healthResponseSchema,
@@ -21,6 +22,7 @@ import {
 import { createSession, createSubscription } from "@carbon/domain";
 import {
   createDefaultCatalogReader,
+  InMemoryCartRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
 } from "@carbon/db";
@@ -288,6 +290,92 @@ describe("API worker", () => {
     expect(body.error.code).toBe("SUBSCRIPTION_NOT_FOUND");
   });
 
+  it("persists customer carts and resolves prices from the catalog", async () => {
+    const cartRepository = new InMemoryCartRepository();
+    const cartApp = createApi({
+      sink: () => undefined,
+      cartRepository,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const put = await cartApp.request("/api/v1/cart", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        lines: [{ skuId: "sku-bananas", quantity: 2, unitPrice: { centavos: 1, currency: "PHP" } }],
+      }),
+    });
+    const putBody = cartResponseSchema.parse(await put.json());
+
+    expect(put.status).toBe(200);
+    expect(putBody.data.lines[0]?.unitPrice.centavos).toBe(12_500);
+    expect(putBody.data.subtotal.centavos).toBe(25_000);
+    await expect(cartRepository.findByCustomerId("customer-1")).resolves.toMatchObject({
+      lines: [{ skuId: "sku-bananas", quantity: 2 }],
+    });
+
+    const get = await cartApp.request("/api/v1/cart");
+    const getBody = cartResponseSchema.parse(await get.json());
+    expect(get.status).toBe(200);
+    expect(getBody.data.lines[0]?.unitPrice.centavos).toBe(12_500);
+  });
+
+  it("rejects duplicate and unavailable cart SKUs", async () => {
+    const cartApp = createApi({
+      sink: () => undefined,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const duplicate = await cartApp.request("/api/v1/cart", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        lines: [
+          { skuId: "sku-bananas", quantity: 1 },
+          { skuId: "sku-bananas", quantity: 2 },
+        ],
+      }),
+    });
+    expect((await apiErrorResponseSchema.parseAsync(await duplicate.json())).error.code).toBe(
+      "DUPLICATE_CART_SKU",
+    );
+
+    const unavailable = await cartApp.request("/api/v1/cart", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lines: [{ skuId: "sku-missing", quantity: 1 }] }),
+    });
+    expect((await apiErrorResponseSchema.parseAsync(await unavailable.json())).error.code).toBe(
+      "SKU_NOT_AVAILABLE",
+    );
+  });
+
   it("locks a customer order using server-side prices, credit, and delivery fee", async () => {
     const orderRepository = new InMemoryOrderRepository();
     const outbox = new InMemoryOutboxPublisher();
@@ -403,6 +491,63 @@ describe("API worker", () => {
 
     expect(response.status).toBe(409);
     expect(body.error.code).toBe("SKU_NOT_AVAILABLE");
+  });
+
+  it("locks a saved cart when order lines are omitted and clears it after success", async () => {
+    const cartRepository = new InMemoryCartRepository();
+    await cartRepository.save({
+      customerId: "customer-1",
+      lines: [{ skuId: "sku-bananas", quantity: 1 }],
+      updatedAt: "2026-08-20T00:00:00.000Z",
+    });
+    const orderApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      cartRepository,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      planLookup: new InMemoryPlanReader(),
+      orderLockService: new DefaultCartLockService(
+        new InMemoryOrderRepository(),
+        new InMemoryOutboxPublisher(),
+        () => "order-saved-cart",
+      ),
+      subscriptionReader: new InMemorySubscriptionReader([
+        createSubscription({
+          id: "subscription-1",
+          customerId: "customer-1",
+          planId: "plan-small",
+          status: "active",
+          skippedCycleId: null,
+          lastAction: null,
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z",
+        }),
+      ]),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await orderApp.request("/api/v1/orders", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "checkout-saved-cart" },
+      body: JSON.stringify({}),
+    });
+    const body = orderResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(201);
+    expect(body.data.lines[0]?.unitPrice.centavos).toBe(12_500);
+    await expect(cartRepository.findByCustomerId("customer-1")).resolves.toBeNull();
   });
 
   it("returns a consistent error envelope for unknown routes", async () => {

@@ -8,7 +8,10 @@ import {
 import { parseAllowedOrigins, parseRuntimeEnvironment } from "@carbon/config";
 import {
   catalogListResponseSchema,
+  cartResponseSchema,
+  cartUpdateRequestSchema,
   type ApiErrorResponse,
+  type CartResponse,
   type CatalogListResponse,
   currentSessionResponseSchema,
   type CurrentSessionResponse,
@@ -26,6 +29,7 @@ import {
 import {
   createDefaultCatalogReader,
   createDefaultPlanReader,
+  D1CartRepository,
   D1CatalogReader,
   D1OrderRepository,
   D1OutboxPublisher,
@@ -33,6 +37,8 @@ import {
   D1PlanRepository,
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
+  InMemoryCartRepository,
+  type CartRepository,
   type CatalogDatabase,
   type CatalogReader,
   type CatalogCheckoutReader,
@@ -41,7 +47,14 @@ import {
   type PlanRepository,
   type SubscriptionReader,
 } from "@carbon/db";
-import { assignWeeklyCycle, createMoney, createPlan, hasAdminPermission } from "@carbon/domain";
+import {
+  addMoney,
+  assignWeeklyCycle,
+  createMoney,
+  createPlan,
+  hasAdminPermission,
+  multiplyMoney,
+} from "@carbon/domain";
 import { createLogger, resolveCorrelationId, type LogSink } from "@carbon/observability";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
@@ -77,6 +90,7 @@ export type ApiOptions = Readonly<{
   planReader?: PlanReader;
   planRepository?: PlanRepository;
   catalogCheckoutReader?: CatalogCheckoutReader;
+  cartRepository?: CartRepository;
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
   deliveryFeeCentavos?: number;
@@ -97,6 +111,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     now,
   });
   const app = new Hono<ApiEnv>();
+  const fallbackCartRepository = new InMemoryCartRepository();
 
   app.use("*", secureHeaders());
   app.use("*", async (context, next) => {
@@ -388,6 +403,123 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
+  app.get("/api/v1/cart", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const cartRepository =
+      options.cartRepository ??
+      (bindings.DB ? new D1CartRepository(bindings.DB) : fallbackCartRepository);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    if (!options.sessionResolver) {
+      return context.json(
+        errorResponse(
+          "CART_UNAVAILABLE",
+          "cart reads are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = await resolveActiveSession(
+      options.sessionResolver,
+      context.req.raw,
+      now().toISOString(),
+    );
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const cart = await cartRepository.findByCustomerId(session.customerId);
+    const result = await resolveCartResponse(
+      cart?.lines ?? [],
+      cart?.updatedAt ?? null,
+      catalogReader,
+      context.get("correlationId"),
+    );
+    if ("error" in result) {
+      return context.json(result, 409);
+    }
+    context.header("cache-control", "private, no-store");
+    return context.json(result, 200);
+  });
+
+  app.put("/api/v1/cart", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const cartRepository =
+      options.cartRepository ??
+      (bindings.DB ? new D1CartRepository(bindings.DB) : fallbackCartRepository);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    if (!options.sessionResolver) {
+      return context.json(
+        errorResponse(
+          "CART_UNAVAILABLE",
+          "cart updates are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = await resolveActiveSession(
+      options.sessionResolver,
+      context.req.raw,
+      now().toISOString(),
+    );
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const input = cartUpdateRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse("INVALID_CART", "cart lines are invalid", context.get("correlationId")),
+        400,
+      );
+    }
+    const skuIds = input.data.lines.map((line) => line.skuId);
+    if (new Set(skuIds).size !== skuIds.length) {
+      return context.json(
+        errorResponse(
+          "DUPLICATE_CART_SKU",
+          "cart lines cannot contain duplicate SKUs",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const updatedAt = now().toISOString();
+    const result = await resolveCartResponse(
+      input.data.lines,
+      updatedAt,
+      catalogReader,
+      context.get("correlationId"),
+    );
+    if ("error" in result) {
+      return context.json(result, 409);
+    }
+    await cartRepository.save({
+      customerId: session.customerId,
+      lines: input.data.lines,
+      updatedAt,
+    });
+    context.header("cache-control", "private, no-store");
+    return context.json(result, 200);
+  });
+
   app.post("/api/v1/orders", async (context) => {
     const bindings: ApiBindings = context.env ?? {};
     const orderLockService =
@@ -407,6 +539,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const planLookup =
       options.planLookup ??
       (bindings.DB ? new D1PlanReader(bindings.DB) : createDefaultPlanReader());
+    const cartRepository =
+      options.cartRepository ??
+      (bindings.DB ? new D1CartRepository(bindings.DB) : fallbackCartRepository);
 
     if (!options.sessionResolver || !orderLockService || !subscriptionReader || !planLookup) {
       return context.json(
@@ -444,7 +579,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         400,
       );
     }
-    const input = orderCreateRequestSchema.safeParse(await context.req.json().catch(() => null));
+    const input = orderCreateRequestSchema.safeParse(await context.req.json().catch(() => ({})));
     if (!input.success) {
       return context.json(
         errorResponse(
@@ -477,7 +612,21 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         409,
       );
     }
-    const skuIds = input.data.lines.map((line) => line.skuId);
+    const savedCart = input.data.lines
+      ? null
+      : await cartRepository.findByCustomerId(session.customerId);
+    const requestedLines = input.data.lines ?? savedCart?.lines ?? [];
+    if (requestedLines.length === 0) {
+      return context.json(
+        errorResponse(
+          "CART_EMPTY",
+          "the cart must contain at least one available SKU",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const skuIds = requestedLines.map((line) => line.skuId);
     if (new Set(skuIds).size !== skuIds.length) {
       return context.json(
         errorResponse(
@@ -500,7 +649,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         409,
       );
     }
-    const cartLines = input.data.lines.map((line) => {
+    const cartLines = requestedLines.map((line) => {
       const item = catalogById.get(line.skuId);
       if (!item) {
         throw new Error("SKU_NOT_AVAILABLE");
@@ -532,6 +681,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         deliveryFee: { centavos: deliveryFeeCentavos, currency: "PHP" },
         lockedAt: now().toISOString(),
       });
+      if (!input.data.lines) {
+        await cartRepository.clear(session.customerId);
+      }
       const body = {
         data: {
           id: order.id,
@@ -677,6 +829,35 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   });
 
   return app;
+}
+
+async function resolveCartResponse(
+  lines: readonly { skuId: string; quantity: number }[],
+  updatedAt: string | null,
+  catalogReader: CatalogCheckoutReader,
+  correlationId: string,
+): Promise<CartResponse | ApiErrorResponse> {
+  const skuIds = lines.map((line) => line.skuId);
+  const catalogItems = await catalogReader.findActiveByIds(skuIds);
+  if (catalogItems.length !== skuIds.length) {
+    return errorResponse("SKU_NOT_AVAILABLE", "one or more SKUs are unavailable", correlationId);
+  }
+  const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
+  let subtotal = createMoney(0);
+  const resolvedLines = lines.map((line) => {
+    const item = catalogById.get(line.skuId);
+    if (!item) {
+      throw new Error("SKU_NOT_AVAILABLE");
+    }
+    subtotal = addMoney(subtotal, multiplyMoney(item.price, line.quantity));
+    return { skuId: item.id, quantity: line.quantity, unitPrice: item.price };
+  });
+  const body: CartResponse = {
+    data: { lines: resolvedLines, subtotal, updatedAt },
+    meta: { correlationId },
+  };
+  cartResponseSchema.parse(body);
+  return body;
 }
 
 function errorResponse(code: string, message: string, correlationId: string): ApiErrorResponse {
