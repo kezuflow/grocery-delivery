@@ -9,13 +9,17 @@ export interface PlanReader {
   getCacheVersion?(): Promise<string>;
 }
 
+export interface PlanLookup {
+  findActiveById(planId: string): Promise<Plan | null>;
+}
+
 export interface PlanWriter {
   save(plan: Plan, updatedAt: string): Promise<void>;
 }
 
 export interface PlanRepository extends PlanReader, PlanWriter {}
 
-export class InMemoryPlanReader implements PlanRepository {
+export class InMemoryPlanReader implements PlanRepository, PlanLookup {
   private plans: readonly Plan[];
   private cacheVersion = "fixture-1";
 
@@ -36,6 +40,11 @@ export class InMemoryPlanReader implements PlanRepository {
     return Promise.resolve(this.cacheVersion);
   }
 
+  findActiveById(planId: string): Promise<Plan | null> {
+    const plan = this.plans.find((candidate) => candidate.id === planId && candidate.active);
+    return Promise.resolve(plan ?? null);
+  }
+
   save(plan: Plan): Promise<void> {
     const next = createPlan(plan);
     this.plans = [...this.plans.filter((candidate) => candidate.id !== next.id), next].sort(
@@ -47,7 +56,7 @@ export class InMemoryPlanReader implements PlanRepository {
   }
 }
 
-export class D1PlanReader implements PlanReader {
+export class D1PlanReader implements PlanReader, PlanLookup {
   constructor(protected readonly database: PlanDatabase) {}
 
   async listPublic(): Promise<readonly Plan[]> {
@@ -80,6 +89,30 @@ export class D1PlanReader implements PlanReader {
       .bind()
       .all<PlanCacheRow>();
     return String(rows.results[0]?.version ?? 1);
+  }
+
+  async findActiveById(planId: string): Promise<Plan | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, code, name, weekly_fee_centavos, weekly_credit_centavos, display_order, active
+         FROM plans
+         WHERE id = ? AND active = 1
+         LIMIT 1`,
+      )
+      .bind(planId)
+      .all<PlanRow>();
+    const row = rows.results[0];
+    return row
+      ? createPlan({
+          id: row.id,
+          code: row.code,
+          name: row.name,
+          weeklyFee: { centavos: row.weekly_fee_centavos, currency: "PHP" },
+          weeklyCredit: { centavos: row.weekly_credit_centavos, currency: "PHP" },
+          displayOrder: row.display_order,
+          active: row.active === 1,
+        })
+      : null;
   }
 }
 
@@ -138,6 +171,6 @@ type PlanRow = Record<string, unknown> & {
 
 type PlanCacheRow = Record<string, unknown> & { version: number };
 
-export function createDefaultPlanReader(): PlanReader {
+export function createDefaultPlanReader(): InMemoryPlanReader {
   return new InMemoryPlanReader();
 }

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { planAdminUpsertRequestSchema, plansListResponseSchema } from "./plans.js";
+import {
+  orderCreateRequestSchema,
+  orderResponseSchema,
+  planAdminUpsertRequestSchema,
+  plansListResponseSchema,
+} from "./plans.js";
 
 describe("plan contracts", () => {
   it("accepts a public plan list with PHP fee and credit", () => {
@@ -35,5 +40,37 @@ describe("plan contracts", () => {
         active: true,
       }),
     ).toMatchObject({ code: "family-box" });
+  });
+
+  it("accepts an order request and immutable order response", () => {
+    expect(
+      orderCreateRequestSchema.parse({
+        lines: [{ skuId: "sku-bananas", quantity: 2 }],
+      }),
+    ).toEqual({ lines: [{ skuId: "sku-bananas", quantity: 2 }] });
+    expect(
+      orderResponseSchema.parse({
+        data: {
+          id: "order-1",
+          subscriptionId: "subscription-1",
+          planId: "plan-small",
+          lines: [
+            { skuId: "sku-bananas", quantity: 2, unitPrice: { centavos: 12_500, currency: "PHP" } },
+          ],
+          weeklyCredit: { centavos: 69_900, currency: "PHP" },
+          totals: {
+            subtotal: { centavos: 25_000, currency: "PHP" },
+            weeklyFee: { centavos: 69_900, currency: "PHP" },
+            includedCredit: { centavos: 25_000, currency: "PHP" },
+            overage: { centavos: 0, currency: "PHP" },
+            deliveryFee: { centavos: 5_000, currency: "PHP" },
+            totalDue: { centavos: 74_900, currency: "PHP" },
+          },
+          status: "locked",
+          lockedAt: "2026-08-20T10:00:00.000Z",
+        },
+        meta: { correlationId: "order-request" },
+      }),
+    ).toBeDefined();
   });
 });

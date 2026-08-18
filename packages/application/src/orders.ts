@@ -162,11 +162,27 @@ export class DefaultCartLockService implements CartLockService {
       payload: order,
     } as const;
     const atomicRepository = this.orders as Partial<AtomicOrderRepository>;
-    if (atomicRepository.saveAndPublish) {
-      await atomicRepository.saveAndPublish(order, event);
-    } else {
-      await this.orders.save(order);
-      await this.outbox.publish(event);
+    try {
+      if (atomicRepository.saveAndPublish) {
+        await atomicRepository.saveAndPublish(order, event);
+      } else {
+        await this.orders.save(order);
+        await this.outbox.publish(event);
+      }
+    } catch (error) {
+      // A concurrent request may have won the unique idempotency constraint.
+      const raced = await this.orders.findByIdempotencyKey(input.customerId, key);
+      if (raced?.requestFingerprint === fingerprint) {
+        await this.outbox.publish({
+          id: `order-locked:${raced.id}`,
+          type: "order.locked",
+          aggregateId: raced.id,
+          occurredAt: raced.lockedAt,
+          payload: raced,
+        });
+        return raced;
+      }
+      throw error;
     }
     return order;
   }

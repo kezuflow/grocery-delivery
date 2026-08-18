@@ -5,17 +5,25 @@ import {
   catalogListResponseSchema,
   currentSessionResponseSchema,
   healthResponseSchema,
+  orderResponseSchema,
   planResponseSchema,
   plansListResponseSchema,
   subscriptionResponseSchema,
 } from "@carbon/contracts";
 import {
+  DefaultCartLockService,
   DefaultSubscriptionCommandService,
   InMemoryIdempotencyStore,
+  InMemoryOrderRepository,
+  InMemoryOutboxPublisher,
   InMemorySubscriptionRepository,
 } from "@carbon/application";
 import { createSession, createSubscription } from "@carbon/domain";
-import { InMemoryPlanReader, InMemorySubscriptionReader } from "@carbon/db";
+import {
+  createDefaultCatalogReader,
+  InMemoryPlanReader,
+  InMemorySubscriptionReader,
+} from "@carbon/db";
 import { createApi } from "./app.js";
 
 describe("API worker", () => {
@@ -278,6 +286,123 @@ describe("API worker", () => {
 
     expect(response.status).toBe(404);
     expect(body.error.code).toBe("SUBSCRIPTION_NOT_FOUND");
+  });
+
+  it("locks a customer order using server-side prices, credit, and delivery fee", async () => {
+    const orderRepository = new InMemoryOrderRepository();
+    const outbox = new InMemoryOutboxPublisher();
+    const planLookup = new InMemoryPlanReader();
+    const orderApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      deliveryFeeCentavos: 5_000,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      planLookup,
+      orderLockService: new DefaultCartLockService(orderRepository, outbox, () => "order-1"),
+      subscriptionReader: new InMemorySubscriptionReader([
+        createSubscription({
+          id: "subscription-1",
+          customerId: "customer-1",
+          planId: "plan-small",
+          status: "active",
+          skippedCycleId: null,
+          lastAction: null,
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z",
+        }),
+      ]),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await orderApp.request(
+      "/api/v1/orders",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": "checkout-1" },
+        body: JSON.stringify({
+          lines: [
+            {
+              skuId: "sku-bananas",
+              quantity: 2,
+              unitPrice: { centavos: 1, currency: "PHP" },
+            },
+          ],
+          totalDue: { centavos: 1, currency: "PHP" },
+        }),
+      },
+      { APP_ENV: "test" },
+    );
+    const body = orderResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(201);
+    expect(body.data.lines[0]?.unitPrice.centavos).toBe(12_500);
+    expect(body.data.totals).toMatchObject({
+      subtotal: { centavos: 25_000 },
+      includedCredit: { centavos: 25_000 },
+      overage: { centavos: 0 },
+      deliveryFee: { centavos: 5_000 },
+      totalDue: { centavos: 74_900 },
+    });
+    expect(outbox.events).toHaveLength(1);
+  });
+
+  it("rejects unavailable SKUs before locking an order", async () => {
+    const orderApp = createApi({
+      sink: () => undefined,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      planLookup: new InMemoryPlanReader(),
+      orderLockService: new DefaultCartLockService(
+        new InMemoryOrderRepository(),
+        new InMemoryOutboxPublisher(),
+      ),
+      subscriptionReader: new InMemorySubscriptionReader([
+        createSubscription({
+          id: "subscription-1",
+          customerId: "customer-1",
+          planId: "plan-small",
+          status: "active",
+          skippedCycleId: null,
+          lastAction: null,
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z",
+        }),
+      ]),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await orderApp.request("/api/v1/orders", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "checkout-1" },
+      body: JSON.stringify({ lines: [{ skuId: "sku-missing", quantity: 1 }] }),
+    });
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(409);
+    expect(body.error.code).toBe("SKU_NOT_AVAILABLE");
   });
 
   it("returns a consistent error envelope for unknown routes", async () => {

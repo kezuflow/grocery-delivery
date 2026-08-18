@@ -39,6 +39,49 @@ export const planAdminUpsertRequestSchema = z.object({
   active: z.boolean(),
 });
 
+export const orderLineRequestSchema = z.object({
+  skuId: z.string().min(1).max(128),
+  quantity: z.number().int().positive().max(1_000),
+});
+
+export const orderCreateRequestSchema = z.object({
+  lines: z.array(orderLineRequestSchema).min(1).max(100),
+});
+
+export const orderLineSchema = z.object({
+  skuId: z.string().min(1),
+  quantity: z.number().int().positive(),
+  unitPrice: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+});
+
+export const orderTotalsSchema = z.object({
+  subtotal: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  weeklyFee: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  includedCredit: z.object({
+    centavos: z.number().int().nonnegative(),
+    currency: z.literal("PHP"),
+  }),
+  overage: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  deliveryFee: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  totalDue: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+});
+
+export const orderSchema = z.object({
+  id: z.string().min(1),
+  subscriptionId: z.string().min(1),
+  planId: z.string().min(1),
+  lines: z.array(orderLineSchema),
+  weeklyCredit: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  totals: orderTotalsSchema,
+  status: z.literal("locked"),
+  lockedAt: z.string().datetime(),
+});
+
+export const orderResponseSchema = z.object({
+  data: orderSchema,
+  meta: responseMetaSchema,
+});
+
 export const subscriptionStatusSchema = z.enum(["active", "paused", "canceled"]);
 export const subscriptionActionSchema = z.enum(["pause", "resume", "skip", "cancel"]);
 
@@ -67,5 +110,6 @@ export const subscriptionActionRequestSchema = z.object({
 export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
+export type OrderResponse = z.infer<typeof orderResponseSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;

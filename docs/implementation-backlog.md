@@ -58,8 +58,10 @@ keep the dependency direction from workers to application to domain intact.
 - Idempotent application-level cart locking into immutable orders with an outbox publisher boundary.
 - Focused tests for duplicate lock replay, conflicting idempotency keys, and lock totals.
 - Durable D1 order/line snapshots and atomic order-plus-outbox writes are now available;
-- Remaining: customer cart/order API contracts and routes, plus lock retry integration tests
-  against D1.
+- Customer order contracts and protected `/api/v1/orders` route now resolve server-side prices,
+  credits, delivery fees, and subscription ownership.
+- Remaining: lock retry integration tests against a live D1 binding and customer cart persistence
+  before lock.
 
 ### Billing and fulfillment
 

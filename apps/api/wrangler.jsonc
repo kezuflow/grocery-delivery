@@ -10,18 +10,21 @@
   "vars": {
     "APP_ENV": "development",
     "VERSION": "0.0.0-dev",
+    "DELIVERY_FEE_CENTAVOS": "0",
   },
   "env": {
     "staging": {
       "name": "carbon-food-delivery-api-staging",
       "vars": {
         "APP_ENV": "staging",
+        "DELIVERY_FEE_CENTAVOS": "0",
       },
     },
     "production": {
       "name": "carbon-food-delivery-api-production",
       "vars": {
         "APP_ENV": "production",
+        "DELIVERY_FEE_CENTAVOS": "0",
       },
     },
   },

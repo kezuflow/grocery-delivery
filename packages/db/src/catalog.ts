@@ -36,12 +36,16 @@ export interface CatalogReader {
   listPublic(query: CatalogQuery): Promise<CatalogPage>;
 }
 
+export interface CatalogCheckoutReader {
+  findActiveByIds(skuIds: readonly string[]): Promise<readonly CatalogSku[]>;
+}
+
 export interface CatalogPricingRepository {
   listMarkupCandidates(skuId: string, effectiveAt: string): Promise<readonly CatalogMarkupRule[]>;
   recordPrice(entry: CatalogPriceHistoryEntry): Promise<void>;
 }
 
-export class InMemoryCatalogReader implements CatalogReader {
+export class InMemoryCatalogReader implements CatalogReader, CatalogCheckoutReader {
   private readonly cacheVersion: string;
   private readonly categories: readonly CatalogCategory[];
   private readonly items: readonly CatalogSku[];
@@ -90,9 +94,14 @@ export class InMemoryCatalogReader implements CatalogReader {
       nextAfterId: start + items.length < categoryItems.length ? (lastItem?.id ?? null) : null,
     });
   }
+
+  findActiveByIds(skuIds: readonly string[]): Promise<readonly CatalogSku[]> {
+    const ids = new Set(skuIds);
+    return Promise.resolve(this.items.filter((item) => item.active && ids.has(item.id)));
+  }
 }
 
-export class D1CatalogReader implements CatalogReader {
+export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
   constructor(private readonly database: CatalogDatabase) {}
 
   async listPublic(query: CatalogQuery): Promise<CatalogPage> {
@@ -142,6 +151,24 @@ export class D1CatalogReader implements CatalogReader {
       items: rows.map(mapSku),
       nextAfterId: hasNext ? (rows.at(-1)?.id ?? null) : null,
     };
+  }
+
+  async findActiveByIds(skuIds: readonly string[]): Promise<readonly CatalogSku[]> {
+    if (skuIds.length === 0) {
+      return [];
+    }
+    const placeholders = skuIds.map(() => "?").join(", ");
+    const rows = await this.database
+      .prepare(
+        `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
+                s.image_url, s.current_price_centavos, s.active
+         FROM catalog_skus s
+         INNER JOIN catalog_categories c ON c.id = s.category_id
+         WHERE s.active = 1 AND c.active = 1 AND s.id IN (${placeholders})`,
+      )
+      .bind(...skuIds)
+      .all<CatalogSkuRow>();
+    return rows.results.map(mapSku);
   }
 }
 
@@ -270,7 +297,7 @@ function mapSku(row: CatalogSkuRow): CatalogSku {
   });
 }
 
-export function createDefaultCatalogReader(): CatalogReader {
+export function createDefaultCatalogReader(): InMemoryCatalogReader {
   const freshProduce = createCatalogCategory({
     id: "fresh-produce",
     name: "Fresh produce",

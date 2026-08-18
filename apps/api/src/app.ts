@@ -1,6 +1,8 @@
 import { resolveActiveSession, toSessionSummary, type SessionResolver } from "@carbon/auth";
 import {
+  DefaultCartLockService,
   DefaultSubscriptionCommandService,
+  type CartLockService,
   type SubscriptionCommandService,
 } from "@carbon/application";
 import { parseAllowedOrigins, parseRuntimeEnvironment } from "@carbon/config";
@@ -13,6 +15,8 @@ import {
   planAdminUpsertRequestSchema,
   planResponseSchema,
   plansListResponseSchema,
+  orderCreateRequestSchema,
+  orderResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionResponseSchema,
   type SubscriptionResponse,
@@ -23,12 +27,16 @@ import {
   createDefaultCatalogReader,
   createDefaultPlanReader,
   D1CatalogReader,
+  D1OrderRepository,
+  D1OutboxPublisher,
   D1PlanReader,
   D1PlanRepository,
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
   type CatalogDatabase,
   type CatalogReader,
+  type CatalogCheckoutReader,
+  type PlanLookup,
   type PlanReader,
   type PlanRepository,
   type SubscriptionReader,
@@ -45,6 +53,7 @@ export type ApiBindings = Readonly<{
   CATALOG_CACHE_VERSION?: string;
   CORS_ORIGINS?: string;
   DB?: CatalogDatabase;
+  DELIVERY_FEE_CENTAVOS?: string;
   PLAN_CACHE_VERSION?: string;
   VERSION?: string;
 }>;
@@ -67,6 +76,10 @@ export type ApiOptions = Readonly<{
   now?: () => Date;
   planReader?: PlanReader;
   planRepository?: PlanRepository;
+  catalogCheckoutReader?: CatalogCheckoutReader;
+  planLookup?: PlanLookup;
+  orderLockService?: CartLockService;
+  deliveryFeeCentavos?: number;
   subscriptionReader?: SubscriptionReader;
   sink?: LogSink;
   sessionResolver?: SessionResolver;
@@ -375,6 +388,176 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
+  app.post("/api/v1/orders", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const orderLockService =
+      options.orderLockService ??
+      (bindings.DB
+        ? new DefaultCartLockService(
+            new D1OrderRepository(bindings.DB),
+            new D1OutboxPublisher(bindings.DB),
+          )
+        : undefined);
+    const subscriptionReader =
+      options.subscriptionReader ??
+      (bindings.DB ? new D1SubscriptionRepository(bindings.DB) : undefined);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    const planLookup =
+      options.planLookup ??
+      (bindings.DB ? new D1PlanReader(bindings.DB) : createDefaultPlanReader());
+
+    if (!options.sessionResolver || !orderLockService || !subscriptionReader || !planLookup) {
+      return context.json(
+        errorResponse(
+          "ORDER_UNAVAILABLE",
+          "order creation is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = await resolveActiveSession(
+      options.sessionResolver,
+      context.req.raw,
+      now().toISOString(),
+    );
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key");
+    if (!idempotencyKey?.trim()) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = orderCreateRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_ORDER_REQUEST",
+          "order lines are invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const subscription = await subscriptionReader.findByCustomerId(session.customerId);
+    if (!subscription || subscription.status !== "active") {
+      return context.json(
+        errorResponse(
+          "SUBSCRIPTION_NOT_ELIGIBLE",
+          "an active subscription is required to place an order",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const plan = await planLookup.findActiveById(subscription.planId);
+    if (!plan) {
+      return context.json(
+        errorResponse(
+          "PLAN_NOT_FOUND",
+          "the subscription plan is unavailable",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const skuIds = input.data.lines.map((line) => line.skuId);
+    if (new Set(skuIds).size !== skuIds.length) {
+      return context.json(
+        errorResponse(
+          "DUPLICATE_ORDER_SKU",
+          "order lines cannot contain duplicate SKUs",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const catalogItems = await catalogReader.findActiveByIds(skuIds);
+    const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
+    if (catalogItems.length !== skuIds.length) {
+      return context.json(
+        errorResponse(
+          "SKU_NOT_AVAILABLE",
+          "one or more SKUs are unavailable",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const cartLines = input.data.lines.map((line) => {
+      const item = catalogById.get(line.skuId);
+      if (!item) {
+        throw new Error("SKU_NOT_AVAILABLE");
+      }
+      return {
+        skuId: item.id,
+        quantity: line.quantity,
+        unitPrice: item.price,
+      };
+    });
+    const deliveryFeeCentavos = resolveDeliveryFeeCentavos(options.deliveryFeeCentavos, bindings);
+    if (deliveryFeeCentavos === null) {
+      return context.json(
+        errorResponse(
+          "ORDER_CONFIGURATION_INVALID",
+          "delivery fee configuration is invalid",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    try {
+      const order = await orderLockService.lock({
+        customerId: session.customerId,
+        subscriptionId: subscription.id,
+        idempotencyKey,
+        cart: { lines: cartLines },
+        plan,
+        deliveryFee: { centavos: deliveryFeeCentavos, currency: "PHP" },
+        lockedAt: now().toISOString(),
+      });
+      const body = {
+        data: {
+          id: order.id,
+          subscriptionId: order.subscriptionId,
+          planId: order.planId,
+          lines: order.cart.lines,
+          weeklyCredit: order.weeklyCredit,
+          totals: order.totals,
+          status: order.status,
+          lockedAt: order.lockedAt,
+        },
+        meta: { correlationId: context.get("correlationId") },
+      };
+      orderResponseSchema.parse(body);
+      return context.json(body, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "order creation failed";
+      const code = message.includes("idempotency")
+        ? "IDEMPOTENCY_KEY_REUSED"
+        : message.includes("SKU")
+          ? "SKU_NOT_AVAILABLE"
+          : "INVALID_ORDER_REQUEST";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 409);
+    }
+  });
+
   app.get("/api/v1/catalog", async (context) => {
     const limitValue = context.req.query("limit");
     const limit = limitValue ? Number(limitValue) : 20;
@@ -522,4 +705,13 @@ function decodeCursor(cursor: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function resolveDeliveryFeeCentavos(
+  configured: number | undefined,
+  bindings: ApiBindings,
+): number | null {
+  const value =
+    configured ?? (bindings.DELIVERY_FEE_CENTAVOS ? Number(bindings.DELIVERY_FEE_CENTAVOS) : 0);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
