@@ -4,6 +4,8 @@ export type PaymentAttemptStatus = "pending" | "succeeded" | "failed";
 export type RefundStatus = "succeeded" | "failed";
 export type PaymentLedgerEntryType = "charge" | "refund" | "adjustment";
 export type PaymentLedgerDirection = "debit" | "credit";
+export type ReconciliationDiscrepancyKind =
+  "missing_provider_entry" | "unexpected_provider_entry" | "status_mismatch" | "amount_mismatch";
 
 export type PaymentAttempt = Readonly<{
   id: string;
@@ -56,6 +58,20 @@ export type PaymentLedgerEntry = Readonly<{
   metadata: Readonly<Record<string, unknown>>;
 }>;
 
+export type ReconciliationDiscrepancy = Readonly<{
+  id: string;
+  providerName: string;
+  reference: string;
+  entityType: "charge" | "refund";
+  kind: ReconciliationDiscrepancyKind;
+  expectedStatus: string | null;
+  actualStatus: string | null;
+  expectedAmount: Money | null;
+  actualAmount: Money | null;
+  observedAt: string;
+  createdAt: string;
+}>;
+
 export interface PaymentRepository {
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null>;
   findPaymentAttemptByIdempotencyKey(
@@ -77,6 +93,13 @@ export interface PaymentRepository {
   saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void>;
   appendLedgerEntry(entry: PaymentLedgerEntry): Promise<void>;
   recordWebhook(event: PaymentWebhookEvent): Promise<boolean>;
+  listPaymentAttempts(
+    providerName: string,
+    from: string,
+    to: string,
+  ): Promise<readonly PaymentAttempt[]>;
+  listRefunds(providerName: string, from: string, to: string): Promise<readonly Refund[]>;
+  saveReconciliationDiscrepancy(discrepancy: ReconciliationDiscrepancy): Promise<void>;
 }
 
 export function createPaymentAttempt(input: PaymentAttempt): PaymentAttempt {
@@ -104,6 +127,7 @@ export class InMemoryPaymentRepository implements PaymentRepository {
   private readonly refunds = new Map<string, Refund>();
   private readonly ledger = new Map<string, PaymentLedgerEntry>();
   private readonly webhooks = new Set<string>();
+  private readonly discrepancies = new Map<string, ReconciliationDiscrepancy>();
 
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null> {
     return Promise.resolve(this.attempts.get(id) ?? null);
@@ -190,7 +214,56 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     return Promise.resolve(true);
   }
 
+  listPaymentAttempts(
+    providerName: string,
+    from: string,
+    to: string,
+  ): Promise<readonly PaymentAttempt[]> {
+    const fromTime = Date.parse(from);
+    const toTime = Date.parse(to);
+    return Promise.resolve(
+      [...this.attempts.values()].filter(
+        (attempt) =>
+          attempt.providerName === providerName &&
+          Date.parse(attempt.updatedAt) >= fromTime &&
+          Date.parse(attempt.updatedAt) <= toTime,
+      ),
+    );
+  }
+
+  listRefunds(providerName: string, from: string, to: string): Promise<readonly Refund[]> {
+    const fromTime = Date.parse(from);
+    const toTime = Date.parse(to);
+    return Promise.resolve(
+      [...this.refunds.values()].filter(
+        (refund) =>
+          refund.providerName === providerName &&
+          Date.parse(refund.updatedAt) >= fromTime &&
+          Date.parse(refund.updatedAt) <= toTime,
+      ),
+    );
+  }
+
+  saveReconciliationDiscrepancy(discrepancy: ReconciliationDiscrepancy): Promise<void> {
+    this.discrepancies.set(discrepancy.id, createReconciliationDiscrepancy(discrepancy));
+    return Promise.resolve();
+  }
+
   get ledgerEntries(): readonly PaymentLedgerEntry[] {
     return [...this.ledger.values()];
   }
+
+  get reconciliationDiscrepancies(): readonly ReconciliationDiscrepancy[] {
+    return [...this.discrepancies.values()];
+  }
+}
+
+export function createReconciliationDiscrepancy(
+  input: ReconciliationDiscrepancy,
+): ReconciliationDiscrepancy {
+  return Object.freeze({
+    ...input,
+    expectedAmount: input.expectedAmount ? createMoney(input.expectedAmount.centavos) : null,
+    actualAmount: input.actualAmount ? createMoney(input.actualAmount.centavos) : null,
+  });
 }

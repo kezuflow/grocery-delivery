@@ -10,6 +10,9 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "dependencies": {
+    "@carbon/billing": "workspace:*"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260818.1",
     "typescript": "catalog:",

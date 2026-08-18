@@ -1,11 +1,13 @@
 import {
   createPaymentAttempt,
   createPaymentLedgerEntry,
+  createReconciliationDiscrepancy,
   createRefund,
   type PaymentAttempt,
   type PaymentLedgerEntry,
   type PaymentRepository,
   type PaymentWebhookEvent,
+  type ReconciliationDiscrepancy,
   type Refund,
 } from "@carbon/billing";
 
@@ -154,6 +156,67 @@ export class D1PaymentRepository implements PaymentRepository {
       ) as PaymentPreparedStatement
     ).run();
     return result.meta?.changes === 1;
+  }
+
+  async listPaymentAttempts(
+    providerName: string,
+    from: string,
+    to: string,
+  ): Promise<readonly PaymentAttempt[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, provider_name, amount_centavos,
+                status, provider_reference, failure_code, idempotency_key,
+                request_fingerprint, created_at, updated_at
+         FROM payment_attempts
+         WHERE provider_name = ? AND updated_at >= ? AND updated_at <= ?
+         ORDER BY updated_at ASC, id ASC`,
+      )
+      .bind(providerName, from, to)
+      .all<PaymentAttemptRow>();
+    return rows.results.map(mapPaymentAttempt);
+  }
+
+  async listRefunds(providerName: string, from: string, to: string): Promise<readonly Refund[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, payment_attempt_id, provider_name,
+                provider_reference, amount_centavos, status, reason,
+                idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_refunds
+         WHERE provider_name = ? AND updated_at >= ? AND updated_at <= ?
+         ORDER BY updated_at ASC, id ASC`,
+      )
+      .bind(providerName, from, to)
+      .all<RefundRow>();
+    return rows.results.map(mapRefund);
+  }
+
+  async saveReconciliationDiscrepancy(discrepancy: ReconciliationDiscrepancy): Promise<void> {
+    const value = createReconciliationDiscrepancy(discrepancy);
+    await this.database.batch([
+      this.database
+        .prepare(
+          `INSERT OR IGNORE INTO payment_reconciliation_discrepancies (
+             id, provider_name, reference, entity_type, discrepancy_kind,
+             expected_status, actual_status, expected_amount_centavos,
+             actual_amount_centavos, observed_at, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          value.id,
+          value.providerName,
+          value.reference,
+          value.entityType,
+          value.kind,
+          value.expectedStatus,
+          value.actualStatus,
+          value.expectedAmount?.centavos ?? null,
+          value.actualAmount?.centavos ?? null,
+          value.observedAt,
+          value.createdAt,
+        ),
+    ]);
   }
 }
 

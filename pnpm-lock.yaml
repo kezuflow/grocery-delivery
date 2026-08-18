@@ -89,6 +89,10 @@ importers:
         version: 4.123.0(@cloudflare/workers-types@5.20260818.1)
 
   apps/jobs:
+    dependencies:
+      '@carbon/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20260818.1
