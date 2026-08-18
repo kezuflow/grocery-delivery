@@ -34,6 +34,7 @@ import {
   paymentAttemptResponseSchema,
   paymentChargeRequestSchema,
   paymentMethodRequestSchema,
+  paymentMethodListResponseSchema,
   paymentMethodResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
@@ -898,6 +899,52 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_CHARGE_FAILED";
       return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
+  });
+
+  app.get("/api/v1/payments/methods", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const paymentService =
+      options.paymentService ??
+      (bindings.DB && options.paymentProvider
+        ? new DefaultPaymentService(new D1PaymentRepository(bindings.DB), options.paymentProvider)
+        : undefined);
+    if (!paymentService) {
+      return context.json(
+        errorResponse(
+          "PAYMENT_UNAVAILABLE",
+          "payment methods are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const methods = await paymentService.listPaymentMethods(session.customerId);
+    const body = {
+      data: {
+        methods: methods.map((method) => ({
+          id: method.id,
+          providerReference: method.providerReference,
+          type: method.type,
+          status: method.status,
+          createdAt: method.createdAt,
+          updatedAt: method.updatedAt,
+        })),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    paymentMethodListResponseSchema.parse(body);
+    return context.json(body, 200);
   });
 
   app.post("/api/v1/payments/methods", async (context) => {

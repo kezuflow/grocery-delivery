@@ -43,6 +43,11 @@ export const paymentMethodResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const paymentMethodListResponseSchema = z.object({
+  data: z.object({ methods: z.array(paymentMethodSchema) }),
+  meta: responseMetaSchema,
+});
+
 export const paymentAttemptResponseSchema = z.object({
   data: paymentAttemptSchema,
   meta: responseMetaSchema,
@@ -79,5 +84,6 @@ export const paymentWebhookResponseSchema = z.object({
 
 export type PaymentAttemptResponse = z.infer<typeof paymentAttemptResponseSchema>;
 export type PaymentMethodResponse = z.infer<typeof paymentMethodResponseSchema>;
+export type PaymentMethodListResponse = z.infer<typeof paymentMethodListResponseSchema>;
 export type PaymentRefundResponse = z.infer<typeof paymentRefundResponseSchema>;
 export type PaymentWebhookResponse = z.infer<typeof paymentWebhookResponseSchema>;

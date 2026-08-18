@@ -8,6 +8,7 @@ import {
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
+  paymentMethodListResponseSchema,
   paymentMethodResponseSchema,
   paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
@@ -761,6 +762,14 @@ describe("API worker", () => {
       status: "active",
     });
     expect(JSON.stringify(body)).not.toContain("tok_private_123");
+
+    const list = await paymentApp.request("/api/v1/payments/methods");
+    const listBody = paymentMethodListResponseSchema.parse(await list.json());
+
+    expect(list.status).toBe(200);
+    expect(listBody.data.methods).toMatchObject([
+      { id: body.data.id, providerReference: body.data.providerReference, status: "active" },
+    ]);
 
     const replay = await paymentApp.request("/api/v1/payments/methods", {
       method: "POST",

@@ -55,6 +55,7 @@ export type PaymentWebhookResult = Readonly<{
 
 export interface PaymentService {
   addPaymentMethod(input: AddPaymentMethodInput): Promise<PaymentMethod>;
+  listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]>;
   charge(input: ChargePaymentInput): Promise<PaymentAttempt>;
   refund(input: RefundPaymentInput): Promise<Refund>;
   handleWebhook(input: PaymentWebhookInput): Promise<PaymentWebhookResult>;
@@ -100,6 +101,10 @@ export class DefaultPaymentService implements PaymentService {
     });
     await this.repository.savePaymentMethod(method);
     return method;
+  }
+
+  listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]> {
+    return this.repository.listPaymentMethods(customerId);
   }
 
   async charge(input: ChargePaymentInput): Promise<PaymentAttempt> {

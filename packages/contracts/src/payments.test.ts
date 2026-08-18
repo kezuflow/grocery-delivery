@@ -4,6 +4,7 @@ import {
   paymentAttemptResponseSchema,
   paymentChargeRequestSchema,
   paymentMethodRequestSchema,
+  paymentMethodListResponseSchema,
   paymentMethodResponseSchema,
   paymentRefundRequestSchema,
 } from "./payments.js";
@@ -40,6 +41,12 @@ describe("payment contracts", () => {
         meta: { correlationId: "corr-1" },
       }),
     ).toMatchObject({ data: { id: "method-1" } });
+    expect(
+      paymentMethodListResponseSchema.parse({
+        data: { methods: [] },
+        meta: { correlationId: "corr-1" },
+      }),
+    ).toMatchObject({ data: { methods: [] } });
   });
 
   it("validates public payment attempt responses", () => {
