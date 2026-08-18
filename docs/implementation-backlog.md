@@ -75,7 +75,9 @@ keep the dependency direction from workers to application to domain intact.
   reconciliation fixtures.
 - Durable payment attempt, webhook deduplication, refund, and append-only ledger storage with
   forward-only D1 migration and repository implementations.
-- Remaining: connect provider charges/refunds/webhooks to payment attempts and ledger entries.
+- Provider-neutral charge/refund orchestration now enforces idempotency fingerprints, persists
+  successful ledger entries, and applies signed webhook state transitions exactly once.
+- Remaining: expose payment commands/webhook ingress through workers and add reconciliation jobs.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
 

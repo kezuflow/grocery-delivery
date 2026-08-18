@@ -21,7 +21,7 @@ export class D1PaymentRepository implements PaymentRepository {
       .prepare(
         `SELECT id, customer_id, order_id, provider_name, amount_centavos,
                 status, provider_reference, failure_code, idempotency_key,
-                created_at, updated_at
+                request_fingerprint, created_at, updated_at
          FROM payment_attempts
          WHERE id = ?
          LIMIT 1`,
@@ -40,12 +40,31 @@ export class D1PaymentRepository implements PaymentRepository {
       .prepare(
         `SELECT id, customer_id, order_id, provider_name, amount_centavos,
                 status, provider_reference, failure_code, idempotency_key,
-                created_at, updated_at
+                request_fingerprint, created_at, updated_at
          FROM payment_attempts
          WHERE customer_id = ? AND idempotency_key = ?
          LIMIT 1`,
       )
       .bind(customerId, idempotencyKey)
+      .all<PaymentAttemptRow>();
+    const row = rows.results[0];
+    return row ? mapPaymentAttempt(row) : null;
+  }
+
+  async findPaymentAttemptByProviderReference(
+    providerName: string,
+    providerReference: string,
+  ): Promise<PaymentAttempt | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, provider_name, amount_centavos,
+                status, provider_reference, failure_code, idempotency_key,
+                request_fingerprint, created_at, updated_at
+         FROM payment_attempts
+         WHERE provider_name = ? AND provider_reference = ?
+         LIMIT 1`,
+      )
+      .bind(providerName, providerReference)
       .all<PaymentAttemptRow>();
     const row = rows.results[0];
     return row ? mapPaymentAttempt(row) : null;
@@ -73,7 +92,7 @@ export class D1PaymentRepository implements PaymentRepository {
       .prepare(
         `SELECT id, customer_id, payment_attempt_id, provider_name,
                 provider_reference, amount_centavos, status, reason,
-                idempotency_key, created_at, updated_at
+                idempotency_key, request_fingerprint, created_at, updated_at
          FROM payment_refunds
          WHERE customer_id = ? AND idempotency_key = ?
          LIMIT 1`,
@@ -82,6 +101,29 @@ export class D1PaymentRepository implements PaymentRepository {
       .all<RefundRow>();
     const row = rows.results[0];
     return row ? mapRefund(row) : null;
+  }
+
+  async findRefundByProviderReference(
+    providerName: string,
+    providerReference: string,
+  ): Promise<Refund | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, payment_attempt_id, provider_name,
+                provider_reference, amount_centavos, status, reason,
+                idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_refunds
+         WHERE provider_name = ? AND provider_reference = ?
+         LIMIT 1`,
+      )
+      .bind(providerName, providerReference)
+      .all<RefundRow>();
+    const row = rows.results[0];
+    return row ? mapRefund(row) : null;
+  }
+
+  async saveRefund(refund: Refund): Promise<void> {
+    await this.database.batch([refundStatement(this.database, refund)]);
   }
 
   async saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void> {
@@ -124,8 +166,9 @@ function paymentAttemptStatement(
     .prepare(
       `INSERT INTO payment_attempts (
          id, customer_id, order_id, provider_name, amount_centavos, status,
-         provider_reference, failure_code, idempotency_key, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         provider_reference, failure_code, idempotency_key, request_fingerprint,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          status = excluded.status,
          provider_reference = excluded.provider_reference,
@@ -142,6 +185,7 @@ function paymentAttemptStatement(
       value.providerReference,
       value.failureCode,
       value.idempotencyKey,
+      value.requestFingerprint,
       value.createdAt,
       value.updatedAt,
     );
@@ -153,8 +197,9 @@ function refundStatement(database: PaymentDatabase, refund: Refund): CatalogPrep
     .prepare(
       `INSERT INTO payment_refunds (
          id, customer_id, payment_attempt_id, provider_name, provider_reference,
-         amount_centavos, status, reason, idempotency_key, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         amount_centavos, status, reason, idempotency_key, request_fingerprint,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          provider_reference = excluded.provider_reference,
          status = excluded.status,
@@ -170,6 +215,7 @@ function refundStatement(database: PaymentDatabase, refund: Refund): CatalogPrep
       value.status,
       value.reason,
       value.idempotencyKey,
+      value.requestFingerprint,
       value.createdAt,
       value.updatedAt,
     );
@@ -211,6 +257,7 @@ function mapPaymentAttempt(row: PaymentAttemptRow): PaymentAttempt {
     providerReference: row.provider_reference,
     failureCode: row.failure_code,
     idempotencyKey: row.idempotency_key,
+    requestFingerprint: row.request_fingerprint,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
@@ -227,6 +274,7 @@ function mapRefund(row: RefundRow): Refund {
     status: row.status,
     reason: row.reason,
     idempotencyKey: row.idempotency_key,
+    requestFingerprint: row.request_fingerprint,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
@@ -246,6 +294,7 @@ type PaymentAttemptRow = Record<string, unknown> & {
   provider_reference: string | null;
   failure_code: string | null;
   idempotency_key: string;
+  request_fingerprint: string;
   created_at: string;
   updated_at: string;
 };
@@ -260,6 +309,7 @@ type RefundRow = Record<string, unknown> & {
   status: Refund["status"];
   reason: string;
   idempotency_key: string;
+  request_fingerprint: string;
   created_at: string;
   updated_at: string;
 };

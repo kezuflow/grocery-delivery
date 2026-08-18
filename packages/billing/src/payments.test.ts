@@ -22,6 +22,7 @@ describe("payment persistence contract", () => {
       providerReference: "charge-1",
       failureCode: null,
       idempotencyKey: "charge-1",
+      requestFingerprint: "fingerprint-charge-1",
       createdAt: "2026-08-20T10:00:00.000Z",
       updatedAt: "2026-08-20T10:00:01.000Z",
     });
@@ -70,6 +71,7 @@ describe("payment persistence contract", () => {
       status: "succeeded",
       reason: "customer request",
       idempotencyKey: "refund-1",
+      requestFingerprint: "fingerprint-refund-1",
       createdAt: event.receivedAt,
       updatedAt: event.receivedAt,
     });

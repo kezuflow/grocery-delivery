@@ -15,6 +15,7 @@ export type PaymentAttempt = Readonly<{
   providerReference: string | null;
   failureCode: string | null;
   idempotencyKey: string;
+  requestFingerprint: string;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -38,6 +39,7 @@ export type Refund = Readonly<{
   status: RefundStatus;
   reason: string;
   idempotencyKey: string;
+  requestFingerprint: string;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -60,9 +62,18 @@ export interface PaymentRepository {
     customerId: string,
     idempotencyKey: string,
   ): Promise<PaymentAttempt | null>;
+  findPaymentAttemptByProviderReference(
+    providerName: string,
+    providerReference: string,
+  ): Promise<PaymentAttempt | null>;
   savePaymentAttempt(attempt: PaymentAttempt): Promise<void>;
   savePaymentAttemptAndLedger(attempt: PaymentAttempt, entry: PaymentLedgerEntry): Promise<void>;
   findRefundByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<Refund | null>;
+  findRefundByProviderReference(
+    providerName: string,
+    providerReference: string,
+  ): Promise<Refund | null>;
+  saveRefund(refund: Refund): Promise<void>;
   saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void>;
   appendLedgerEntry(entry: PaymentLedgerEntry): Promise<void>;
   recordWebhook(event: PaymentWebhookEvent): Promise<boolean>;
@@ -109,6 +120,18 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     );
   }
 
+  findPaymentAttemptByProviderReference(
+    providerName: string,
+    providerReference: string,
+  ): Promise<PaymentAttempt | null> {
+    return Promise.resolve(
+      [...this.attempts.values()].find(
+        (attempt) =>
+          attempt.providerName === providerName && attempt.providerReference === providerReference,
+      ) ?? null,
+    );
+  }
+
   savePaymentAttempt(attempt: PaymentAttempt): Promise<void> {
     this.attempts.set(attempt.id, createPaymentAttempt(attempt));
     return Promise.resolve();
@@ -130,8 +153,25 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     );
   }
 
-  async saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void> {
+  findRefundByProviderReference(
+    providerName: string,
+    providerReference: string,
+  ): Promise<Refund | null> {
+    return Promise.resolve(
+      [...this.refunds.values()].find(
+        (refund) =>
+          refund.providerName === providerName && refund.providerReference === providerReference,
+      ) ?? null,
+    );
+  }
+
+  saveRefund(refund: Refund): Promise<void> {
     this.refunds.set(refund.id, createRefund(refund));
+    return Promise.resolve();
+  }
+
+  async saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void> {
+    await this.saveRefund(refund);
     await this.appendLedgerEntry(entry);
   }
 
