@@ -780,6 +780,37 @@ describe("API worker", () => {
       "charge",
       "refund",
     ]);
+
+    const replay = await adminApp.request("/api/v1/admin/payments/refunds", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "refund-api-1" },
+      body: JSON.stringify({
+        customerId: "customer-1",
+        paymentAttemptId: attempt.id,
+        amount: { centavos: 10_000, currency: "PHP" },
+        reason: "approved customer refund",
+      }),
+    });
+    const replayBody = paymentRefundResponseSchema.parse(await replay.json());
+
+    expect(replay.status).toBe(200);
+    expect(replayBody.data.id).toBe(body.data.id);
+    expect(paymentRepository.ledgerEntries).toHaveLength(2);
+
+    const missingKey = await adminApp.request("/api/v1/admin/payments/refunds", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        customerId: "customer-1",
+        paymentAttemptId: attempt.id,
+        amount: { centavos: 10_000, currency: "PHP" },
+        reason: "approved customer refund",
+      }),
+    });
+    const missingKeyBody = apiErrorResponseSchema.parse(await missingKey.json());
+
+    expect(missingKey.status).toBe(400);
+    expect(missingKeyBody.error.code).toBe("MISSING_IDEMPOTENCY_KEY");
   });
 
   it("requires finance permission for payment refunds", async () => {
