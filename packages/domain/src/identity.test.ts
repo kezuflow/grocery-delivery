@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   createAuditEvent,
+  createMfaChallenge,
   createRoleAssignment,
   createSession,
+  isMfaChallengeActive,
   isSessionActive,
 } from "./identity.js";
 import { DomainValidationError } from "./errors.js";
@@ -54,5 +56,20 @@ describe("identity records", () => {
         assignedAt: "2026-08-18T00:00:00.000Z",
       }).role,
     ).toBe("customer");
+  });
+
+  it("tracks expiring MFA challenges", () => {
+    const challenge = createMfaChallenge({
+      id: "challenge-1",
+      userId: "user-1",
+      purpose: "admin",
+      status: "pending",
+      expiresAt: "2026-08-18T01:00:00.000Z",
+      verifiedAt: null,
+      createdAt: "2026-08-18T00:00:00.000Z",
+    });
+
+    expect(isMfaChallengeActive(challenge, "2026-08-18T00:30:00.000Z")).toBe(true);
+    expect(isMfaChallengeActive(challenge, "2026-08-18T01:00:00.000Z")).toBe(false);
   });
 });

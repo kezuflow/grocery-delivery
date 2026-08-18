@@ -32,9 +32,11 @@ keep the dependency direction from workers to application to domain intact.
   permission-scoped admin checks, customer ownership checks, consent/audit records, and
   public identity contracts.
 - Protected `/api/v1/me` route with active-session resolution and test fixtures.
-- Remaining: wire the Better Auth provider, persist sessions/roles/consents/audit events,
-  add revocation storage and MFA hooks, and apply authentication middleware to all protected
-  application routes.
+- Better Auth session adapter with secure cookie and bearer-token resolution, D1 persistence for
+  users, sessions, roles, consents, audit events, and MFA challenges, session revocation storage,
+  and centralized middleware on all protected application routes.
+- Remaining: configure the production Better Auth instance and add provider-specific sign-in
+  handlers.
 
 ### Plans and subscriptions
 

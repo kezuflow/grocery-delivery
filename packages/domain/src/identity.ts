@@ -37,6 +37,16 @@ export type AuditEvent = Readonly<{
   metadata: Readonly<Record<string, string>>;
 }>;
 
+export type MfaChallenge = Readonly<{
+  id: string;
+  userId: string;
+  purpose: "payment" | "admin" | "session";
+  status: "pending" | "verified" | "expired";
+  expiresAt: string;
+  verifiedAt: string | null;
+  createdAt: string;
+}>;
+
 export function createSession(input: Session): Session {
   assertText(input.id, "session id");
   assertText(input.userId, "session user id");
@@ -94,6 +104,29 @@ export function createAuditEvent(input: AuditEvent): AuditEvent {
   assertIsoTimestamp(input.occurredAt, "audit occurredAt");
 
   return Object.freeze({ ...input, metadata: Object.freeze({ ...input.metadata }) });
+}
+
+export function createMfaChallenge(input: MfaChallenge): MfaChallenge {
+  assertText(input.id, "mfa challenge id");
+  assertText(input.userId, "mfa challenge user id");
+  if (input.purpose !== "payment" && input.purpose !== "admin" && input.purpose !== "session") {
+    throw new DomainValidationError("INVALID_MFA_PURPOSE", "unsupported MFA purpose");
+  }
+  if (input.status !== "pending" && input.status !== "verified" && input.status !== "expired") {
+    throw new DomainValidationError("INVALID_MFA_STATUS", "unsupported MFA status");
+  }
+  assertIsoTimestamp(input.expiresAt, "mfa challenge expiresAt");
+  if (input.verifiedAt !== null) {
+    assertIsoTimestamp(input.verifiedAt, "mfa challenge verifiedAt");
+  }
+  assertIsoTimestamp(input.createdAt, "mfa challenge createdAt");
+
+  return Object.freeze({ ...input });
+}
+
+export function isMfaChallengeActive(challenge: MfaChallenge, now: string): boolean {
+  assertIsoTimestamp(now, "mfa challenge check time");
+  return challenge.status === "pending" && challenge.expiresAt > now;
 }
 
 function assertRole(role: string): asserts role is Role {

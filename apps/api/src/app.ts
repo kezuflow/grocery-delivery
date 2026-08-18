@@ -1,4 +1,11 @@
-import { resolveActiveSession, toSessionSummary, type SessionResolver } from "@carbon/auth";
+import {
+  createPersistentSessionResolver,
+  createBetterAuthSessionResolver,
+  resolveActiveSession,
+  toSessionSummary,
+  type BetterAuthApi,
+  type SessionResolver,
+} from "@carbon/auth";
 import {
   DefaultCartLockService,
   DefaultSubscriptionCommandService,
@@ -33,6 +40,7 @@ import {
   D1CatalogReader,
   D1OrderRepository,
   D1OutboxPublisher,
+  D1IdentityRepository,
   D1PlanReader,
   D1PlanRepository,
   D1SubscriptionIdempotencyStore,
@@ -54,6 +62,7 @@ import {
   createPlan,
   hasAdminPermission,
   multiplyMoney,
+  type Session,
 } from "@carbon/domain";
 import { createLogger, resolveCorrelationId, type LogSink } from "@carbon/observability";
 import { Hono, type Context } from "hono";
@@ -73,6 +82,7 @@ export type ApiBindings = Readonly<{
 
 type ApiVariables = {
   correlationId: string;
+  session: Session | null;
 };
 
 type ApiEnv = {
@@ -97,6 +107,7 @@ export type ApiOptions = Readonly<{
   subscriptionReader?: SubscriptionReader;
   sink?: LogSink;
   sessionResolver?: SessionResolver;
+  betterAuthApi?: BetterAuthApi;
   subscriptionService?: SubscriptionCommandService;
   version?: string;
 }>;
@@ -150,6 +161,45 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }),
   );
 
+  app.use("/api/v1/*", async (context, next) => {
+    const protectedPath =
+      context.req.path === "/api/v1/me" ||
+      context.req.path === "/api/v1/subscription" ||
+      context.req.path === "/api/v1/subscription/actions" ||
+      context.req.path === "/api/v1/cart" ||
+      context.req.path === "/api/v1/orders" ||
+      context.req.path.startsWith("/api/v1/admin/");
+    if (!protectedPath) {
+      context.set("session", null);
+      await next();
+      return;
+    }
+
+    const bindings: ApiBindings = context.env ?? {};
+    const resolver =
+      options.sessionResolver ??
+      (options.betterAuthApi
+        ? createBetterAuthSessionResolver(options.betterAuthApi)
+        : bindings.DB
+          ? createPersistentSessionResolver(new D1IdentityRepository(bindings.DB))
+          : null);
+    const session = resolver
+      ? await resolveActiveSession(resolver, context.req.raw, now().toISOString())
+      : null;
+    context.set("session", session);
+    if (!session) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    await next();
+  });
+
   const healthHandler = (context: ApiContext) => {
     const bindings: ApiBindings = context.env ?? {};
     const environment = parseRuntimeEnvironment(bindings.APP_ENV);
@@ -202,7 +252,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const bindings: ApiBindings = context.env ?? {};
     const planRepository =
       options.planRepository ?? (bindings.DB ? new D1PlanRepository(bindings.DB) : undefined);
-    if (!options.sessionResolver || !planRepository) {
+    if (!planRepository) {
       return context.json(
         errorResponse(
           "PLAN_CONFIGURATION_UNAVAILABLE",
@@ -212,11 +262,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         503,
       );
     }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+    const session = context.get("session");
     if (!session || !hasAdminPermission(session.role, session.adminPermissions, "pricing")) {
       return context.json(
         errorResponse(
@@ -273,7 +319,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
             new D1SubscriptionIdempotencyStore(bindings.DB),
           )
         : undefined);
-    if (!options.sessionResolver || !subscriptionService) {
+    if (!subscriptionService) {
       return context.json(
         errorResponse(
           "SUBSCRIPTION_UNAVAILABLE",
@@ -283,11 +329,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         503,
       );
     }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+    const session = context.get("session");
     if (!session || session.role !== "customer" || !session.customerId) {
       return context.json(
         errorResponse(
@@ -358,7 +400,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const subscriptionReader =
       options.subscriptionReader ??
       (bindings.DB ? new D1SubscriptionRepository(bindings.DB) : undefined);
-    if (!options.sessionResolver || !subscriptionReader) {
+    if (!subscriptionReader) {
       return context.json(
         errorResponse(
           "SUBSCRIPTION_UNAVAILABLE",
@@ -368,11 +410,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         503,
       );
     }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+    const session = context.get("session");
     if (!session || session.role !== "customer" || !session.customerId) {
       return context.json(
         errorResponse(
@@ -411,21 +449,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const catalogReader =
       options.catalogCheckoutReader ??
       (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
-    if (!options.sessionResolver) {
-      return context.json(
-        errorResponse(
-          "CART_UNAVAILABLE",
-          "cart reads are unavailable",
-          context.get("correlationId"),
-        ),
-        503,
-      );
-    }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+    const session = context.get("session");
     if (!session || session.role !== "customer" || !session.customerId) {
       return context.json(
         errorResponse(
@@ -458,21 +482,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const catalogReader =
       options.catalogCheckoutReader ??
       (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
-    if (!options.sessionResolver) {
-      return context.json(
-        errorResponse(
-          "CART_UNAVAILABLE",
-          "cart updates are unavailable",
-          context.get("correlationId"),
-        ),
-        503,
-      );
-    }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+    const session = context.get("session");
     if (!session || session.role !== "customer" || !session.customerId) {
       return context.json(
         errorResponse(
@@ -543,7 +553,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       options.cartRepository ??
       (bindings.DB ? new D1CartRepository(bindings.DB) : fallbackCartRepository);
 
-    if (!options.sessionResolver || !orderLockService || !subscriptionReader || !planLookup) {
+    if (!orderLockService || !subscriptionReader || !planLookup) {
       return context.json(
         errorResponse(
           "ORDER_UNAVAILABLE",
@@ -553,11 +563,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         503,
       );
     }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+    const session = context.get("session");
     if (!session || session.role !== "customer" || !session.customerId) {
       return context.json(
         errorResponse(
@@ -765,22 +771,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
-  app.get("/api/v1/me", async (context) => {
-    if (!options.sessionResolver) {
-      return context.json(
-        errorResponse(
-          "UNAUTHENTICATED",
-          "authentication is required",
-          context.get("correlationId"),
-        ),
-        401,
-      );
-    }
-    const session = await resolveActiveSession(
-      options.sessionResolver,
-      context.req.raw,
-      now().toISOString(),
-    );
+  app.get("/api/v1/me", (context) => {
+    const session = context.get("session");
     if (!session) {
       return context.json(
         errorResponse(
