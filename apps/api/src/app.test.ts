@@ -8,6 +8,7 @@ import {
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
+  paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
   planChangeRequestResponseSchema,
   planResponseSchema,
@@ -712,6 +713,111 @@ describe("API worker", () => {
 
     expect(webhook.status).toBe(200);
     expect(webhookBody.data).toEqual({ duplicate: false, applied: true });
+  });
+
+  it("allows finance admins to refund a successful payment and records the ledger entry", async () => {
+    const paymentRepository = new InMemoryPaymentRepository();
+    const paymentProvider = new FakePaymentProvider({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+    });
+    const paymentService = new DefaultPaymentService(
+      paymentRepository,
+      paymentProvider,
+      () => "attempt-refund-api-1",
+    );
+    const attempt = await paymentService.charge({
+      customerId: "customer-1",
+      orderId: "order-refund-1",
+      customerReference: "provider-customer-1",
+      paymentMethodReference: "provider-method-1",
+      amount: createMoney(74_900),
+      idempotencyKey: "charge-refund-api-1",
+      now: "2026-08-20T10:00:00.000Z",
+    });
+    const adminApp = createApi({
+      now: () => new Date("2026-08-20T10:02:00.000Z"),
+      sink: () => undefined,
+      paymentService,
+      paymentProvider,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-finance",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["finance"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await adminApp.request("/api/v1/admin/payments/refunds", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "refund-api-1" },
+      body: JSON.stringify({
+        customerId: "customer-1",
+        paymentAttemptId: attempt.id,
+        amount: { centavos: 10_000, currency: "PHP" },
+        reason: "approved customer refund",
+      }),
+    });
+    const body = paymentRefundResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({
+      customerId: "customer-1",
+      paymentAttemptId: attempt.id,
+      amount: { centavos: 10_000, currency: "PHP" },
+      status: "succeeded",
+      reason: "approved customer refund",
+    });
+    expect(paymentRepository.ledgerEntries).toHaveLength(2);
+    expect(paymentRepository.ledgerEntries.map((entry) => entry.type)).toEqual([
+      "charge",
+      "refund",
+    ]);
+  });
+
+  it("requires finance permission for payment refunds", async () => {
+    const paymentProvider = new FakePaymentProvider();
+    const adminApp = createApi({
+      sink: () => undefined,
+      paymentService: new DefaultPaymentService(new InMemoryPaymentRepository(), paymentProvider),
+      paymentProvider,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-catalog-admin",
+              userId: "admin-2",
+              role: "admin",
+              adminPermissions: ["catalog"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await adminApp.request("/api/v1/admin/payments/refunds", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "refund-api-2" },
+      body: JSON.stringify({
+        customerId: "customer-1",
+        paymentAttemptId: "attempt-1",
+        amount: { centavos: 1_000, currency: "PHP" },
+        reason: "approved customer refund",
+      }),
+    });
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("FORBIDDEN");
   });
 
   it("returns a consistent error envelope for unknown routes", async () => {

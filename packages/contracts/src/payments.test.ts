@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { paymentAttemptResponseSchema, paymentChargeRequestSchema } from "./payments.js";
+import {
+  paymentAttemptResponseSchema,
+  paymentChargeRequestSchema,
+  paymentRefundRequestSchema,
+} from "./payments.js";
 
 describe("payment contracts", () => {
   it("accepts charge requests without a client amount", () => {
@@ -29,5 +33,16 @@ describe("payment contracts", () => {
         meta: { correlationId: "corr-1" },
       }),
     ).toMatchObject({ data: { id: "attempt-1" } });
+  });
+
+  it("requires a positive PHP amount and reason for finance refunds", () => {
+    expect(
+      paymentRefundRequestSchema.parse({
+        customerId: "customer-1",
+        paymentAttemptId: "attempt-1",
+        amount: { centavos: 10_000, currency: "PHP" },
+        reason: "approved customer refund",
+      }),
+    ).toMatchObject({ paymentAttemptId: "attempt-1" });
   });
 });

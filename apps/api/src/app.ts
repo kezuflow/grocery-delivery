@@ -33,6 +33,8 @@ import {
   orderResponseSchema,
   paymentAttemptResponseSchema,
   paymentChargeRequestSchema,
+  paymentRefundRequestSchema,
+  paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionResponseSchema,
@@ -935,6 +937,88 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       const message = error instanceof Error ? error.message : "payment webhook failed";
       const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_WEBHOOK_FAILED";
       return context.json(errorResponse(code, message, context.get("correlationId")), 400);
+    }
+  });
+
+  app.post("/api/v1/admin/payments/refunds", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const paymentService =
+      options.paymentService ??
+      (bindings.DB && options.paymentProvider
+        ? new DefaultPaymentService(new D1PaymentRepository(bindings.DB), options.paymentProvider)
+        : undefined);
+    if (!paymentService) {
+      return context.json(
+        errorResponse(
+          "PAYMENT_UNAVAILABLE",
+          "payment refunds are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "finance")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "finance administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key");
+    if (!idempotencyKey?.trim()) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = paymentRefundRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PAYMENT_REFUND_REQUEST",
+          "payment refund request is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const refund = await paymentService.refund({
+        customerId: input.data.customerId,
+        paymentAttemptId: input.data.paymentAttemptId,
+        amount: createMoney(input.data.amount.centavos),
+        reason: input.data.reason,
+        idempotencyKey,
+        now: now().toISOString(),
+      });
+      const body = {
+        data: {
+          id: refund.id,
+          customerId: refund.customerId,
+          paymentAttemptId: refund.paymentAttemptId,
+          amount: refund.amount,
+          status: refund.status,
+          providerReference: refund.providerReference,
+          reason: refund.reason,
+          createdAt: refund.createdAt,
+          updatedAt: refund.updatedAt,
+        },
+        meta: { correlationId: context.get("correlationId") },
+      };
+      paymentRefundResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "payment refund failed";
+      const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_REFUND_FAILED";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
   });
 

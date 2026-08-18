@@ -81,7 +81,9 @@ keep the dependency direction from workers to application to domain intact.
   worker with server-side order total resolution.
 - Provider reconciliation now compares persisted charges/refunds with provider activity, stores
   deterministic discrepancy records, and exposes a clock-controlled jobs-worker adapter.
-- Remaining: add broader payment-method/refund administration flows.
+- Finance-authorized refund administration is now exposed through the API with idempotency,
+  provider-backed execution, public response contracts, and append-only ledger coverage.
+- Remaining: add broader payment-method administration flows.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
 
