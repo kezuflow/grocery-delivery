@@ -8,6 +8,7 @@ import {
 } from "@carbon/domain";
 
 export type OrderRepository = Readonly<{
+  findById(id: string): Promise<LockedOrder | null>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
 }>;
@@ -46,6 +47,10 @@ export class InMemoryOrderRepository implements OrderRepository {
 
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null> {
     return Promise.resolve(this.orders.get(`${customerId}:${idempotencyKey}`) ?? null);
+  }
+
+  findById(id: string): Promise<LockedOrder | null> {
+    return Promise.resolve([...this.orders.values()].find((order) => order.id === id) ?? null);
   }
 
   save(order: LockedOrder): Promise<void> {

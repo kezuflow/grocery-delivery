@@ -31,6 +31,9 @@ import {
   plansListResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
+  paymentAttemptResponseSchema,
+  paymentChargeRequestSchema,
+  paymentWebhookResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionResponseSchema,
   type SubscriptionResponse,
@@ -38,12 +41,19 @@ import {
   type HealthResponse,
 } from "@carbon/contracts";
 import {
+  DefaultPaymentService,
+  PaymentProviderError,
+  type PaymentProvider,
+  type PaymentService,
+} from "@carbon/billing";
+import {
   createDefaultCatalogReader,
   createDefaultPlanReader,
   D1CartRepository,
   D1CatalogReader,
   D1OrderRepository,
   D1OutboxPublisher,
+  D1PaymentRepository,
   D1IdentityRepository,
   D1PlanApprovalRepository,
   D1PlanReader,
@@ -58,6 +68,7 @@ import {
   type PlanLookup,
   type PlanReader,
   type PlanRepository,
+  type OrderRepository,
   type SubscriptionReader,
 } from "@carbon/db";
 import {
@@ -109,6 +120,9 @@ export type ApiOptions = Readonly<{
   cartRepository?: CartRepository;
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
+  orderReader?: Pick<OrderRepository, "findById">;
+  paymentProvider?: PaymentProvider;
+  paymentService?: PaymentService;
   deliveryFeeCentavos?: number;
   subscriptionReader?: SubscriptionReader;
   sink?: LogSink;
@@ -174,6 +188,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/subscription/actions" ||
       context.req.path === "/api/v1/cart" ||
       context.req.path === "/api/v1/orders" ||
+      context.req.path === "/api/v1/payments/charge" ||
+      context.req.path === "/api/v1/payments/refund" ||
       context.req.path.startsWith("/api/v1/admin/");
     if (!protectedPath) {
       context.set("session", null);
@@ -800,6 +816,128 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }
   });
 
+  app.post("/api/v1/payments/charge", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const paymentService =
+      options.paymentService ??
+      (bindings.DB && options.paymentProvider
+        ? new DefaultPaymentService(new D1PaymentRepository(bindings.DB), options.paymentProvider)
+        : undefined);
+    const orderReader =
+      options.orderReader ?? (bindings.DB ? new D1OrderRepository(bindings.DB) : undefined);
+    if (!paymentService || !orderReader) {
+      return context.json(
+        errorResponse(
+          "PAYMENT_UNAVAILABLE",
+          "payment charging is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key");
+    if (!idempotencyKey?.trim()) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = paymentChargeRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PAYMENT_REQUEST",
+          "payment request is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const order = await orderReader.findById(input.data.orderId);
+    if (!order || order.customerId !== session.customerId) {
+      return context.json(
+        errorResponse("ORDER_NOT_FOUND", "the order was not found", context.get("correlationId")),
+        404,
+      );
+    }
+    try {
+      const attempt = await paymentService.charge({
+        customerId: session.customerId,
+        orderId: order.id,
+        customerReference: input.data.customerReference,
+        paymentMethodReference: input.data.paymentMethodReference,
+        amount: order.totals.totalDue,
+        idempotencyKey,
+        now: now().toISOString(),
+      });
+      const body = paymentAttemptResponse(attempt, context.get("correlationId"));
+      paymentAttemptResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "payment charge failed";
+      const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_CHARGE_FAILED";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 409);
+    }
+  });
+
+  app.post("/api/v1/payments/webhooks/:provider", async (context) => {
+    const paymentService = options.paymentService;
+    const paymentProvider = options.paymentProvider;
+    if (!paymentService || !paymentProvider) {
+      return context.json(
+        errorResponse(
+          "PAYMENT_UNAVAILABLE",
+          "payment webhooks are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    if (context.req.param("provider") !== paymentProvider.name) {
+      return context.json(
+        errorResponse(
+          "UNKNOWN_PAYMENT_PROVIDER",
+          "payment provider is not configured",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const signature =
+      context.req.header("x-payment-signature") ?? context.req.header("x-signature") ?? "";
+    const rawBody = await context.req.text();
+    try {
+      const event = await paymentProvider.verifyWebhook({ rawBody, signature });
+      const result = await paymentService.handleWebhook({
+        providerName: paymentProvider.name,
+        event,
+        receivedAt: now().toISOString(),
+      });
+      const body = { data: result, meta: { correlationId: context.get("correlationId") } };
+      paymentWebhookResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "payment webhook failed";
+      const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_WEBHOOK_FAILED";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 400);
+    }
+  });
+
   app.get("/api/v1/catalog", async (context) => {
     const limitValue = context.req.query("limit");
     const limit = limitValue ? Number(limitValue) : 20;
@@ -934,6 +1072,34 @@ async function resolveCartResponse(
   };
   cartResponseSchema.parse(body);
   return body;
+}
+
+function paymentAttemptResponse(
+  attempt: {
+    id: string;
+    orderId: string;
+    amount: { centavos: number; currency: "PHP" };
+    status: "pending" | "succeeded" | "failed";
+    providerReference: string | null;
+    failureCode: string | null;
+    createdAt: string;
+    updatedAt: string;
+  },
+  correlationId: string,
+) {
+  return {
+    data: {
+      id: attempt.id,
+      orderId: attempt.orderId,
+      amount: attempt.amount,
+      status: attempt.status,
+      providerReference: attempt.providerReference,
+      failureCode: attempt.failureCode,
+      createdAt: attempt.createdAt,
+      updatedAt: attempt.updatedAt,
+    },
+    meta: { correlationId },
+  };
 }
 
 function errorResponse(code: string, message: string, correlationId: string): ApiErrorResponse {

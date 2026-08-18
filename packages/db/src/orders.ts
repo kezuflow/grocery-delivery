@@ -19,6 +19,7 @@ export type OrderOutboxEvent = Readonly<{
 }>;
 
 export interface OrderRepository {
+  findById(id: string): Promise<LockedOrder | null>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
   saveAndPublish(order: LockedOrder, event: OrderOutboxEvent): Promise<void>;
@@ -30,6 +31,35 @@ export interface OutboxPublisher {
 
 export class D1OrderRepository implements OrderRepository {
   constructor(private readonly database: OrderDatabase) {}
+
+  async findById(id: string): Promise<LockedOrder | null> {
+    const orders = await this.database
+      .prepare(
+        `SELECT id, customer_id, subscription_id, plan_id, idempotency_key,
+                request_fingerprint, weekly_credit_centavos, subtotal_centavos,
+                weekly_fee_centavos, included_credit_centavos, overage_centavos,
+                delivery_fee_centavos, total_due_centavos, locked_at
+         FROM orders
+         WHERE id = ? AND status = 'locked'
+         LIMIT 1`,
+      )
+      .bind(id)
+      .all<OrderRow>();
+    const order = orders.results[0];
+    if (!order) {
+      return null;
+    }
+    const lines = await this.database
+      .prepare(
+        `SELECT sku_id, quantity, unit_price_centavos
+         FROM order_lines
+         WHERE order_id = ?
+         ORDER BY line_number ASC`,
+      )
+      .bind(order.id)
+      .all<OrderLineRow>();
+    return mapOrder(order, lines.results);
+  }
 
   async findByIdempotencyKey(
     customerId: string,

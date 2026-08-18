@@ -7,6 +7,8 @@ import {
   currentSessionResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
+  paymentAttemptResponseSchema,
+  paymentWebhookResponseSchema,
   planChangeRequestResponseSchema,
   planResponseSchema,
   plansListResponseSchema,
@@ -22,7 +24,19 @@ import {
   InMemoryOutboxPublisher,
   InMemorySubscriptionRepository,
 } from "@carbon/application";
-import { createSession, createSubscription } from "@carbon/domain";
+import {
+  DefaultPaymentService,
+  FakePaymentProvider,
+  InMemoryPaymentRepository,
+} from "@carbon/billing";
+import {
+  createCart,
+  createCartLine,
+  createLockedOrder,
+  createMoney,
+  createSession,
+  createSubscription,
+} from "@carbon/domain";
 import {
   createDefaultCatalogReader,
   InMemoryCartRepository,
@@ -605,6 +619,99 @@ describe("API worker", () => {
     expect(response.status).toBe(201);
     expect(body.data.lines[0]?.unitPrice.centavos).toBe(12_500);
     await expect(cartRepository.findByCustomerId("customer-1")).resolves.toBeNull();
+  });
+
+  it("charges a locked order using its server-side total and accepts signed webhooks", async () => {
+    const orderRepository = new InMemoryOrderRepository();
+    await orderRepository.save(
+      createLockedOrder({
+        id: "order-payment-1",
+        customerId: "customer-1",
+        subscriptionId: "subscription-1",
+        planId: "plan-small",
+        idempotencyKey: "checkout-payment-1",
+        requestFingerprint: "order-fingerprint-1",
+        cart: createCart([
+          createCartLine({
+            skuId: "sku-bananas",
+            quantity: 1,
+            unitPrice: createMoney(12_500),
+          }),
+        ]),
+        weeklyCredit: createMoney(69_900),
+        totals: {
+          subtotal: createMoney(12_500),
+          weeklyFee: createMoney(69_900),
+          includedCredit: createMoney(12_500),
+          overage: createMoney(0),
+          deliveryFee: createMoney(5_000),
+          totalDue: createMoney(74_900),
+        },
+        status: "locked",
+        lockedAt: "2026-08-20T10:00:00.000Z",
+      }),
+    );
+    const paymentRepository = new InMemoryPaymentRepository();
+    const paymentProvider = new FakePaymentProvider({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+    });
+    const paymentService = new DefaultPaymentService(
+      paymentRepository,
+      paymentProvider,
+      () => "attempt-api-1",
+    );
+    const paymentApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      orderReader: orderRepository,
+      paymentProvider,
+      paymentService,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const charge = await paymentApp.request("/api/v1/payments/charge", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "charge-api-1" },
+      body: JSON.stringify({
+        orderId: "order-payment-1",
+        customerReference: "provider-customer-1",
+        paymentMethodReference: "provider-method-1",
+      }),
+    });
+    const chargeBody = paymentAttemptResponseSchema.parse(await charge.json());
+
+    expect(charge.status).toBe(200);
+    expect(chargeBody.data.amount.centavos).toBe(74_900);
+    expect(chargeBody.data.providerReference).toBe("fake-charge-attempt-api-1");
+
+    const rawWebhook = JSON.stringify({
+      id: "event-api-1",
+      type: "charge.succeeded",
+      occurredAt: "2026-08-20T10:01:00.000Z",
+      data: { chargeReference: chargeBody.data.providerReference },
+    });
+    const webhook = await paymentApp.request("/api/v1/payments/webhooks/fake", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-payment-signature": "fake:event-api-1" },
+      body: rawWebhook,
+    });
+    const webhookBody = paymentWebhookResponseSchema.parse(await webhook.json());
+
+    expect(webhook.status).toBe(200);
+    expect(webhookBody.data).toEqual({ duplicate: false, applied: true });
   });
 
   it("returns a consistent error envelope for unknown routes", async () => {

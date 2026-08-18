@@ -77,7 +77,9 @@ keep the dependency direction from workers to application to domain intact.
   forward-only D1 migration and repository implementations.
 - Provider-neutral charge/refund orchestration now enforces idempotency fingerprints, persists
   successful ledger entries, and applies signed webhook state transitions exactly once.
-- Remaining: expose payment commands/webhook ingress through workers and add reconciliation jobs.
+- Protected customer charge and signed provider webhook ingress are now exposed through the API
+  worker with server-side order total resolution.
+- Remaining: add reconciliation jobs and broader payment-method/refund administration flows.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
 

@@ -50,6 +50,9 @@ importers:
       '@carbon/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@carbon/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@carbon/config':
         specifier: workspace:*
         version: link:../../packages/config
