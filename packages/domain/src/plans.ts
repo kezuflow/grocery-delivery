@@ -15,6 +15,20 @@ export type Plan = Readonly<{
   active: boolean;
 }>;
 
+export const PLAN_CHANGE_STATUSES = ["pending", "approved", "rejected"] as const;
+export type PlanChangeStatus = (typeof PLAN_CHANGE_STATUSES)[number];
+
+export type PlanChangeRequest = Readonly<{
+  id: string;
+  plan: Plan;
+  proposedByUserId: string;
+  status: PlanChangeStatus;
+  decidedByUserId: string | null;
+  decisionReason: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}>;
+
 export const SUBSCRIPTION_STATUSES = ["active", "paused", "canceled"] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
@@ -61,6 +75,79 @@ export function createPlan(input: Omit<Plan, "displayOrder"> & { displayOrder?: 
     displayOrder,
     weeklyFee: Object.freeze({ ...input.weeklyFee }),
     weeklyCredit: Object.freeze({ ...input.weeklyCredit }),
+  });
+}
+
+export function createPlanChangeRequest(input: PlanChangeRequest): PlanChangeRequest {
+  assertText(input.id, "plan change request id");
+  const plan = createPlan(input.plan);
+  assertText(input.proposedByUserId, "plan change proposer");
+  assertPlanChangeStatus(input.status);
+  if (input.decidedByUserId !== null) {
+    assertText(input.decidedByUserId, "plan change decision maker");
+  }
+  if (input.decisionReason !== null) {
+    assertText(input.decisionReason, "plan change decision reason");
+  }
+  assertIsoTimestamp(input.createdAt, "plan change createdAt");
+  if (input.decidedAt !== null) {
+    assertIsoTimestamp(input.decidedAt, "plan change decidedAt");
+  }
+  if (input.status === "pending" && (input.decidedByUserId !== null || input.decidedAt !== null)) {
+    throw new DomainValidationError(
+      "INVALID_PLAN_CHANGE_STATE",
+      "pending plan changes cannot have a decision",
+    );
+  }
+  if (input.status !== "pending" && (input.decidedByUserId === null || input.decidedAt === null)) {
+    throw new DomainValidationError(
+      "INVALID_PLAN_CHANGE_STATE",
+      "decided plan changes require a decision maker and timestamp",
+    );
+  }
+  return Object.freeze({
+    ...input,
+    plan,
+    decisionReason: input.decisionReason?.trim() || null,
+  });
+}
+
+export function decidePlanChangeRequest(
+  request: PlanChangeRequest,
+  decision: Readonly<{
+    approved: boolean;
+    decidedByUserId: string;
+    reason?: string;
+    decidedAt: string;
+  }>,
+): PlanChangeRequest {
+  if (request.status !== "pending") {
+    throw new DomainValidationError(
+      "PLAN_CHANGE_ALREADY_DECIDED",
+      "plan change request has already been decided",
+    );
+  }
+  assertText(decision.decidedByUserId, "plan change decision maker");
+  if (decision.decidedByUserId === request.proposedByUserId) {
+    throw new DomainValidationError(
+      "PLAN_CHANGE_SELF_APPROVAL",
+      "the proposer cannot decide their own plan change",
+    );
+  }
+  assertIsoTimestamp(decision.decidedAt, "plan change decidedAt");
+  const reason = decision.reason?.trim() || null;
+  if (!decision.approved && !reason) {
+    throw new DomainValidationError(
+      "PLAN_CHANGE_REASON_REQUIRED",
+      "rejected plan changes require a reason",
+    );
+  }
+  return createPlanChangeRequest({
+    ...request,
+    status: decision.approved ? "approved" : "rejected",
+    decidedByUserId: decision.decidedByUserId,
+    decisionReason: reason,
+    decidedAt: decision.decidedAt,
   });
 }
 
@@ -207,6 +294,12 @@ function assertText(value: string, field: string): void {
 function assertCode(value: string): asserts value is PlanCode {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) {
     throw new DomainValidationError("INVALID_PLAN_CODE", "plan code must be a lowercase slug");
+  }
+}
+
+function assertPlanChangeStatus(value: string): asserts value is PlanChangeStatus {
+  if (!PLAN_CHANGE_STATUSES.includes(value as PlanChangeStatus)) {
+    throw new DomainValidationError("INVALID_PLAN_CHANGE_STATUS", `unsupported status: ${value}`);
   }
 }
 

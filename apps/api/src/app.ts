@@ -8,8 +8,10 @@ import {
 } from "@carbon/auth";
 import {
   DefaultCartLockService,
+  DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
   type CartLockService,
+  type PlanApprovalService,
   type SubscriptionCommandService,
 } from "@carbon/application";
 import { parseAllowedOrigins, parseRuntimeEnvironment } from "@carbon/config";
@@ -23,6 +25,8 @@ import {
   currentSessionResponseSchema,
   type CurrentSessionResponse,
   planAdminUpsertRequestSchema,
+  planApprovalDecisionRequestSchema,
+  planChangeRequestResponseSchema,
   planResponseSchema,
   plansListResponseSchema,
   orderCreateRequestSchema,
@@ -41,6 +45,7 @@ import {
   D1OrderRepository,
   D1OutboxPublisher,
   D1IdentityRepository,
+  D1PlanApprovalRepository,
   D1PlanReader,
   D1PlanRepository,
   D1SubscriptionIdempotencyStore,
@@ -99,6 +104,7 @@ export type ApiOptions = Readonly<{
   now?: () => Date;
   planReader?: PlanReader;
   planRepository?: PlanRepository;
+  planApprovalService?: PlanApprovalService;
   catalogCheckoutReader?: CatalogCheckoutReader;
   cartRepository?: CartRepository;
   planLookup?: PlanLookup;
@@ -252,7 +258,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const bindings: ApiBindings = context.env ?? {};
     const planRepository =
       options.planRepository ?? (bindings.DB ? new D1PlanRepository(bindings.DB) : undefined);
-    if (!planRepository) {
+    const planApprovalService =
+      options.planApprovalService ??
+      (bindings.DB
+        ? new DefaultPlanApprovalService(new D1PlanApprovalRepository(bindings.DB))
+        : undefined);
+    if (!planRepository && !planApprovalService) {
       return context.json(
         errorResponse(
           "PLAN_CONFIGURATION_UNAVAILABLE",
@@ -296,7 +307,19 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         displayOrder: input.data.displayOrder,
         active: input.data.active,
       });
-      await planRepository.save(plan, now().toISOString());
+      if (planApprovalService) {
+        const requestId = context.req.header("idempotency-key")?.trim();
+        const request = await planApprovalService.propose({
+          plan,
+          proposedByUserId: session.userId,
+          createdAt: now().toISOString(),
+          ...(requestId ? { requestId } : {}),
+        });
+        const body = { data: request, meta: { correlationId: context.get("correlationId") } };
+        planChangeRequestResponseSchema.parse(body);
+        return context.json(body, 202);
+      }
+      await planRepository?.save(plan, now().toISOString());
       const body = { data: plan, meta: { correlationId: context.get("correlationId") } };
       planResponseSchema.parse(body);
       return context.json(body, 200);
@@ -305,6 +328,67 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       return context.json(
         errorResponse("INVALID_PLAN_CONFIGURATION", message, context.get("correlationId")),
         400,
+      );
+    }
+  });
+
+  app.post("/api/v1/admin/plan-change-requests/:id/decision", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const planApprovalService =
+      options.planApprovalService ??
+      (bindings.DB
+        ? new DefaultPlanApprovalService(new D1PlanApprovalRepository(bindings.DB))
+        : undefined);
+    if (!planApprovalService) {
+      return context.json(
+        errorResponse(
+          "PLAN_APPROVAL_UNAVAILABLE",
+          "plan approval is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "finance")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "finance administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const input = planApprovalDecisionRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PLAN_APPROVAL",
+          "plan approval decision is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const request = await planApprovalService.decide({
+        requestId: context.req.param("id"),
+        approved: input.data.approved,
+        decidedByUserId: session.userId,
+        decidedAt: now().toISOString(),
+        ...(input.data.reason ? { reason: input.data.reason } : {}),
+      });
+      const body = { data: request, meta: { correlationId: context.get("correlationId") } };
+      planChangeRequestResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "plan approval failed";
+      return context.json(
+        errorResponse("INVALID_PLAN_APPROVAL", message, context.get("correlationId")),
+        409,
       );
     }
   });

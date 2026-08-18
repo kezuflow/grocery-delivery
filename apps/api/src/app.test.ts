@@ -7,13 +7,16 @@ import {
   currentSessionResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
+  planChangeRequestResponseSchema,
   planResponseSchema,
   plansListResponseSchema,
   subscriptionResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultCartLockService,
+  DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
+  InMemoryPlanApprovalRepository,
   InMemoryIdempotencyStore,
   InMemoryOrderRepository,
   InMemoryOutboxPublisher,
@@ -109,7 +112,7 @@ describe("API worker", () => {
               id: "session-admin",
               userId: "admin-1",
               role: "admin",
-              adminPermissions: ["pricing"],
+              adminPermissions: ["pricing", "finance"],
               customerId: null,
               expiresAt: "2026-08-19T00:00:00.000Z",
               revokedAt: null,
@@ -168,6 +171,60 @@ describe("API worker", () => {
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("creates pending plan changes and requires an independent finance approval", async () => {
+    const approvalService = new DefaultPlanApprovalService(
+      new InMemoryPlanApprovalRepository(),
+      () => "change-1",
+    );
+    const proposalApp = createApi({
+      now: () => new Date("2026-08-18T01:00:00.000Z"),
+      sink: () => undefined,
+      planApprovalService: approvalService,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-pricing",
+              userId: "pricing-1",
+              role: "admin",
+              adminPermissions: ["pricing", "finance"],
+              customerId: null,
+              expiresAt: "2026-08-19T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const proposal = await proposalApp.request("/api/v1/admin/plans/plan-small", {
+      method: "PUT",
+      headers: { "content-type": "application/json", "idempotency-key": "change-1" },
+      body: JSON.stringify({
+        code: "small",
+        name: "Small",
+        weeklyFee: { centavos: 70_000, currency: "PHP" },
+        weeklyCredit: { centavos: 69_900, currency: "PHP" },
+        displayOrder: 10,
+        active: true,
+      }),
+    });
+    const proposalBody = planChangeRequestResponseSchema.parse(await proposal.json());
+
+    expect(proposal.status).toBe(202);
+    expect(proposalBody.data.status).toBe("pending");
+
+    const selfApproval = await proposalApp.request(
+      "/api/v1/admin/plan-change-requests/change-1/decision",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ approved: true }),
+      },
+    );
+    expect((await apiErrorResponseSchema.parseAsync(await selfApproval.json())).error.code).toBe(
+      "INVALID_PLAN_APPROVAL",
+    );
   });
 
   it("executes an authenticated subscription action with an idempotency key", async () => {

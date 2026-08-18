@@ -39,6 +39,29 @@ export const planAdminUpsertRequestSchema = z.object({
   active: z.boolean(),
 });
 
+export const planChangeStatusSchema = z.enum(["pending", "approved", "rejected"]);
+
+export const planChangeRequestSchema = z.object({
+  id: z.string().min(1),
+  plan: planSchema,
+  proposedByUserId: z.string().min(1),
+  status: planChangeStatusSchema,
+  decidedByUserId: z.string().min(1).nullable(),
+  decisionReason: z.string().min(1).nullable(),
+  createdAt: z.string().datetime(),
+  decidedAt: z.string().datetime().nullable(),
+});
+
+export const planChangeRequestResponseSchema = z.object({
+  data: planChangeRequestSchema,
+  meta: responseMetaSchema,
+});
+
+export const planApprovalDecisionRequestSchema = z.object({
+  approved: z.boolean(),
+  reason: z.string().trim().max(500).optional(),
+});
+
 export const orderLineRequestSchema = z.object({
   skuId: z.string().min(1).max(128),
   quantity: z.number().int().positive().max(1_000),
@@ -131,6 +154,7 @@ export const subscriptionActionRequestSchema = z.object({
 export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
+export type PlanChangeRequestResponse = z.infer<typeof planChangeRequestResponseSchema>;
 export type OrderResponse = z.infer<typeof orderResponseSchema>;
 export type CartResponse = z.infer<typeof cartResponseSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;

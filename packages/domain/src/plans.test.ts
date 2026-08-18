@@ -5,7 +5,9 @@ import {
   applySubscriptionCommand,
   createDefaultPlans,
   createPlan,
+  createPlanChangeRequest,
   createSubscription,
+  decidePlanChangeRequest,
 } from "./plans.js";
 
 describe("plans and subscriptions", () => {
@@ -47,6 +49,35 @@ describe("plans and subscriptions", () => {
         active: true,
       }),
     ).toMatchObject({ code: "family-box", weeklyCredit: { centavos: 210_000 } });
+  });
+
+  it("requires independent approval for plan changes", () => {
+    const pending = createPlanChangeRequest({
+      id: "change-1",
+      plan: createDefaultPlans()[0]!,
+      proposedByUserId: "pricing-1",
+      status: "pending",
+      decidedByUserId: null,
+      decisionReason: null,
+      createdAt: "2026-08-18T00:00:00.000Z",
+      decidedAt: null,
+    });
+
+    expect(() =>
+      decidePlanChangeRequest(pending, {
+        approved: true,
+        decidedByUserId: "pricing-1",
+        decidedAt: "2026-08-18T01:00:00.000Z",
+      }),
+    ).toThrow("proposer cannot decide");
+    expect(
+      decidePlanChangeRequest(pending, {
+        approved: false,
+        decidedByUserId: "finance-1",
+        reason: "Needs margin review",
+        decidedAt: "2026-08-18T01:00:00.000Z",
+      }).status,
+    ).toBe("rejected");
   });
 
   it("supports pause, resume, skip, and cancel before cutoff", () => {

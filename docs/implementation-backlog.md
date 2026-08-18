@@ -51,7 +51,8 @@ keep the dependency direction from workers to application to domain intact.
 - Atomic D1 subscription command/idempotency persistence and replay snapshots.
 - Permission-scoped admin plan writes with D1 persistence, cache-version invalidation,
   and public ETag validation.
-- Remaining: admin pricing approval workflow and audit event persistence for plan changes.
+- Independent pricing proposals with finance approval, self-approval protection, rejection
+  reasons, atomic approved-plan/cache/audit persistence, and decision API contracts.
 
 ### Weekly commerce
 
