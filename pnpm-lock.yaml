@@ -221,6 +221,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@carbon/billing':
+        specifier: workspace:*
+        version: link:../billing
       '@carbon/domain':
         specifier: workspace:*
         version: link:../domain

@@ -73,7 +73,9 @@ keep the dependency direction from workers to application to domain intact.
 - Provider-neutral payment capabilities and adapter interfaces with a deterministic fake
   provider for idempotent customers, payment methods, charges, refunds, signed webhooks, and
   reconciliation fixtures.
-- Add payment attempts, webhook deduplication, refunds, and append-only ledger entries.
+- Durable payment attempt, webhook deduplication, refund, and append-only ledger storage with
+  forward-only D1 migration and repository implementations.
+- Remaining: connect provider charges/refunds/webhooks to payment attempts and ledger entries.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
 

@@ -13,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@carbon/billing": "workspace:*",
     "@carbon/domain": "workspace:*"
   },
   "devDependencies": {

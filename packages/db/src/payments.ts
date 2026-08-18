@@ -1,0 +1,265 @@
+import {
+  createPaymentAttempt,
+  createPaymentLedgerEntry,
+  createRefund,
+  type PaymentAttempt,
+  type PaymentLedgerEntry,
+  type PaymentRepository,
+  type PaymentWebhookEvent,
+  type Refund,
+} from "@carbon/billing";
+
+import type { CatalogDatabase, CatalogPreparedStatement } from "./catalog.js";
+
+export type PaymentDatabase = CatalogDatabase;
+
+export class D1PaymentRepository implements PaymentRepository {
+  constructor(private readonly database: PaymentDatabase) {}
+
+  async findPaymentAttemptById(id: string): Promise<PaymentAttempt | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, provider_name, amount_centavos,
+                status, provider_reference, failure_code, idempotency_key,
+                created_at, updated_at
+         FROM payment_attempts
+         WHERE id = ?
+         LIMIT 1`,
+      )
+      .bind(id)
+      .all<PaymentAttemptRow>();
+    const row = rows.results[0];
+    return row ? mapPaymentAttempt(row) : null;
+  }
+
+  async findPaymentAttemptByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentAttempt | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, provider_name, amount_centavos,
+                status, provider_reference, failure_code, idempotency_key,
+                created_at, updated_at
+         FROM payment_attempts
+         WHERE customer_id = ? AND idempotency_key = ?
+         LIMIT 1`,
+      )
+      .bind(customerId, idempotencyKey)
+      .all<PaymentAttemptRow>();
+    const row = rows.results[0];
+    return row ? mapPaymentAttempt(row) : null;
+  }
+
+  async savePaymentAttempt(attempt: PaymentAttempt): Promise<void> {
+    await this.database.batch([paymentAttemptStatement(this.database, attempt)]);
+  }
+
+  async savePaymentAttemptAndLedger(
+    attempt: PaymentAttempt,
+    entry: PaymentLedgerEntry,
+  ): Promise<void> {
+    await this.database.batch([
+      paymentAttemptStatement(this.database, attempt),
+      ledgerStatement(this.database, entry),
+    ]);
+  }
+
+  async findRefundByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<Refund | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, payment_attempt_id, provider_name,
+                provider_reference, amount_centavos, status, reason,
+                idempotency_key, created_at, updated_at
+         FROM payment_refunds
+         WHERE customer_id = ? AND idempotency_key = ?
+         LIMIT 1`,
+      )
+      .bind(customerId, idempotencyKey)
+      .all<RefundRow>();
+    const row = rows.results[0];
+    return row ? mapRefund(row) : null;
+  }
+
+  async saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void> {
+    await this.database.batch([
+      refundStatement(this.database, refund),
+      ledgerStatement(this.database, entry),
+    ]);
+  }
+
+  async appendLedgerEntry(entry: PaymentLedgerEntry): Promise<void> {
+    await this.database.batch([ledgerStatement(this.database, entry)]);
+  }
+
+  async recordWebhook(event: PaymentWebhookEvent): Promise<boolean> {
+    const statement = this.database.prepare(
+      `INSERT OR IGNORE INTO payment_webhook_events (
+         id, provider_name, event_type, occurred_at, data_json, received_at
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ) as PaymentPreparedStatement;
+    const result = await (
+      statement.bind(
+        event.id,
+        event.providerName,
+        event.type,
+        event.occurredAt,
+        JSON.stringify(event.data),
+        event.receivedAt,
+      ) as PaymentPreparedStatement
+    ).run();
+    return result.meta?.changes === 1;
+  }
+}
+
+function paymentAttemptStatement(
+  database: PaymentDatabase,
+  attempt: PaymentAttempt,
+): CatalogPreparedStatement {
+  const value = createPaymentAttempt(attempt);
+  return database
+    .prepare(
+      `INSERT INTO payment_attempts (
+         id, customer_id, order_id, provider_name, amount_centavos, status,
+         provider_reference, failure_code, idempotency_key, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         status = excluded.status,
+         provider_reference = excluded.provider_reference,
+         failure_code = excluded.failure_code,
+         updated_at = excluded.updated_at`,
+    )
+    .bind(
+      value.id,
+      value.customerId,
+      value.orderId,
+      value.providerName,
+      value.amount.centavos,
+      value.status,
+      value.providerReference,
+      value.failureCode,
+      value.idempotencyKey,
+      value.createdAt,
+      value.updatedAt,
+    );
+}
+
+function refundStatement(database: PaymentDatabase, refund: Refund): CatalogPreparedStatement {
+  const value = createRefund(refund);
+  return database
+    .prepare(
+      `INSERT INTO payment_refunds (
+         id, customer_id, payment_attempt_id, provider_name, provider_reference,
+         amount_centavos, status, reason, idempotency_key, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         provider_reference = excluded.provider_reference,
+         status = excluded.status,
+         updated_at = excluded.updated_at`,
+    )
+    .bind(
+      value.id,
+      value.customerId,
+      value.paymentAttemptId,
+      value.providerName,
+      value.providerReference,
+      value.amount.centavos,
+      value.status,
+      value.reason,
+      value.idempotencyKey,
+      value.createdAt,
+      value.updatedAt,
+    );
+}
+
+function ledgerStatement(
+  database: PaymentDatabase,
+  entry: PaymentLedgerEntry,
+): CatalogPreparedStatement {
+  const value = createPaymentLedgerEntry(entry);
+  return database
+    .prepare(
+      `INSERT OR IGNORE INTO payment_ledger_entries (
+         id, customer_id, payment_attempt_id, refund_id, entry_type,
+         direction, amount_centavos, occurred_at, metadata_json
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      value.id,
+      value.customerId,
+      value.paymentAttemptId,
+      value.refundId,
+      value.type,
+      value.direction,
+      value.amount.centavos,
+      value.occurredAt,
+      JSON.stringify(value.metadata),
+    );
+}
+
+function mapPaymentAttempt(row: PaymentAttemptRow): PaymentAttempt {
+  return createPaymentAttempt({
+    id: row.id,
+    customerId: row.customer_id,
+    orderId: row.order_id,
+    providerName: row.provider_name,
+    amount: { centavos: row.amount_centavos, currency: "PHP" },
+    status: row.status,
+    providerReference: row.provider_reference,
+    failureCode: row.failure_code,
+    idempotencyKey: row.idempotency_key,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  });
+}
+
+function mapRefund(row: RefundRow): Refund {
+  return createRefund({
+    id: row.id,
+    customerId: row.customer_id,
+    paymentAttemptId: row.payment_attempt_id,
+    providerName: row.provider_name,
+    providerReference: row.provider_reference,
+    amount: { centavos: row.amount_centavos, currency: "PHP" },
+    status: row.status,
+    reason: row.reason,
+    idempotencyKey: row.idempotency_key,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  });
+}
+
+type PaymentPreparedStatement = CatalogPreparedStatement & {
+  run(): Promise<{ meta?: { changes?: number } }>;
+};
+
+type PaymentAttemptRow = Record<string, unknown> & {
+  id: string;
+  customer_id: string;
+  order_id: string;
+  provider_name: string;
+  amount_centavos: number;
+  status: PaymentAttempt["status"];
+  provider_reference: string | null;
+  failure_code: string | null;
+  idempotency_key: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type RefundRow = Record<string, unknown> & {
+  id: string;
+  customer_id: string;
+  payment_attempt_id: string;
+  provider_name: string;
+  provider_reference: string | null;
+  amount_centavos: number;
+  status: Refund["status"];
+  reason: string;
+  idempotency_key: string;
+  created_at: string;
+  updated_at: string;
+};
