@@ -10,6 +10,8 @@ import {
   type CatalogListResponse,
   currentSessionResponseSchema,
   type CurrentSessionResponse,
+  planAdminUpsertRequestSchema,
+  planResponseSchema,
   plansListResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionResponseSchema,
@@ -22,14 +24,16 @@ import {
   createDefaultPlanReader,
   D1CatalogReader,
   D1PlanReader,
+  D1PlanRepository,
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
   type CatalogDatabase,
   type CatalogReader,
   type PlanReader,
+  type PlanRepository,
   type SubscriptionReader,
 } from "@carbon/db";
-import { assignWeeklyCycle } from "@carbon/domain";
+import { assignWeeklyCycle, createMoney, createPlan, hasAdminPermission } from "@carbon/domain";
 import { createLogger, resolveCorrelationId, type LogSink } from "@carbon/observability";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
@@ -41,6 +45,7 @@ export type ApiBindings = Readonly<{
   CATALOG_CACHE_VERSION?: string;
   CORS_ORIGINS?: string;
   DB?: CatalogDatabase;
+  PLAN_CACHE_VERSION?: string;
   VERSION?: string;
 }>;
 
@@ -61,6 +66,7 @@ export type ApiOptions = Readonly<{
   generateCorrelationId?: () => string;
   now?: () => Date;
   planReader?: PlanReader;
+  planRepository?: PlanRepository;
   subscriptionReader?: SubscriptionReader;
   sink?: LogSink;
   sessionResolver?: SessionResolver;
@@ -149,11 +155,84 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     };
 
     plansListResponseSchema.parse(body);
-    context.header(
-      "cache-control",
-      "public, max-age=300, s-maxage=900, stale-while-revalidate=1800",
-    );
+    const cacheVersion =
+      bindings.PLAN_CACHE_VERSION ??
+      (planReader.getCacheVersion
+        ? await planReader.getCacheVersion()
+        : (options.version ?? "0.0.0"));
+    const etag = `"plans-${encodeCursor(cacheVersion)}"`;
+    context.header("cache-control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
+    context.header("etag", etag);
+    context.header("x-plan-cache-version", cacheVersion);
+    if (context.req.header("if-none-match") === etag) {
+      return context.body(null, 304);
+    }
     return context.json(body, 200);
+  });
+
+  app.put("/api/v1/admin/plans/:id", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const planRepository =
+      options.planRepository ?? (bindings.DB ? new D1PlanRepository(bindings.DB) : undefined);
+    if (!options.sessionResolver || !planRepository) {
+      return context.json(
+        errorResponse(
+          "PLAN_CONFIGURATION_UNAVAILABLE",
+          "plan configuration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = await resolveActiveSession(
+      options.sessionResolver,
+      context.req.raw,
+      now().toISOString(),
+    );
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "pricing")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "pricing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const input = planAdminUpsertRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PLAN_CONFIGURATION",
+          "plan configuration is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const plan = createPlan({
+        id: context.req.param("id"),
+        code: input.data.code,
+        name: input.data.name,
+        weeklyFee: createMoney(input.data.weeklyFee.centavos),
+        weeklyCredit: createMoney(input.data.weeklyCredit.centavos),
+        displayOrder: input.data.displayOrder,
+        active: input.data.active,
+      });
+      await planRepository.save(plan, now().toISOString());
+      const body = { data: plan, meta: { correlationId: context.get("correlationId") } };
+      planResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "plan configuration failed";
+      return context.json(
+        errorResponse("INVALID_PLAN_CONFIGURATION", message, context.get("correlationId")),
+        400,
+      );
+    }
   });
 
   app.post("/api/v1/subscription/actions", async (context) => {

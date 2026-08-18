@@ -22,6 +22,23 @@ export const plansListResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const planResponseSchema = z.object({
+  data: planSchema,
+  meta: responseMetaSchema,
+});
+
+export const planAdminUpsertRequestSchema = z.object({
+  code: planCodeSchema,
+  name: z.string().trim().min(1).max(120),
+  weeklyFee: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  weeklyCredit: z.object({
+    centavos: z.number().int().nonnegative(),
+    currency: z.literal("PHP"),
+  }),
+  displayOrder: z.number().int().nonnegative(),
+  active: z.boolean(),
+});
+
 export const subscriptionStatusSchema = z.enum(["active", "paused", "canceled"]);
 export const subscriptionActionSchema = z.enum(["pause", "resume", "skip", "cancel"]);
 
@@ -48,5 +65,7 @@ export const subscriptionActionRequestSchema = z.object({
 });
 
 export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
+export type PlanResponse = z.infer<typeof planResponseSchema>;
+export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;

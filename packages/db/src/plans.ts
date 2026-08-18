@@ -6,10 +6,18 @@ export type PlanDatabase = CatalogDatabase;
 
 export interface PlanReader {
   listPublic(): Promise<readonly Plan[]>;
+  getCacheVersion?(): Promise<string>;
 }
 
-export class InMemoryPlanReader implements PlanReader {
-  private readonly plans: readonly Plan[];
+export interface PlanWriter {
+  save(plan: Plan, updatedAt: string): Promise<void>;
+}
+
+export interface PlanRepository extends PlanReader, PlanWriter {}
+
+export class InMemoryPlanReader implements PlanRepository {
+  private plans: readonly Plan[];
+  private cacheVersion = "fixture-1";
 
   constructor(plans: readonly Plan[] = createDefaultPlans()) {
     this.plans = plans
@@ -23,10 +31,24 @@ export class InMemoryPlanReader implements PlanReader {
   listPublic(): Promise<readonly Plan[]> {
     return Promise.resolve(this.plans.filter((plan) => plan.active));
   }
+
+  getCacheVersion(): Promise<string> {
+    return Promise.resolve(this.cacheVersion);
+  }
+
+  save(plan: Plan): Promise<void> {
+    const next = createPlan(plan);
+    this.plans = [...this.plans.filter((candidate) => candidate.id !== next.id), next].sort(
+      (left, right) =>
+        left.displayOrder - right.displayOrder || left.code.localeCompare(right.code),
+    );
+    this.cacheVersion = `fixture-${Number(this.cacheVersion.split("-")[1] ?? 1) + 1}`;
+    return Promise.resolve();
+  }
 }
 
 export class D1PlanReader implements PlanReader {
-  constructor(private readonly database: PlanDatabase) {}
+  constructor(protected readonly database: PlanDatabase) {}
 
   async listPublic(): Promise<readonly Plan[]> {
     const rows = await this.database
@@ -51,6 +73,57 @@ export class D1PlanReader implements PlanReader {
       }),
     );
   }
+
+  async getCacheVersion(): Promise<string> {
+    const rows = await this.database
+      .prepare(`SELECT version FROM plan_cache_state WHERE id = 'public'`)
+      .bind()
+      .all<PlanCacheRow>();
+    return String(rows.results[0]?.version ?? 1);
+  }
+}
+
+export class D1PlanRepository extends D1PlanReader implements PlanRepository {
+  constructor(database: PlanDatabase) {
+    super(database);
+  }
+
+  async save(plan: Plan, updatedAt: string): Promise<void> {
+    const statement = this.database
+      .prepare(
+        `INSERT INTO plans (
+           id, code, name, weekly_fee_centavos, weekly_credit_centavos,
+           display_order, active, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           code = excluded.code,
+           name = excluded.name,
+           weekly_fee_centavos = excluded.weekly_fee_centavos,
+           weekly_credit_centavos = excluded.weekly_credit_centavos,
+           display_order = excluded.display_order,
+           active = excluded.active,
+           updated_at = excluded.updated_at`,
+      )
+      .bind(
+        plan.id,
+        plan.code,
+        plan.name,
+        plan.weeklyFee.centavos,
+        plan.weeklyCredit.centavos,
+        plan.displayOrder,
+        plan.active ? 1 : 0,
+        updatedAt,
+        updatedAt,
+      );
+    const invalidateCache = this.database
+      .prepare(
+        `UPDATE plan_cache_state
+         SET version = version + 1, updated_at = ?
+         WHERE id = 'public'`,
+      )
+      .bind(updatedAt);
+    await this.database.batch([statement, invalidateCache]);
+  }
 }
 
 type PlanRow = Record<string, unknown> & {
@@ -62,6 +135,8 @@ type PlanRow = Record<string, unknown> & {
   display_order: number;
   active: number;
 };
+
+type PlanCacheRow = Record<string, unknown> & { version: number };
 
 export function createDefaultPlanReader(): PlanReader {
   return new InMemoryPlanReader();

@@ -46,8 +46,10 @@ keep the dependency direction from workers to application to domain intact.
 - Forward-only D1 schema for plans, subscriptions, and idempotency records.
 - Durable D1 subscription reads/upserts and immutable idempotency result snapshots.
 - Protected customer current-subscription reads with ownership checks and private caching policy.
-- Remaining: atomic D1 command/idempotency transactions, admin write workflows for plan
-  configuration, and production plan pricing approval.
+- Atomic D1 subscription command/idempotency persistence and replay snapshots.
+- Permission-scoped admin plan writes with D1 persistence, cache-version invalidation,
+  and public ETag validation.
+- Remaining: admin pricing approval workflow and audit event persistence for plan changes.
 
 ### Weekly commerce
 

@@ -5,6 +5,7 @@ import {
   catalogListResponseSchema,
   currentSessionResponseSchema,
   healthResponseSchema,
+  planResponseSchema,
   plansListResponseSchema,
   subscriptionResponseSchema,
 } from "@carbon/contracts";
@@ -58,7 +59,8 @@ describe("API worker", () => {
     expect(body.data.plans.map((plan) => plan.weeklyCredit.centavos)).toEqual([
       69_900, 99_900, 139_900,
     ]);
-    expect(response.headers.get("cache-control")).toContain("s-maxage=900");
+    expect(response.headers.get("cache-control")).toContain("s-maxage=300");
+    expect(response.headers.get("x-plan-cache-version")).toBe("fixture-1");
   });
 
   it("lists administrator-configured plan settings", async () => {
@@ -82,6 +84,80 @@ describe("API worker", () => {
     expect(body.data.plans).toMatchObject([
       { code: "family-box", weeklyFee: { centavos: 199_900 }, weeklyCredit: { centavos: 210_000 } },
     ]);
+  });
+
+  it("allows pricing admins to update plan settings and invalidates the plan cache", async () => {
+    const planRepository = new InMemoryPlanReader();
+    const adminApp = createApi({
+      now: () => new Date("2026-08-18T01:00:00.000Z"),
+      sink: () => undefined,
+      planRepository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-admin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["pricing"],
+              customerId: null,
+              expiresAt: "2026-08-19T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request(
+      "/api/v1/admin/plans/plan-small",
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          code: "small",
+          name: "Small",
+          weeklyFee: { centavos: 69_900, currency: "PHP" },
+          weeklyCredit: { centavos: 69_900, currency: "PHP" },
+          displayOrder: 10,
+          active: true,
+        }),
+      },
+      { APP_ENV: "test" },
+    );
+    const body = planResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data.code).toBe("small");
+    await expect(planRepository.getCacheVersion?.()).resolves.toBe("fixture-2");
+  });
+
+  it("rejects plan writes without pricing permission", async () => {
+    const adminApp = createApi({
+      sink: () => undefined,
+      planRepository: new InMemoryPlanReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-admin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["catalog"],
+              customerId: null,
+              expiresAt: "2026-08-19T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request("/api/v1/admin/plans/plan-small", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("FORBIDDEN");
   });
 
   it("executes an authenticated subscription action with an idempotency key", async () => {

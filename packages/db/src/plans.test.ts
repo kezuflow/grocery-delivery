@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CatalogDatabase, CatalogPreparedStatement } from "./catalog.js";
-import { D1PlanReader, InMemoryPlanReader } from "./plans.js";
+import { D1PlanReader, D1PlanRepository, InMemoryPlanReader } from "./plans.js";
 
 describe("plan repositories", () => {
   it("filters inactive plans and accepts admin-defined plan codes", async () => {
@@ -51,10 +51,34 @@ describe("plan repositories", () => {
     });
     expect(database.calls[0]?.sql).toContain("WHERE active = 1");
   });
+
+  it("upserts plan settings and invalidates the D1 cache version", async () => {
+    const database = new FakePlanDatabase([{}]);
+    const repository = new D1PlanRepository(database);
+
+    await repository.save(
+      {
+        id: "plan-family",
+        code: "family-box",
+        name: "Family Box",
+        weeklyFee: { centavos: 199_900, currency: "PHP" },
+        weeklyCredit: { centavos: 210_000, currency: "PHP" },
+        displayOrder: 5,
+        active: true,
+      },
+      "2026-08-18T01:00:00.000Z",
+    );
+
+    expect(database.batches).toHaveLength(1);
+    expect(database.batches[0]).toHaveLength(2);
+    expect(database.calls[0]?.sql).toContain("ON CONFLICT(id)");
+    expect(database.calls[1]?.sql).toContain("plan_cache_state");
+  });
 });
 
 class FakePlanDatabase implements CatalogDatabase {
   readonly calls: Array<{ sql: string; values: unknown[] }> = [];
+  readonly batches: Array<readonly CatalogPreparedStatement[]> = [];
 
   constructor(private readonly results: readonly Record<string, unknown>[]) {}
 
@@ -72,7 +96,8 @@ class FakePlanDatabase implements CatalogDatabase {
     return statement;
   }
 
-  batch(): Promise<readonly unknown[]> {
+  batch(statements: readonly CatalogPreparedStatement[]): Promise<readonly unknown[]> {
+    this.batches.push(statements);
     return Promise.resolve([]);
   }
 }
