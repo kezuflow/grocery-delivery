@@ -3,6 +3,8 @@ import { z } from "zod";
 import { responseMetaSchema } from "./system.js";
 
 export const paymentAttemptStatusSchema = z.enum(["pending", "succeeded", "failed"]);
+export const paymentMethodTypeSchema = z.enum(["card", "bank_account", "ewallet"]);
+export const paymentMethodStatusSchema = z.enum(["active", "revoked"]);
 
 export const paymentAttemptSchema = z.object({
   id: z.string().min(1),
@@ -19,6 +21,26 @@ export const paymentChargeRequestSchema = z.object({
   orderId: z.string().trim().min(1).max(128),
   customerReference: z.string().trim().min(1).max(256),
   paymentMethodReference: z.string().trim().min(1).max(256),
+});
+
+export const paymentMethodRequestSchema = z.object({
+  customerReference: z.string().trim().min(1).max(256),
+  type: paymentMethodTypeSchema,
+  token: z.string().trim().min(1).max(2048),
+});
+
+export const paymentMethodSchema = z.object({
+  id: z.string().min(1),
+  providerReference: z.string().min(1),
+  type: paymentMethodTypeSchema,
+  status: paymentMethodStatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const paymentMethodResponseSchema = z.object({
+  data: paymentMethodSchema,
+  meta: responseMetaSchema,
 });
 
 export const paymentAttemptResponseSchema = z.object({
@@ -56,5 +78,6 @@ export const paymentWebhookResponseSchema = z.object({
 });
 
 export type PaymentAttemptResponse = z.infer<typeof paymentAttemptResponseSchema>;
+export type PaymentMethodResponse = z.infer<typeof paymentMethodResponseSchema>;
 export type PaymentRefundResponse = z.infer<typeof paymentRefundResponseSchema>;
 export type PaymentWebhookResponse = z.infer<typeof paymentWebhookResponseSchema>;

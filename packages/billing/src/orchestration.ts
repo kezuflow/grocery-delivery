@@ -4,9 +4,11 @@ import {
   createPaymentAttempt,
   createPaymentLedgerEntry,
   createPaymentWebhookEvent,
+  createPaymentMethod,
   createRefund,
   type PaymentAttempt,
   type PaymentLedgerEntry,
+  type PaymentMethod,
   type PaymentRepository,
   type Refund,
 } from "./payments.js";
@@ -18,6 +20,15 @@ export type ChargePaymentInput = Readonly<{
   customerReference: string;
   paymentMethodReference: string;
   amount: Money;
+  idempotencyKey: string;
+  now: string;
+}>;
+
+export type AddPaymentMethodInput = Readonly<{
+  customerId: string;
+  customerReference: string;
+  type: "card" | "bank_account" | "ewallet";
+  token: string;
   idempotencyKey: string;
   now: string;
 }>;
@@ -43,6 +54,7 @@ export type PaymentWebhookResult = Readonly<{
 }>;
 
 export interface PaymentService {
+  addPaymentMethod(input: AddPaymentMethodInput): Promise<PaymentMethod>;
   charge(input: ChargePaymentInput): Promise<PaymentAttempt>;
   refund(input: RefundPaymentInput): Promise<Refund>;
   handleWebhook(input: PaymentWebhookInput): Promise<PaymentWebhookResult>;
@@ -56,6 +68,39 @@ export class DefaultPaymentService implements PaymentService {
     private readonly provider: PaymentProvider,
     private readonly generateId: () => string = () => crypto.randomUUID(),
   ) {}
+
+  async addPaymentMethod(input: AddPaymentMethodInput): Promise<PaymentMethod> {
+    const idempotencyKey = normalizeKey(input.idempotencyKey);
+    const fingerprint = paymentMethodFingerprint(input);
+    const existing = await this.repository.findPaymentMethodByIdempotencyKey(
+      input.customerId,
+      idempotencyKey,
+    );
+    if (existing) {
+      assertFingerprint(existing.requestFingerprint, fingerprint);
+      return existing;
+    }
+    const result = await this.provider.createPaymentMethod({
+      customerReference: input.customerReference,
+      type: input.type,
+      token: input.token,
+      idempotencyKey,
+    });
+    const method = createPaymentMethod({
+      id: result.reference,
+      customerId: input.customerId,
+      providerName: this.provider.name,
+      providerReference: result.reference,
+      type: result.type,
+      status: result.status,
+      idempotencyKey,
+      requestFingerprint: fingerprint,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+    await this.repository.savePaymentMethod(method);
+    return method;
+  }
 
   async charge(input: ChargePaymentInput): Promise<PaymentAttempt> {
     const idempotencyKey = normalizeKey(input.idempotencyKey);
@@ -314,6 +359,14 @@ function refundFingerprint(input: RefundPaymentInput, idempotencyKey: string): s
     amount: input.amount,
     reason: input.reason,
     idempotencyKey,
+  });
+}
+
+function paymentMethodFingerprint(input: AddPaymentMethodInput): string {
+  return JSON.stringify({
+    customerId: input.customerId,
+    customerReference: input.customerReference,
+    type: input.type,
   });
 }
 

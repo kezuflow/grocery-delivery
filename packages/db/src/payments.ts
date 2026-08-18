@@ -1,10 +1,12 @@
 import {
   createPaymentAttempt,
   createPaymentLedgerEntry,
+  createPaymentMethod,
   createReconciliationDiscrepancy,
   createRefund,
   type PaymentAttempt,
   type PaymentLedgerEntry,
+  type PaymentMethod,
   type PaymentRepository,
   type PaymentWebhookEvent,
   type ReconciliationDiscrepancy,
@@ -17,6 +19,66 @@ export type PaymentDatabase = CatalogDatabase;
 
 export class D1PaymentRepository implements PaymentRepository {
   constructor(private readonly database: PaymentDatabase) {}
+
+  async findPaymentMethodByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMethod | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, provider_name, provider_reference, method_type,
+                status, idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_methods
+         WHERE customer_id = ? AND idempotency_key = ?
+         LIMIT 1`,
+      )
+      .bind(customerId, idempotencyKey)
+      .all<PaymentMethodRow>();
+    const row = rows.results[0];
+    return row ? mapPaymentMethod(row) : null;
+  }
+
+  async listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, provider_name, provider_reference, method_type,
+                status, idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_methods
+         WHERE customer_id = ? AND status = 'active'
+         ORDER BY created_at ASC, id ASC`,
+      )
+      .bind(customerId)
+      .all<PaymentMethodRow>();
+    return rows.results.map(mapPaymentMethod);
+  }
+
+  async savePaymentMethod(method: PaymentMethod): Promise<void> {
+    const value = createPaymentMethod(method);
+    await this.database.batch([
+      this.database
+        .prepare(
+          `INSERT INTO payment_methods (
+             id, customer_id, provider_name, provider_reference, method_type,
+             status, idempotency_key, request_fingerprint, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             status = excluded.status,
+             updated_at = excluded.updated_at`,
+        )
+        .bind(
+          value.id,
+          value.customerId,
+          value.providerName,
+          value.providerReference,
+          value.type,
+          value.status,
+          value.idempotencyKey,
+          value.requestFingerprint,
+          value.createdAt,
+          value.updatedAt,
+        ),
+    ]);
+  }
 
   async findPaymentAttemptById(id: string): Promise<PaymentAttempt | null> {
     const rows = await this.database
@@ -326,6 +388,21 @@ function mapPaymentAttempt(row: PaymentAttemptRow): PaymentAttempt {
   });
 }
 
+function mapPaymentMethod(row: PaymentMethodRow): PaymentMethod {
+  return createPaymentMethod({
+    id: row.id,
+    customerId: row.customer_id,
+    providerName: row.provider_name,
+    providerReference: row.provider_reference,
+    type: row.method_type,
+    status: row.status,
+    idempotencyKey: row.idempotency_key,
+    requestFingerprint: row.request_fingerprint,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  });
+}
+
 function mapRefund(row: RefundRow): Refund {
   return createRefund({
     id: row.id,
@@ -356,6 +433,19 @@ type PaymentAttemptRow = Record<string, unknown> & {
   status: PaymentAttempt["status"];
   provider_reference: string | null;
   failure_code: string | null;
+  idempotency_key: string;
+  request_fingerprint: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type PaymentMethodRow = Record<string, unknown> & {
+  id: string;
+  customer_id: string;
+  provider_name: string;
+  provider_reference: string;
+  method_type: PaymentMethod["type"];
+  status: PaymentMethod["status"];
   idempotency_key: string;
   request_fingerprint: string;
   created_at: string;

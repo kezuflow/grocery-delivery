@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   paymentAttemptResponseSchema,
   paymentChargeRequestSchema,
+  paymentMethodRequestSchema,
+  paymentMethodResponseSchema,
   paymentRefundRequestSchema,
 } from "./payments.js";
 
@@ -15,6 +17,29 @@ describe("payment contracts", () => {
         paymentMethodReference: "provider-method-1",
       }),
     ).toMatchObject({ orderId: "order-1" });
+  });
+
+  it("validates tokenized payment method requests and public responses", () => {
+    expect(
+      paymentMethodRequestSchema.parse({
+        customerReference: "provider-customer-1",
+        type: "card",
+        token: "tok_private_123",
+      }),
+    ).toMatchObject({ type: "card" });
+    expect(
+      paymentMethodResponseSchema.parse({
+        data: {
+          id: "method-1",
+          providerReference: "provider-method-1",
+          type: "card",
+          status: "active",
+          createdAt: "2026-08-20T10:00:00.000Z",
+          updatedAt: "2026-08-20T10:00:00.000Z",
+        },
+        meta: { correlationId: "corr-1" },
+      }),
+    ).toMatchObject({ data: { id: "method-1" } });
   });
 
   it("validates public payment attempt responses", () => {

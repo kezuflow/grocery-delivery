@@ -2,6 +2,8 @@ import { createMoney, type Money } from "@carbon/domain";
 
 export type PaymentAttemptStatus = "pending" | "succeeded" | "failed";
 export type RefundStatus = "succeeded" | "failed";
+export type PaymentMethodType = "card" | "bank_account" | "ewallet";
+export type PaymentMethodStatus = "active" | "revoked";
 export type PaymentLedgerEntryType = "charge" | "refund" | "adjustment";
 export type PaymentLedgerDirection = "debit" | "credit";
 export type ReconciliationDiscrepancyKind =
@@ -16,6 +18,19 @@ export type PaymentAttempt = Readonly<{
   status: PaymentAttemptStatus;
   providerReference: string | null;
   failureCode: string | null;
+  idempotencyKey: string;
+  requestFingerprint: string;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type PaymentMethod = Readonly<{
+  id: string;
+  customerId: string;
+  providerName: string;
+  providerReference: string;
+  type: PaymentMethodType;
+  status: PaymentMethodStatus;
   idempotencyKey: string;
   requestFingerprint: string;
   createdAt: string;
@@ -73,6 +88,12 @@ export type ReconciliationDiscrepancy = Readonly<{
 }>;
 
 export interface PaymentRepository {
+  findPaymentMethodByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMethod | null>;
+  listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]>;
+  savePaymentMethod(method: PaymentMethod): Promise<void>;
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null>;
   findPaymentAttemptByIdempotencyKey(
     customerId: string,
@@ -106,6 +127,10 @@ export function createPaymentAttempt(input: PaymentAttempt): PaymentAttempt {
   return Object.freeze({ ...input, amount: createMoney(input.amount.centavos) });
 }
 
+export function createPaymentMethod(input: PaymentMethod): PaymentMethod {
+  return Object.freeze({ ...input });
+}
+
 export function createPaymentWebhookEvent(input: PaymentWebhookEvent): PaymentWebhookEvent {
   return Object.freeze({ ...input, data: Object.freeze({ ...input.data }) });
 }
@@ -123,11 +148,36 @@ export function createPaymentLedgerEntry(input: PaymentLedgerEntry): PaymentLedg
 }
 
 export class InMemoryPaymentRepository implements PaymentRepository {
+  private readonly paymentMethods = new Map<string, PaymentMethod>();
   private readonly attempts = new Map<string, PaymentAttempt>();
   private readonly refunds = new Map<string, Refund>();
   private readonly ledger = new Map<string, PaymentLedgerEntry>();
   private readonly webhooks = new Set<string>();
   private readonly discrepancies = new Map<string, ReconciliationDiscrepancy>();
+
+  findPaymentMethodByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMethod | null> {
+    return Promise.resolve(
+      [...this.paymentMethods.values()].find(
+        (method) => method.customerId === customerId && method.idempotencyKey === idempotencyKey,
+      ) ?? null,
+    );
+  }
+
+  listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]> {
+    return Promise.resolve(
+      [...this.paymentMethods.values()]
+        .filter((method) => method.customerId === customerId && method.status === "active")
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    );
+  }
+
+  savePaymentMethod(method: PaymentMethod): Promise<void> {
+    this.paymentMethods.set(method.id, createPaymentMethod(method));
+    return Promise.resolve();
+  }
 
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null> {
     return Promise.resolve(this.attempts.get(id) ?? null);

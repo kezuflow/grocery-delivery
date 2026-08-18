@@ -17,6 +17,35 @@ describe("payment orchestration", () => {
     now: "2026-08-20T10:00:00.000Z",
   } as const;
 
+  it("registers a tokenized payment method without persisting the token", async () => {
+    const repository = new InMemoryPaymentRepository();
+    const service = new DefaultPaymentService(
+      repository,
+      new FakePaymentProvider({ now: () => new Date(chargeInput.now) }),
+    );
+
+    const input = {
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      type: "card" as const,
+      token: "tok_private_123",
+      idempotencyKey: "method-key-1",
+      now: chargeInput.now,
+    };
+    const method = await service.addPaymentMethod(input);
+    const replay = await service.addPaymentMethod(input);
+
+    expect(method).toEqual(replay);
+    expect(method).toMatchObject({
+      customerId: "customer-1",
+      providerReference: "fake-payment-method-method-key-1",
+      type: "card",
+      status: "active",
+    });
+    expect(JSON.stringify(method)).not.toContain("tok_private_123");
+    await expect(repository.listPaymentMethods("customer-1")).resolves.toHaveLength(1);
+  });
+
   it("charges once, replays the attempt, and writes one charge ledger entry", async () => {
     const repository = new InMemoryPaymentRepository();
     const service = new DefaultPaymentService(

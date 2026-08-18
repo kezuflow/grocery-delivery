@@ -84,7 +84,9 @@ keep the dependency direction from workers to application to domain intact.
   deterministic discrepancy records, and exposes a clock-controlled jobs-worker adapter.
 - Finance-authorized refund administration is now exposed through the API with idempotency,
   provider-backed execution, public response contracts, and append-only ledger coverage.
-- Remaining: add broader payment-method administration flows.
+- Customer tokenized payment-method registration now has provider-only token handling, idempotent
+  orchestration, durable D1 metadata, and a protected API contract.
+- Remaining: add payment-method listing/revocation administration flows.
 - Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
 - Add queues, workflows, retry policies, and operational projections.
 

@@ -8,6 +8,7 @@ import {
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
+  paymentMethodResponseSchema,
   paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
   planChangeRequestResponseSchema,
@@ -713,6 +714,68 @@ describe("API worker", () => {
 
     expect(webhook.status).toBe(200);
     expect(webhookBody.data).toEqual({ duplicate: false, applied: true });
+  });
+
+  it("registers customer payment methods with provider-only token handling", async () => {
+    const paymentRepository = new InMemoryPaymentRepository();
+    const paymentProvider = new FakePaymentProvider({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+    });
+    const paymentService = new DefaultPaymentService(paymentRepository, paymentProvider);
+    const paymentApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      paymentProvider,
+      paymentService,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-payment-method",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await paymentApp.request("/api/v1/payments/methods", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "method-api-1" },
+      body: JSON.stringify({
+        customerReference: "provider-customer-1",
+        type: "card",
+        token: "tok_private_123",
+      }),
+    });
+    const body = paymentMethodResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(201);
+    expect(body.data).toMatchObject({
+      providerReference: "fake-payment-method-method-api-1",
+      type: "card",
+      status: "active",
+    });
+    expect(JSON.stringify(body)).not.toContain("tok_private_123");
+
+    const replay = await paymentApp.request("/api/v1/payments/methods", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "method-api-1" },
+      body: JSON.stringify({
+        customerReference: "provider-customer-1",
+        type: "card",
+        token: "tok_private_123",
+      }),
+    });
+    const replayBody = paymentMethodResponseSchema.parse(await replay.json());
+
+    expect(replay.status).toBe(201);
+    expect(replayBody.data.id).toBe(body.data.id);
+    await expect(paymentRepository.listPaymentMethods("customer-1")).resolves.toHaveLength(1);
   });
 
   it("allows finance admins to refund a successful payment and records the ledger entry", async () => {

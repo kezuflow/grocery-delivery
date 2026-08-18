@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createMoney } from "@carbon/domain";
-import type { PaymentAttempt } from "@carbon/billing";
+import type { PaymentAttempt, PaymentMethod } from "@carbon/billing";
 import type { CatalogDatabase, CatalogPreparedStatement } from "./catalog.js";
 import { D1PaymentRepository } from "./payments.js";
 
@@ -12,6 +12,52 @@ type FakePaymentStatement = {
 };
 
 describe("payment repository", () => {
+  it("restores and persists tokenized payment method metadata without raw tokens", async () => {
+    const database = new FakePaymentDatabase([
+      [
+        {
+          id: "method-1",
+          customer_id: "customer-1",
+          provider_name: "fake",
+          provider_reference: "provider-method-1",
+          method_type: "card",
+          status: "active",
+          idempotency_key: "method-1",
+          request_fingerprint: "fingerprint-method-1",
+          created_at: "2026-08-20T10:00:00.000Z",
+          updated_at: "2026-08-20T10:00:00.000Z",
+        },
+      ],
+    ]);
+    const repository = new D1PaymentRepository(database);
+
+    await expect(
+      repository.findPaymentMethodByIdempotencyKey("customer-1", "method-1"),
+    ).resolves.toMatchObject({
+      id: "method-1",
+      providerReference: "provider-method-1",
+      type: "card",
+    });
+    const method: PaymentMethod = {
+      id: "method-2",
+      customerId: "customer-1",
+      providerName: "fake",
+      providerReference: "provider-method-2",
+      type: "ewallet",
+      status: "active",
+      idempotencyKey: "method-2",
+      requestFingerprint: "fingerprint-method-2",
+      createdAt: "2026-08-20T10:01:00.000Z",
+      updatedAt: "2026-08-20T10:01:00.000Z",
+    };
+    await repository.savePaymentMethod(method);
+
+    expect(database.batches).toHaveLength(1);
+    expect(database.batches[0]?.[0]).toBeDefined();
+    expect(database.calls[1]?.sql).toContain("INSERT INTO payment_methods");
+    expect(database.calls[1]?.values).not.toContain("tok_private_123");
+  });
+
   it("restores payment attempts and refunds from D1 rows", async () => {
     const database = new FakePaymentDatabase([
       [

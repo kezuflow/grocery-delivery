@@ -33,6 +33,8 @@ import {
   orderResponseSchema,
   paymentAttemptResponseSchema,
   paymentChargeRequestSchema,
+  paymentMethodRequestSchema,
+  paymentMethodResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
@@ -191,6 +193,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/cart" ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/payments/charge" ||
+      context.req.path === "/api/v1/payments/methods" ||
       context.req.path === "/api/v1/payments/refund" ||
       context.req.path.startsWith("/api/v1/admin/");
     if (!protectedPath) {
@@ -893,6 +896,85 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     } catch (error) {
       const message = error instanceof Error ? error.message : "payment charge failed";
       const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_CHARGE_FAILED";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 409);
+    }
+  });
+
+  app.post("/api/v1/payments/methods", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const paymentService =
+      options.paymentService ??
+      (bindings.DB && options.paymentProvider
+        ? new DefaultPaymentService(new D1PaymentRepository(bindings.DB), options.paymentProvider)
+        : undefined);
+    if (!paymentService) {
+      return context.json(
+        errorResponse(
+          "PAYMENT_UNAVAILABLE",
+          "payment methods are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key");
+    if (!idempotencyKey?.trim()) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = paymentMethodRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PAYMENT_METHOD_REQUEST",
+          "payment method request is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const method = await paymentService.addPaymentMethod({
+        customerId: session.customerId,
+        customerReference: input.data.customerReference,
+        type: input.data.type,
+        token: input.data.token,
+        idempotencyKey,
+        now: now().toISOString(),
+      });
+      const body = {
+        data: {
+          id: method.id,
+          providerReference: method.providerReference,
+          type: method.type,
+          status: method.status,
+          createdAt: method.createdAt,
+          updatedAt: method.updatedAt,
+        },
+        meta: { correlationId: context.get("correlationId") },
+      };
+      paymentMethodResponseSchema.parse(body);
+      return context.json(body, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "payment method creation failed";
+      const code = error instanceof PaymentProviderError ? error.code : "PAYMENT_METHOD_FAILED";
       return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
   });
