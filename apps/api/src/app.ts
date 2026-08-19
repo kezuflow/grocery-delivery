@@ -10,8 +10,11 @@ import {
   DefaultCartLockService,
   DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
+  InMemoryRequestRateLimiter,
   type CartLockService,
   type PlanApprovalService,
+  type RateLimitPolicy,
+  type RequestRateLimiter,
   type SubscriptionCommandService,
 } from "@carbon/application";
 import { parseAllowedOrigins, parseRuntimeEnvironment } from "@carbon/config";
@@ -131,7 +134,12 @@ import {
   multiplyMoney,
   type Session,
 } from "@carbon/domain";
-import { createLogger, resolveCorrelationId, type LogSink } from "@carbon/observability";
+import {
+  createLogger,
+  resolveCorrelationId,
+  type LogSink,
+  type MetricsSink,
+} from "@carbon/observability";
 import type { NotificationSender } from "@carbon/notifications";
 import { DeterministicMediaSigner, type DeliveryMediaSigner } from "@carbon/storage";
 import { Hono, type Context } from "hono";
@@ -168,6 +176,12 @@ type ApiEnv = {
 export type ApiApp = Hono<ApiEnv>;
 type ApiContext = Context<ApiEnv>;
 
+export type ApiRateLimitPolicy = RateLimitPolicy &
+  Readonly<{
+    methods: readonly string[];
+    pathPrefixes: readonly string[];
+  }>;
+
 export type ApiOptions = Readonly<{
   catalogReader?: CatalogReader;
   generateCorrelationId?: () => string;
@@ -198,6 +212,9 @@ export type ApiOptions = Readonly<{
   sink?: LogSink;
   sessionResolver?: SessionResolver;
   betterAuthApi?: BetterAuthApi;
+  metrics?: MetricsSink;
+  rateLimiter?: RequestRateLimiter;
+  rateLimitPolicies?: readonly ApiRateLimitPolicy[];
   subscriptionService?: SubscriptionCommandService;
   version?: string;
 }>;
@@ -206,6 +223,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   const now = options.now ?? (() => new Date());
   const generateCorrelationId = options.generateCorrelationId ?? (() => crypto.randomUUID());
   const sink = options.sink ?? ((entry) => console.log(JSON.stringify(entry)));
+  const rateLimiter = options.rateLimiter ?? new InMemoryRequestRateLimiter();
+  const rateLimitPolicies = options.rateLimitPolicies ?? defaultRateLimitPolicies;
   const baseLogger = createLogger({
     service: "api",
     sink,
@@ -226,13 +245,37 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     context.header("x-correlation-id", correlationId);
     context.header("vary", "Origin");
 
-    await next();
-
-    logger.info("request.completed", {
-      method: context.req.method,
-      path: context.req.path,
-      status: context.res.status,
-    });
+    const startedAt = now().getTime();
+    let status = 500;
+    try {
+      await next();
+      status = context.res.status;
+    } catch (error) {
+      status = error instanceof HTTPException ? error.status : 500;
+      throw error;
+    } finally {
+      logger.info("request.completed", {
+        method: context.req.method,
+        path: context.req.path,
+        status,
+      });
+      if (options.metrics) {
+        try {
+          options.metrics({
+            name: "api.request",
+            correlationId,
+            method: context.req.method,
+            path: context.req.path,
+            status,
+            durationMs: Math.max(now().getTime() - startedAt, 0),
+          });
+        } catch (error) {
+          logger.warn("metrics.write.failed", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
   });
 
   app.use(
@@ -250,6 +293,31 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       },
     }),
   );
+
+  app.use("/api/*", async (context, next) => {
+    const policy = resolveRateLimitPolicy(context.req.method, context.req.path, rateLimitPolicies);
+    if (!policy) {
+      await next();
+      return;
+    }
+
+    const clientKey = resolveClientKey(context.req.raw.headers);
+    const decision = await rateLimiter.check({
+      key: `${policy.name}:${clientKey}`,
+      policy,
+      now: now(),
+    });
+    context.header("x-ratelimit-limit", String(decision.limit));
+    context.header("x-ratelimit-remaining", String(decision.remaining));
+    if (!decision.allowed) {
+      context.header("retry-after", String(decision.retryAfterSeconds));
+      return context.json(
+        errorResponse("RATE_LIMITED", "too many requests", context.get("correlationId")),
+        429,
+      );
+    }
+    await next();
+  });
 
   app.all("/api/auth/*", async (context) => {
     if (!options.betterAuthApi?.handler) {
@@ -2609,4 +2677,39 @@ function resolveDeliveryFeeCentavos(
   const value =
     configured ?? (bindings.DELIVERY_FEE_CENTAVOS ? Number(bindings.DELIVERY_FEE_CENTAVOS) : 0);
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+const defaultRateLimitPolicies: readonly ApiRateLimitPolicy[] = [
+  {
+    name: "auth",
+    maxRequests: 10,
+    windowSeconds: 60,
+    methods: ["POST"],
+    pathPrefixes: ["/api/auth/"],
+  },
+  {
+    name: "write",
+    maxRequests: 60,
+    windowSeconds: 60,
+    methods: ["POST", "PUT", "PATCH", "DELETE"],
+    pathPrefixes: ["/api/v1/"],
+  },
+];
+
+function resolveRateLimitPolicy(
+  method: string,
+  path: string,
+  policies: readonly ApiRateLimitPolicy[],
+): ApiRateLimitPolicy | undefined {
+  return policies.find(
+    (policy) =>
+      policy.methods.includes(method) &&
+      policy.pathPrefixes.some((prefix) => path.startsWith(prefix)),
+  );
+}
+
+function resolveClientKey(headers: Headers): string {
+  const forwardedFor = headers.get("cf-connecting-ip") ?? headers.get("x-forwarded-for");
+  const firstAddress = forwardedFor?.split(",", 1)[0]?.trim();
+  return firstAddress || "anonymous";
 }

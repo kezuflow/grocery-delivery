@@ -65,8 +65,73 @@ import {
   InMemoryOperationalProjectionRepository,
 } from "@carbon/db";
 import { createApi } from "./app.js";
+import { createInMemoryMetricsSink } from "@carbon/observability";
 
 describe("API worker", () => {
+  it("rate-limits sensitive writes and emits correlation-aware metrics", async () => {
+    const metrics = createInMemoryMetricsSink();
+    const app = createApi({
+      generateCorrelationId: () => "rate-limit-request",
+      now: () => new Date("2026-08-19T00:00:00.000Z"),
+      metrics: metrics.sink,
+      rateLimitPolicies: [
+        {
+          name: "test-write",
+          maxRequests: 1,
+          windowSeconds: 60,
+          methods: ["POST"],
+          pathPrefixes: ["/api/v1/orders"],
+        },
+      ],
+      sink: () => undefined,
+    });
+
+    const health = await app.request("/health");
+    const first = await app.request("/api/v1/orders", { method: "POST" });
+    const second = await app.request("/api/v1/orders", { method: "POST" });
+
+    expect(first.status).toBe(401);
+    expect(second.status).toBe(429);
+    expect(second.headers.get("retry-after")).toBe("60");
+    const limitedBody = apiErrorResponseSchema.parse(await second.json());
+    expect(limitedBody.meta.correlationId).toBe("rate-limit-request");
+    expect(health.status).toBe(200);
+    expect(metrics.metrics.map((metric) => metric.status)).toEqual([200, 401, 429]);
+    expect(metrics.metrics.every((metric) => metric.correlationId === "rate-limit-request")).toBe(
+      true,
+    );
+  });
+
+  it("records failed middleware requests as server errors", async () => {
+    const metrics = createInMemoryMetricsSink();
+    const app = createApi({
+      generateCorrelationId: () => "failed-request",
+      metrics: metrics.sink,
+      rateLimitPolicies: [
+        {
+          name: "failing-policy",
+          maxRequests: 1,
+          windowSeconds: 60,
+          methods: ["POST"],
+          pathPrefixes: ["/api/v1/orders"],
+        },
+      ],
+      rateLimiter: {
+        check: () => Promise.reject(new Error("rate limiter unavailable")),
+      },
+      sink: () => undefined,
+    });
+
+    const response = await app.request("/api/v1/orders", { method: "POST" });
+
+    expect(response.status).toBe(500);
+    expect(metrics.metrics).toHaveLength(1);
+    expect(metrics.metrics[0]).toMatchObject({
+      correlationId: "failed-request",
+      path: "/api/v1/orders",
+      status: 500,
+    });
+  });
   it("delegates auth routes without applying API session protection", async () => {
     const authApp = createApi({
       sink: () => undefined,

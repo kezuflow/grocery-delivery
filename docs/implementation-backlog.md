@@ -27,21 +27,56 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                              |
-| ----- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                 |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                          |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                          |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                          |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                          |
-| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                    |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete            |
-| 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests       |
-| 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                            |
-| 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync          |
-| 010   | Customer tracking, notifications, and delivery media            | complete | Customer tracking, idempotent notification adapter, and media URLs |
-| 011   | Jobs, workflows, retries, and operational projections           | complete | Durable outbox, workflow retries, and operational projections      |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                  |
+| Slice | Area                                                            | Status      | Commit / resume point                                              |
+| ----- | --------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| 000   | Repository and domain foundation                                | complete    | Existing history through `c3da0bc`                                 |
+| 001   | API environment database bindings                               | complete    | `03ef3bc`                                                          |
+| 002   | API runtime composition                                         | complete    | `5f6a64e`                                                          |
+| 003   | Payment-method revocation administration                        | complete    | `7229e08`                                                          |
+| 004   | Better Auth production integration                              | complete    | `51a8de1`                                                          |
+| 005   | Web-to-API service binding and customer flows                   | complete    | Complete through order creation                                    |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete    | Address geofence and weekly capacity selection complete            |
+| 007   | Procurement, shortages, substitutions, and packing              | complete    | Demand aggregation, exceptions, substitutions, and manifests       |
+| 008   | Dispatch, route planning, and driver assignments                | complete    | Cycle-scoped admin dispatch assignments                            |
+| 009   | Deliveryman PWA and offline event sync                          | complete    | Deliveryman assignments and idempotent offline event sync          |
+| 010   | Customer tracking, notifications, and delivery media            | complete    | Customer tracking, idempotent notification adapter, and media URLs |
+| 011   | Jobs, workflows, retries, and operational projections           | complete    | Durable outbox, workflow retries, and operational projections      |
+| 012   | Release hardening and production rehearsal                      | in progress | Rate limits and API metrics complete; OpenAPI and rehearsals next  |
+
+### Current Slice: 012 release hardening and production rehearsal
+
+Completed increment: request rate limiting and API metrics
+
+- Add an async, framework-independent request-rate-limit boundary with a deterministic in-memory
+  implementation for local/test use and injectable Cloudflare KV or Durable Object adapters.
+- Apply conservative limits to authentication and retriable write surfaces, returning the existing
+  correlation-aware error envelope with `Retry-After` and limit headers.
+- Add a correlation-aware API metrics sink for request method, path, status, and duration.
+- Add focused tests for allowed requests, exhaustion, independent keys/routes, reset behavior, and
+  success/failure/rate-limit metrics.
+
+Acceptance checks for this increment:
+
+- Rate limiting is enforced only for configured sensitive routes and never trusts client identity or
+  commerce values.
+- The default implementation is deterministic and isolated per API instance; production persistence
+  remains an injectable boundary rather than a business-rule dependency.
+- Rate-limit responses preserve the standard error envelope and correlation ID.
+- Every API request emits one completion metric, including rejected requests and unexpected failures.
+- Focused tests and `pnpm check` pass.
+
+Completion record: all acceptance checks passed. `@carbon/application` now owns an async
+request-rate-limit boundary and deterministic fixed-window implementation. The API applies
+configurable per-client policies to authentication attempts and write routes, returns the standard
+correlation-aware `429` envelope with limit and retry headers, and accepts an injectable shared-state
+adapter for later KV or Durable Object persistence. `@carbon/observability` now owns structured API
+request metrics covering successful, rejected, and unexpected-failure responses. API unit/runtime
+tests and Miniflare integration tests run in separate serial processes to avoid the Windows native
+process-pool crash; the complete `pnpm check` passes all 55 tasks.
+
+Next resume point: add generated OpenAPI documentation for the existing contract-backed endpoints,
+then continue service-binding hardening, CSRF/origin verification, and deterministic production
+rehearsal runbooks. Do not mark Slice 012 complete until those remaining areas pass their checks.
 
 ## Completed Slice: 004
 
