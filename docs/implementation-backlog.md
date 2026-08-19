@@ -26,21 +26,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status      | Commit / resume point                                                |
-| ----- | --------------------------------------------------------------- | ----------- | -------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete    | Existing history through `c3da0bc`                                   |
-| 001   | API environment database bindings                               | complete    | `03ef3bc`                                                            |
-| 002   | API runtime composition                                         | complete    | `5f6a64e`                                                            |
-| 003   | Payment-method revocation administration                        | complete    | `7229e08`                                                            |
-| 004   | Better Auth production integration                              | complete    | `51a8de1`                                                            |
-| 005   | Web-to-API service binding and customer flows                   | in progress | Subscription actions increment                                       |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned     | Depends on customer identity and order snapshots                     |
-| 007   | Procurement, shortages, substitutions, and packing              | planned     | Depends on delivery cycles and paid-order projections                |
-| 008   | Dispatch, route planning, and driver assignments                | planned     | Depends on packages, windows, capacity, and provider-neutral routing |
-| 009   | Deliveryman PWA and offline event sync                          | planned     | Depends on dispatch assignments and delivery events                  |
-| 010   | Customer tracking, notifications, and delivery media            | planned     | Depends on delivery events, outbox jobs, and R2 policies             |
-| 011   | Jobs, workflows, retries, and operational projections           | planned     | Coordinate with slices 007-010 as their async needs become concrete  |
-| 012   | Release hardening and production rehearsal                      | planned     | Depends on all launch-critical operational slices                    |
+| Slice | Area                                                            | Status   | Commit / resume point                                                |
+| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
+| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                      |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | next     | Customer identity and order snapshots are available                  |
+| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
+| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
+| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
+| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
+| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
+| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
 
 ## Completed Slice: 004
 
@@ -234,6 +234,37 @@ Acceptance checks:
 - Failed commands retain their idempotency key for a safe retry and do not optimistically change the
   displayed subscription.
 - Focused web tests, the production web build, and `pnpm check` pass.
+
+Completion record: all acceptance checks passed. The account shell now exposes valid pause, resume,
+skip, and cancel controls, sends only the requested action with a retry-stable idempotency key, and
+refreshes server-owned subscription state after success. Focused client tests, the production web
+build, and `pnpm check` pass. The final 005 increment is order creation.
+
+### Current increment: Order creation
+
+Scope:
+
+- Add a typed web-client order mutation that uses the persisted cart by default.
+- Let active customers lock the saved cart from the account route with a confirmation step.
+- Display the server-calculated order identifier and total after success, then refresh the account.
+- Keep inactive subscriptions, empty carts, unavailable SKUs, and configuration failures actionable.
+
+Acceptance checks:
+
+- The browser submits only `{}` plus an idempotency key; it never submits prices, totals, credits,
+  plan IDs, subscription IDs, or customer IDs.
+- The protected API resolves the session, active subscription, saved cart, catalog prices, plan credit,
+  and delivery fee before locking the order.
+- A failed order retains its idempotency key for a safe retry and does not clear or alter the cart.
+- A successful order clears the saved cart and displays the server-owned order result.
+- Focused web tests, the production web build, and `pnpm check` pass.
+
+Completion record: all acceptance checks passed. Active customers can lock their saved cart through
+the protected order route with a confirmation step; the browser submits only an empty request body
+and an idempotency key. The API resolves customer scope, subscription, cart, catalog prices, plan
+credit, and delivery fee server-side, then returns the locked order and clears the saved cart. Focused
+client tests, the production web build, and `pnpm check` pass with the Vitest threads pool on Windows.
+Slice 005 is complete; the next slice is delivery addresses, serviceability, and weekly windows.
 
 ### 006-010: Operational delivery
 

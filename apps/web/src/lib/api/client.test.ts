@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|subscription\/actions)$/,
+        /^\/api\/v1\/(plans|catalog|me|cart|subscription\/actions|orders)$/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -150,5 +150,44 @@ describe("web API client", () => {
     await expect(
       client.performSubscriptionAction({ action: "pause" }, "subscription-action-1"),
     ).resolves.toMatchObject({ data: { status: "paused", lastAction: "pause" } });
+  });
+
+  it("creates an order from the saved cart without client commerce fields", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            id: "order-1",
+            subscriptionId: "subscription-1",
+            planId: "plan-small",
+            lines: [
+              { skuId: "sku-1", quantity: 2, unitPrice: { centavos: 10000, currency: "PHP" } },
+            ],
+            weeklyCredit: { centavos: 50000, currency: "PHP" },
+            totals: {
+              subtotal: { centavos: 20000, currency: "PHP" },
+              weeklyFee: { centavos: 10000, currency: "PHP" },
+              includedCredit: { centavos: 20000, currency: "PHP" },
+              overage: { centavos: 0, currency: "PHP" },
+              deliveryFee: { centavos: 0, currency: "PHP" },
+              totalDue: { centavos: 10000, currency: "PHP" },
+            },
+            status: "locked",
+            lockedAt: "2026-08-19T00:00:00.000Z",
+          },
+          meta,
+        },
+        201,
+        (init) => {
+          expect(init?.method).toBe("POST");
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe("order-1");
+          expect(JSON.parse(init?.body as string)).toEqual({});
+        },
+      ),
+    );
+
+    await expect(client.createOrder({}, "order-1")).resolves.toMatchObject({
+      data: { id: "order-1", status: "locked" },
+    });
   });
 });

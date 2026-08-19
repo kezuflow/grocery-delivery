@@ -4,6 +4,8 @@ import {
   cartUpdateRequestSchema,
   catalogListResponseSchema,
   currentSessionResponseSchema,
+  orderCreateRequestSchema,
+  orderResponseSchema,
   plansListResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionResponseSchema,
@@ -11,6 +13,8 @@ import {
   type CartUpdateRequest,
   type CatalogListResponse,
   type CurrentSessionResponse,
+  type OrderCreateRequest,
+  type OrderResponse,
   type PlansListResponse,
   type SubscriptionActionRequest,
   type SubscriptionResponse,
@@ -83,6 +87,22 @@ export function createApiClient(transport: ApiTransport) {
       headers.set("content-type", "application/json");
       headers.set("idempotency-key", idempotencyKey);
       return getJson(transport, "/api/v1/subscription/actions", subscriptionResponseSchema, {
+        ...init,
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    },
+    createOrder(
+      input: OrderCreateRequest = {},
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<OrderResponse> {
+      const payload = orderCreateRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      headers.set("idempotency-key", idempotencyKey);
+      return getJson(transport, "/api/v1/orders", orderResponseSchema, {
         ...init,
         method: "POST",
         headers,

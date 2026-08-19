@@ -155,6 +155,7 @@ export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
 export type PlanChangeRequestResponse = z.infer<typeof planChangeRequestResponseSchema>;
+export type OrderCreateRequest = z.infer<typeof orderCreateRequestSchema>;
 export type OrderResponse = z.infer<typeof orderResponseSchema>;
 export type CartResponse = z.infer<typeof cartResponseSchema>;
 export type CartUpdateRequest = z.infer<typeof cartUpdateRequestSchema>;

@@ -5,6 +5,7 @@ import { loadCustomerAccount } from "../../lib/account";
 import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
 import { CartEditor } from "./cart-editor";
+import { PlaceOrderButton } from "./place-order-button";
 import { SubscriptionActions } from "./subscription-actions";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +112,7 @@ export default async function AccountPage() {
                 quantity: line.quantity,
                 unitPriceCentavos: line.unitPrice.centavos,
               }))}
+              key={account.cart.updatedAt ?? "empty-cart"}
             />
             {account.cart.lines.length > 0 ? (
               <>
@@ -125,6 +127,10 @@ export default async function AccountPage() {
                 <p>Add an available catalog item above to begin your weekly order.</p>
               </div>
             )}
+            <PlaceOrderButton
+              cartHasLines={account.cart.lines.length > 0}
+              subscriptionActive={account.subscription?.status === "active"}
+            />
           </article>
         </section>
       )}

@@ -170,6 +170,31 @@ a {
   padding-top: 23px;
 }
 
+.place-order-actions {
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 20px;
+}
+
+.place-order-actions .subscription-note,
+.place-order-actions .order-message {
+  flex-basis: 100%;
+}
+
+.order-message {
+  color: var(--deep);
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.order-message-error {
+  color: #a33b2b;
+}
+
 .quantity-control {
   align-items: center;
   display: flex;
