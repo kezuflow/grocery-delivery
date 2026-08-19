@@ -95,6 +95,8 @@ import { secureHeaders } from "hono/secure-headers";
 export type ApiBindings = Readonly<{
   APP_ENV?: string;
   AUTH_MODE?: string;
+  BETTER_AUTH_SECRET?: string;
+  BETTER_AUTH_URL?: string;
   CATALOG_CACHE_VERSION?: string;
   CORS_ORIGINS?: string;
   DB?: CatalogDatabase;
@@ -188,6 +190,20 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       },
     }),
   );
+
+  app.all("/api/auth/*", async (context) => {
+    if (!options.betterAuthApi?.handler) {
+      return context.json(
+        errorResponse(
+          "AUTH_UNAVAILABLE",
+          "authentication is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    return options.betterAuthApi.handler(context.req.raw);
+  });
 
   app.use("/api/v1/*", async (context, next) => {
     const protectedPath =

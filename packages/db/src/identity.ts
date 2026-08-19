@@ -26,8 +26,35 @@ export type IdentityUser = Readonly<{
   updatedAt: string;
 }>;
 
+export type IdentityRoleAssignment = Readonly<{
+  role: "customer" | "deliveryman" | "admin";
+  customerId: string | null;
+  adminPermissions: readonly AdminPermission[];
+}>;
+
 export class D1IdentityRepository {
   constructor(private readonly database: IdentityDatabase) {}
+
+  async findRoleAssignment(userId: string): Promise<IdentityRoleAssignment | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT role, customer_id, admin_permissions_json FROM identity_role_assignments WHERE user_id = ? LIMIT 1`,
+      )
+      .bind(userId)
+      .all<{
+        role: IdentityRoleAssignment["role"];
+        customer_id: string | null;
+        admin_permissions_json: string;
+      }>();
+    const row = rows.results[0];
+    return row
+      ? {
+          role: row.role,
+          customerId: row.customer_id,
+          adminPermissions: parseAdminPermissions(row.admin_permissions_json),
+        }
+      : null;
+  }
 
   async saveUser(user: IdentityUser): Promise<void> {
     await this.database.batch([

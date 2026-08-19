@@ -9,6 +9,7 @@ import {
 import { resolveCorrelationId } from "@carbon/observability";
 
 import { createApi, type ApiApp, type ApiBindings } from "./app.js";
+import { createConfiguredBetterAuthApi } from "./better-auth.js";
 
 export type ApiRuntimeFactories = Readonly<{
   createBetterAuthApi?: (
@@ -81,13 +82,9 @@ function resolveBetterAuthApi(
   if (configuration.authMode === "persistent-session") {
     return undefined;
   }
-  if (!factories.createBetterAuthApi) {
-    throw new ConfigurationError(
-      "AUTH_MODE",
-      "AUTH_MODE selects better-auth, but no Better Auth runtime factory is configured",
-    );
-  }
-  return factories.createBetterAuthApi(bindings, configuration);
+  return factories.createBetterAuthApi
+    ? factories.createBetterAuthApi(bindings, configuration)
+    : createConfiguredBetterAuthApi(bindings, configuration);
 }
 
 function resolvePaymentProvider(

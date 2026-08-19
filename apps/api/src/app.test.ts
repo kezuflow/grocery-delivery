@@ -49,6 +49,22 @@ import {
 import { createApi } from "./app.js";
 
 describe("API worker", () => {
+  it("delegates auth routes without applying API session protection", async () => {
+    const authApp = createApi({
+      sink: () => undefined,
+      betterAuthApi: {
+        getSession: () => Promise.resolve(null),
+        handler: (request) =>
+          Promise.resolve(Response.json({ path: new URL(request.url).pathname }, { status: 202 })),
+      },
+    });
+
+    const response = await authApp.request("/api/auth/ok");
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({ path: "/api/auth/ok" });
+  });
+
   const app = createApi({
     generateCorrelationId: () => "generated-request",
     now: () => new Date("2026-08-18T00:00:00.000Z"),

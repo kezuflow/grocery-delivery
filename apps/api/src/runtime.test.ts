@@ -24,7 +24,12 @@ describe("API runtime composition", () => {
       new Request("https://api.example.test/api/v1/health", {
         headers: { "x-correlation-id": "runtime-config" },
       }),
-      { APP_ENV: "production", AUTH_MODE: "better-auth" },
+      {
+        APP_ENV: "production",
+        AUTH_MODE: "better-auth",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        BETTER_AUTH_URL: "https://api.example.test",
+      },
       createExecutionContext(),
     );
     const body = apiErrorResponseSchema.parse(await response?.json());
@@ -32,7 +37,29 @@ describe("API runtime composition", () => {
     expect(response?.status).toBe(503);
     expect(response?.headers.get("x-correlation-id")).toBe("runtime-config");
     expect(body.error.code).toBe("SERVICE_CONFIGURATION_INVALID");
-    expect(body.error.message).toContain("no Better Auth runtime factory");
+    expect(body.error.message).toContain("requires a DB binding");
+  });
+
+  it("composes Better Auth through an injected runtime factory", async () => {
+    const app = createConfiguredApi(
+      {
+        APP_ENV: "test",
+        AUTH_MODE: "better-auth",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        BETTER_AUTH_URL: "https://api.example.test",
+      },
+      {
+        createBetterAuthApi: () => ({
+          getSession: () => Promise.resolve(null),
+          handler: () => Promise.resolve(new Response("auth-ok", { status: 202 })),
+        }),
+      },
+    );
+
+    const response = await app.request("/api/auth/ok");
+
+    expect(response.status).toBe(202);
+    await expect(response.text()).resolves.toBe("auth-ok");
   });
 });
 

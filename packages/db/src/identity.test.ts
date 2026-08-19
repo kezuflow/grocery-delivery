@@ -6,6 +6,27 @@ import type { CatalogDatabase, CatalogPreparedStatement } from "./catalog.js";
 import { D1IdentityRepository } from "./identity.js";
 
 describe("identity repository", () => {
+  it("loads server-owned role scope for Better Auth sessions", async () => {
+    const database = new FakeIdentityDatabase([
+      [
+        {
+          role: "admin",
+          customer_id: null,
+          admin_permissions_json: '["catalog","finance"]',
+        },
+      ],
+    ]);
+
+    await expect(new D1IdentityRepository(database).findRoleAssignment("admin-1")).resolves.toEqual(
+      {
+        role: "admin",
+        customerId: null,
+        adminPermissions: ["catalog", "finance"],
+      },
+    );
+    expect(database.calls[0]?.values).toEqual(["admin-1"]);
+  });
+
   it("restores a persisted role-scoped session by token hash", async () => {
     const database = new FakeIdentityDatabase([
       [

@@ -9,6 +9,9 @@ describe("API runtime provider configuration", () => {
       environment: "production",
       authMode: "persistent-session",
       paymentProvider: "disabled",
+      betterAuthSecret: null,
+      betterAuthUrl: null,
+      betterAuthTrustedOrigins: [],
     });
   });
 
@@ -28,5 +31,31 @@ describe("API runtime provider configuration", () => {
     expect(() => parseApiRuntimeConfiguration({ PAYMENT_PROVIDER: "unknown" })).toThrow(
       "PAYMENT_PROVIDER must be one of",
     );
+  });
+
+  it("requires a strong secret and HTTPS origin for Better Auth deployments", () => {
+    expect(() =>
+      parseApiRuntimeConfiguration({ APP_ENV: "production", AUTH_MODE: "better-auth" }),
+    ).toThrow("BETTER_AUTH_SECRET is required");
+    expect(() =>
+      parseApiRuntimeConfiguration({
+        APP_ENV: "production",
+        AUTH_MODE: "better-auth",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        BETTER_AUTH_URL: "http://auth.example.com",
+      }),
+    ).toThrow("must use HTTPS");
+    expect(
+      parseApiRuntimeConfiguration({
+        APP_ENV: "production",
+        AUTH_MODE: "better-auth",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        BETTER_AUTH_URL: "https://api.example.com",
+        CORS_ORIGINS: "https://app.example.com",
+      }),
+    ).toMatchObject({
+      betterAuthUrl: "https://api.example.com",
+      betterAuthTrustedOrigins: ["https://app.example.com"],
+    });
   });
 });

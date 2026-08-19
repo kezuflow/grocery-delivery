@@ -32,6 +32,7 @@ export type BetterAuthSessionResult = Readonly<{
 
 export type BetterAuthApi = Readonly<{
   getSession(input: { headers: Headers }): Promise<BetterAuthSessionResult | null>;
+  handler?(request: Request): Promise<Response>;
 }>;
 
 export type AuthCookieOptions = Readonly<{

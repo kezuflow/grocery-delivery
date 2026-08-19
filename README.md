@@ -56,6 +56,19 @@ The remote database IDs are committed in `apps/api/wrangler.jsonc`. Production
 secrets and payment-provider configuration remain deployment-specific and are
 not stored in the repository.
 
+Better Auth is available behind `AUTH_MODE=better-auth`. Before enabling it in
+staging or production, apply migration `0014_better_auth.sql`, set
+`BETTER_AUTH_URL` to the API origin, set `CORS_ORIGINS` to the allowed web
+origins, and store a random secret of at least 32 characters with Wrangler:
+
+```powershell
+pnpm --filter @carbon/api exec wrangler secret put BETTER_AUTH_SECRET --env staging
+pnpm --filter @carbon/api exec wrangler secret put BETTER_AUTH_SECRET --env production
+```
+
+Keep `AUTH_MODE=persistent-session` as the local or migration fallback. Never
+commit the Better Auth secret.
+
 Its health endpoints are `/health` and `/api/v1/health`.
 
 This builds `.open-next` and starts the app through Wrangler. The first real

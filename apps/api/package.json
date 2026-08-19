@@ -25,14 +25,15 @@
     "wrangler": "4.123.0"
   },
   "dependencies": {
-    "@carbon/auth": "workspace:*",
     "@carbon/application": "workspace:*",
+    "@carbon/auth": "workspace:*",
     "@carbon/billing": "workspace:*",
     "@carbon/config": "workspace:*",
     "@carbon/contracts": "workspace:*",
     "@carbon/db": "workspace:*",
     "@carbon/domain": "workspace:*",
     "@carbon/observability": "workspace:*",
+    "better-auth": "1.7.1",
     "hono": "4.13.2"
   }
 }
