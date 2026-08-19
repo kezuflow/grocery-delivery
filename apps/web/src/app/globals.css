@@ -40,6 +40,7 @@ a {
 .site-header {
   align-items: center;
   display: flex;
+  gap: 24px;
   justify-content: space-between;
   padding-bottom: 26px;
   padding-top: 26px;
@@ -98,6 +99,64 @@ nav a:not(.button) {
 .button-small {
   font-size: 0.78rem;
   padding: 11px 16px;
+}
+
+.button-outline {
+  background: transparent;
+  border: 1px solid var(--deep);
+  color: var(--deep);
+}
+
+.auth-controls {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-form {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+}
+
+.auth-form input {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  font: inherit;
+  min-width: 120px;
+  padding: 10px 11px;
+}
+
+.auth-switch {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0;
+}
+
+.auth-message {
+  color: #a33b2b;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.signed-in-banner {
+  background: var(--accent);
+  color: var(--deep);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 14px 32px;
+  text-align: center;
+}
+
+.signed-in-banner-error {
+  background: #f6dfd9;
+  color: #8d3325;
 }
 
 .hero {
@@ -378,6 +437,30 @@ h3 {
 
   nav a:not(.button) {
     display: none;
+  }
+
+  .site-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  nav {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-controls {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .auth-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-form input {
+    width: 100%;
   }
 
   .hero {

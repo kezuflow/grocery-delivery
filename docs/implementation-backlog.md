@@ -26,21 +26,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                                                  |
-| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                                     |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                                              |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                                              |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                                              |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                                              |
-| 005   | Web-to-API service binding and customer flows                   | next     | Current public storefront increment complete in this commit; auth and mutations remain |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                                       |
-| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                                  |
-| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing                   |
-| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                                    |
-| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies                               |
-| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete                    |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                                      |
+| Slice | Area                                                            | Status   | Commit / resume point                                                |
+| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
+| 005   | Web-to-API service binding and customer flows                   | next     | Auth/session increment complete; customer shell and mutations remain |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                     |
+| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
+| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
+| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
+| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
+| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
+| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
 
 ## Completed Slice: 004
 
@@ -135,6 +135,35 @@ intentionally left as follow-up increments.
 
 Follow-up increments within 005 will add Better Auth sign-in/session hydration, the authenticated
 customer shell, and then cart, subscription, and order journeys as separate reviewable changes.
+
+### Current increment: Better Auth sign-in and session hydration
+
+Scope:
+
+- Proxy same-origin `/api/auth/*` requests through the web Worker API service binding while
+  preserving request cookies and Better Auth `Set-Cookie` responses.
+- Add typed web-client access to the existing `/api/v1/me` current-session contract.
+- Render the authenticated customer identity server-side and provide sign-in, sign-up, and
+  sign-out controls that refresh the server-rendered shell after successful mutations.
+- Keep unauthenticated and API-unavailable states explicit without trusting client-provided role or
+  customer identifiers.
+
+Acceptance checks:
+
+- Auth requests from the web origin reach the API Worker through the configured service binding.
+- Better Auth session cookies are forwarded to and returned from the API without exposing them to
+  client JavaScript.
+- A valid session renders server-owned user and customer scope; a missing or expired session renders
+  the signed-out state.
+- Invalid credentials and API failures are shown as actionable form state without inventing a
+  session.
+- Focused web tests, web build/typecheck/lint, and `pnpm check` pass.
+
+Completion record: all acceptance checks passed. The web app now proxies same-origin Better Auth
+requests through the API service binding, preserves HTTP-only session cookies, hydrates the current
+session from the shared contract, and renders sign-in, sign-up, sign-out, signed-out, and unavailable
+states. Focused web tests, the production web build, and `pnpm check` pass. The next 005 increment is
+the authenticated customer shell, followed by cart, subscription, and order journeys.
 
 ### 006-010: Operational delivery
 

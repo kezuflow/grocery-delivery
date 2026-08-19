@@ -1,4 +1,6 @@
 import { loadStorefront } from "../lib/storefront";
+import { loadCurrentSession } from "../lib/session";
+import { AuthControls } from "./auth-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ function formatPrice(centavos: number) {
 }
 
 export default async function HomePage() {
-  const storefront = await loadStorefront();
+  const [storefront, auth] = await Promise.all([loadStorefront(), loadCurrentSession()]);
 
   return (
     <main>
@@ -40,9 +42,7 @@ export default async function HomePage() {
         <nav aria-label="Primary navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#plans">Plans</a>
-          <a className="button button-small" href="#join">
-            Join the waitlist
-          </a>
+          <AuthControls signedIn={auth.session !== null} />
         </nav>
       </header>
 
@@ -66,6 +66,16 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {auth.session ? (
+        <section className="signed-in-banner" aria-label="Account status">
+          You&apos;re signed in to your {auth.session.role} account.
+        </section>
+      ) : auth.error ? (
+        <section className="signed-in-banner signed-in-banner-error" role="status">
+          {auth.error}
+        </section>
+      ) : null}
 
       <section className="section" id="how-it-works">
         <div className="section-heading">

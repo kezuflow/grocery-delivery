@@ -31,3 +31,32 @@ export function createHttpApiTransport(
     },
   };
 }
+
+export async function forwardApiRequest(
+  request: Request,
+  transport: ApiTransport,
+  path: string,
+): Promise<Response> {
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
+  const init: RequestInit = { method: request.method, headers };
+  if (body !== undefined) {
+    init.body = body;
+  }
+  const response = await transport.fetch(new URL(path, "https://carbon-api.internal"), init);
+  const responseHeaders = new Headers(response.headers);
+  const cookieHeaders = response.headers as Headers & { getSetCookie?: () => string[] };
+  const setCookies = cookieHeaders.getSetCookie?.() ?? [];
+  if (setCookies.length > 0) {
+    responseHeaders.delete("set-cookie");
+    for (const cookie of setCookies) {
+      responseHeaders.append("set-cookie", cookie);
+    }
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: responseHeaders,
+  });
+}

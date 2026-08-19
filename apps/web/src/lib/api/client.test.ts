@@ -6,7 +6,7 @@ function transport(response: unknown, status = 200) {
   return {
     fetch: (input: RequestInfo | URL) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
-      expect(new URL(url).pathname).toMatch(/^\/api\/v1\/(plans|catalog)$/);
+      expect(new URL(url).pathname).toMatch(/^\/api\/v1\/(plans|catalog|me)$/);
       return Promise.resolve(Response.json(response, { status }));
     },
   };
@@ -49,5 +49,25 @@ describe("web API client", () => {
     const client = createApiClient(transport({ data: { plans: "not-an-array" }, meta }));
 
     await expect(client.listPlans()).rejects.toThrow();
+  });
+
+  it("validates the server-owned current-session response", async () => {
+    const client = createApiClient(
+      transport({
+        data: {
+          sessionId: "session-1",
+          userId: "user-1",
+          role: "customer",
+          adminPermissions: [],
+          customerId: "customer-1",
+          expiresAt: "2026-09-01T00:00:00.000Z",
+        },
+        meta,
+      }),
+    );
+
+    await expect(client.getCurrentSession()).resolves.toMatchObject({
+      data: { userId: "user-1", customerId: "customer-1" },
+    });
   });
 });

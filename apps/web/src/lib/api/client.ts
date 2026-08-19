@@ -1,8 +1,10 @@
 import {
   apiErrorResponseSchema,
   catalogListResponseSchema,
+  currentSessionResponseSchema,
   plansListResponseSchema,
   type CatalogListResponse,
+  type CurrentSessionResponse,
   type PlansListResponse,
 } from "@carbon/contracts";
 
@@ -30,6 +32,9 @@ export function createApiClient(transport: ApiTransport) {
     listCatalog(limit = 12): Promise<CatalogListResponse> {
       return getJson(transport, `/api/v1/catalog?limit=${limit}`, catalogListResponseSchema);
     },
+    getCurrentSession(init?: RequestInit): Promise<CurrentSessionResponse> {
+      return getJson(transport, "/api/v1/me", currentSessionResponseSchema, init);
+    },
   };
 }
 
@@ -37,8 +42,9 @@ async function getJson<T>(
   transport: ApiTransport,
   path: string,
   schema: { parse(value: unknown): T },
+  init?: RequestInit,
 ): Promise<T> {
-  const response = await transport.fetch(new URL(path, "https://carbon-api.internal"));
+  const response = await transport.fetch(new URL(path, "https://carbon-api.internal"), init);
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
