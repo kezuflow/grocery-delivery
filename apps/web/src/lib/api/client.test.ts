@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|subscription\/actions|orders)$/,
+        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|subscription\/actions|orders)$/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -189,5 +189,48 @@ describe("web API client", () => {
     await expect(client.createOrder({}, "order-1")).resolves.toMatchObject({
       data: { id: "order-1", status: "locked" },
     });
+  });
+
+  it("updates a delivery address without customer ownership fields", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            recipientName: "Maria Santos",
+            phone: "+639171234567",
+            line1: "12 Green Street",
+            line2: null,
+            barangay: "Bagong Pagasa",
+            city: "Quezon City",
+            province: "Metro Manila",
+            postalCode: "1105",
+            instructions: null,
+            serviceable: true,
+            createdAt: "2026-08-19T00:00:00.000Z",
+            updatedAt: "2026-08-20T00:00:00.000Z",
+          },
+          meta,
+        },
+        200,
+        (init) => {
+          expect(init?.method).toBe("PUT");
+          expect(JSON.parse(init?.body as string)).not.toHaveProperty("customerId");
+        },
+      ),
+    );
+
+    await expect(
+      client.updateDeliveryAddress({
+        recipientName: "Maria Santos",
+        phone: "+639171234567",
+        line1: "12 Green Street",
+        line2: null,
+        barangay: "Bagong Pagasa",
+        city: "Quezon City",
+        province: "Metro Manila",
+        postalCode: "1105",
+        instructions: null,
+      }),
+    ).resolves.toMatchObject({ data: { city: "Quezon City" } });
   });
 });

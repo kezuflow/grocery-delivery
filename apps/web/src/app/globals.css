@@ -83,6 +83,50 @@ a {
   padding-bottom: 90px;
 }
 
+.account-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.address-form-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 28px;
+}
+
+.address-form-grid label {
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  gap: 7px;
+}
+
+.address-form-grid input,
+.address-form-grid textarea {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  font: inherit;
+  padding: 10px;
+}
+
+.address-form-grid textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.address-form-wide {
+  grid-column: 1 / -1;
+}
+
+.address-editor-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  margin-top: 20px;
+}
+
 .account-panel,
 .account-state {
   border-top: 1px solid var(--line);
@@ -733,6 +777,14 @@ h3 {
   .catalog-grid,
   .account-grid {
     grid-template-columns: 1fr;
+  }
+
+  .address-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .address-form-wide {
+    grid-column: auto;
   }
 
   .account-intro {

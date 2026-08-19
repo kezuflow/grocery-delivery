@@ -7,3 +7,4 @@ export * from "./identity.js";
 export * from "./money.js";
 export * from "./plans.js";
 export * from "./orders.js";
+export * from "./delivery.js";

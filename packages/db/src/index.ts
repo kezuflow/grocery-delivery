@@ -1,6 +1,7 @@
 export {};
 export * from "./catalog.js";
 export * from "./carts.js";
+export * from "./delivery.js";
 export * from "./identity.js";
 export * from "./plans.js";
 export * from "./orders.js";

@@ -23,6 +23,9 @@ import {
   type CartResponse,
   type CatalogListResponse,
   currentSessionResponseSchema,
+  deliveryAddressInputSchema,
+  deliveryAddressResponseSchema,
+  type DeliveryAddressResponse,
   type CurrentSessionResponse,
   planAdminUpsertRequestSchema,
   planApprovalDecisionRequestSchema,
@@ -57,6 +60,7 @@ import {
   createDefaultPlanReader,
   D1CartRepository,
   D1CatalogReader,
+  D1DeliveryAddressRepository,
   D1OrderRepository,
   D1OutboxPublisher,
   D1PaymentRepository,
@@ -76,11 +80,13 @@ import {
   type PlanRepository,
   type OrderRepository,
   type SubscriptionReader,
+  type DeliveryAddressRepository,
 } from "@carbon/db";
 import {
   addMoney,
   assignWeeklyCycle,
   createMoney,
+  createDeliveryAddress,
   createPlan,
   hasAdminPermission,
   multiplyMoney,
@@ -101,6 +107,7 @@ export type ApiBindings = Readonly<{
   CORS_ORIGINS?: string;
   DB?: CatalogDatabase;
   DELIVERY_FEE_CENTAVOS?: string;
+  DELIVERY_SERVICE_POSTAL_CODES?: string;
   PLAN_CACHE_VERSION?: string;
   PAYMENT_PROVIDER?: string;
   VERSION?: string;
@@ -128,6 +135,8 @@ export type ApiOptions = Readonly<{
   planApprovalService?: PlanApprovalService;
   catalogCheckoutReader?: CatalogCheckoutReader;
   cartRepository?: CartRepository;
+  deliveryAddressRepository?: DeliveryAddressRepository;
+  serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
   orderReader?: Pick<OrderRepository, "findById">;
@@ -211,6 +220,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/subscription" ||
       context.req.path === "/api/v1/subscription/actions" ||
       context.req.path === "/api/v1/cart" ||
+      context.req.path === "/api/v1/delivery-address" ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
@@ -656,6 +666,121 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(result, 200);
   });
 
+  app.get("/api/v1/delivery-address", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryAddressRepository ??
+      (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_UNAVAILABLE",
+          "delivery address storage is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const address = await repository.findByCustomerId(session.customerId);
+    const body: DeliveryAddressResponse = {
+      data: address
+        ? toDeliveryAddressData(
+            address,
+            resolveServiceability(address.postalCode, options, bindings),
+          )
+        : null,
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliveryAddressResponseSchema.parse(body);
+    context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
+  app.put("/api/v1/delivery-address", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryAddressRepository ??
+      (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_UNAVAILABLE",
+          "delivery address storage is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const input = deliveryAddressInputSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_DELIVERY_ADDRESS",
+          "delivery address fields are invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const existing = await repository.findByCustomerId(session.customerId);
+      const timestamp = now().toISOString();
+      const address = createDeliveryAddress({
+        ...input.data,
+        customerId: session.customerId,
+        createdAt: existing?.createdAt ?? timestamp,
+        updatedAt: timestamp,
+      });
+      const serviceable = resolveServiceability(address.postalCode, options, bindings);
+      if (!serviceable) {
+        return context.json(
+          errorResponse(
+            "DELIVERY_ADDRESS_UNSERVICEABLE",
+            "delivery is not currently available for this postal code",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      await repository.save(address);
+      const body: DeliveryAddressResponse = {
+        data: toDeliveryAddressData(address, serviceable),
+        meta: { correlationId: context.get("correlationId") },
+      };
+      deliveryAddressResponseSchema.parse(body);
+      context.header("cache-control", "private, no-store");
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "delivery address is invalid";
+      return context.json(
+        errorResponse("INVALID_DELIVERY_ADDRESS", message, context.get("correlationId")),
+        400,
+      );
+    }
+  });
+
   app.post("/api/v1/orders", async (context) => {
     const bindings: ApiBindings = context.env ?? {};
     const orderLockService =
@@ -678,6 +803,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const cartRepository =
       options.cartRepository ??
       (bindings.DB ? new D1CartRepository(bindings.DB) : fallbackCartRepository);
+    const deliveryAddressRepository =
+      options.deliveryAddressRepository ??
+      (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
 
     if (!orderLockService || !subscriptionReader || !planLookup) {
       return context.json(
@@ -743,6 +871,22 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         ),
         409,
       );
+    }
+    if (deliveryAddressRepository) {
+      const deliveryAddress = await deliveryAddressRepository.findByCustomerId(session.customerId);
+      if (
+        !deliveryAddress ||
+        !resolveServiceability(deliveryAddress.postalCode, options, bindings)
+      ) {
+        return context.json(
+          errorResponse(
+            "DELIVERY_ADDRESS_REQUIRED",
+            "a serviceable delivery address is required to place an order",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
     }
     const savedCart = input.data.lines
       ? null
@@ -1414,6 +1558,63 @@ function paymentAttemptResponse(
     },
     meta: { correlationId },
   };
+}
+
+function toDeliveryAddressData(
+  address: {
+    recipientName: string;
+    phone: string;
+    line1: string;
+    line2: string | null;
+    barangay: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    instructions: string | null;
+    createdAt: string;
+    updatedAt: string;
+  },
+  serviceable: boolean,
+) {
+  return {
+    recipientName: address.recipientName,
+    phone: address.phone,
+    line1: address.line1,
+    line2: address.line2,
+    barangay: address.barangay,
+    city: address.city,
+    province: address.province,
+    postalCode: address.postalCode,
+    instructions: address.instructions,
+    serviceable,
+    createdAt: address.createdAt,
+    updatedAt: address.updatedAt,
+  };
+}
+
+function resolveServiceability(
+  postalCode: string,
+  options: ApiOptions,
+  bindings: ApiBindings,
+): boolean {
+  if (options.serviceablePostalCodes) return options.serviceablePostalCodes.includes(postalCode);
+  if (bindings.DELIVERY_SERVICE_POSTAL_CODES !== undefined) {
+    return parsePostalCodeAllowlist(bindings.DELIVERY_SERVICE_POSTAL_CODES).includes(postalCode);
+  }
+  return (
+    bindings.APP_ENV === undefined ||
+    bindings.APP_ENV === "development" ||
+    bindings.APP_ENV === "test"
+  );
+}
+
+function parsePostalCodeAllowlist(value: string | undefined): readonly string[] {
+  return value
+    ? value
+        .split(",")
+        .map((code) => code.trim())
+        .filter((code) => /^\d{4}$/.test(code))
+    : [];
 }
 
 function errorResponse(code: string, message: string, correlationId: string): ApiErrorResponse {

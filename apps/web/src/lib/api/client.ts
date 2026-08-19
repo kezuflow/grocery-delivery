@@ -4,6 +4,8 @@ import {
   cartUpdateRequestSchema,
   catalogListResponseSchema,
   currentSessionResponseSchema,
+  deliveryAddressInputSchema,
+  deliveryAddressResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
   plansListResponseSchema,
@@ -13,6 +15,8 @@ import {
   type CartUpdateRequest,
   type CatalogListResponse,
   type CurrentSessionResponse,
+  type DeliveryAddressInput,
+  type DeliveryAddressResponse,
   type OrderCreateRequest,
   type OrderResponse,
   type PlansListResponse,
@@ -65,6 +69,23 @@ export function createApiClient(transport: ApiTransport) {
     },
     getCart(init?: RequestInit): Promise<CartResponse> {
       return getJson(transport, "/api/v1/cart", cartResponseSchema, init);
+    },
+    getDeliveryAddress(init?: RequestInit): Promise<DeliveryAddressResponse> {
+      return getJson(transport, "/api/v1/delivery-address", deliveryAddressResponseSchema, init);
+    },
+    updateDeliveryAddress(
+      input: DeliveryAddressInput,
+      init?: RequestInit,
+    ): Promise<DeliveryAddressResponse> {
+      const payload = deliveryAddressInputSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return getJson(transport, "/api/v1/delivery-address", deliveryAddressResponseSchema, {
+        ...init,
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
     },
     updateCart(input: CartUpdateRequest, init?: RequestInit): Promise<CartResponse> {
       const payload = cartUpdateRequestSchema.parse(input);

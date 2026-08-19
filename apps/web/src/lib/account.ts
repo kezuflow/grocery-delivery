@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type {
   CartResponse,
   CatalogListResponse,
+  DeliveryAddressResponse,
   PlansListResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
@@ -12,6 +13,7 @@ import { createRuntimeApiTransport } from "./api/runtime";
 
 export type CustomerAccountData = Readonly<{
   subscription: SubscriptionResponse["data"] | null;
+  deliveryAddress: DeliveryAddressResponse["data"];
   cart: CartResponse["data"];
   plans: PlansListResponse["data"]["plans"];
   catalog: CatalogListResponse["data"];
@@ -37,17 +39,19 @@ export async function resolveCustomerAccount(
   const init: RequestInit = { headers: { cookie: cookieHeader } };
 
   try {
-    const [subscription, cart, plans, catalog] = await Promise.all([
+    const [subscription, cart, deliveryAddress, plans, catalog] = await Promise.all([
       client.getCurrentSubscription(init).catch((error: unknown) => {
         if (error instanceof ApiClientError && error.status === 404) return null;
         throw error;
       }),
       client.getCart(init),
+      client.getDeliveryAddress(init),
       client.listPlans(),
       client.listCatalog(100),
     ]);
     return {
       subscription: subscription?.data ?? null,
+      deliveryAddress: deliveryAddress.data,
       cart: cart.data,
       plans: plans.data.plans,
       catalog: catalog.data,
@@ -56,6 +60,7 @@ export async function resolveCustomerAccount(
   } catch {
     return {
       subscription: null,
+      deliveryAddress: null,
       cart: emptyCart,
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },

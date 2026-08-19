@@ -5,6 +5,7 @@ import {
   cartResponseSchema,
   catalogListResponseSchema,
   currentSessionResponseSchema,
+  deliveryAddressResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
@@ -43,6 +44,7 @@ import {
 import {
   createDefaultCatalogReader,
   InMemoryCartRepository,
+  InMemoryDeliveryAddressRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
 } from "@carbon/db";
@@ -381,6 +383,75 @@ describe("API worker", () => {
     expect(body.error.code).toBe("SUBSCRIPTION_NOT_FOUND");
   });
 
+  it("reads and updates only the authenticated customer's delivery address", async () => {
+    const repository = new InMemoryDeliveryAddressRepository();
+    const addressApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      deliveryAddressRepository: repository,
+      serviceablePostalCodes: ["1105"],
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const put = await addressApp.request("/api/v1/delivery-address", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recipientName: "Maria Santos",
+        phone: "+639171234567",
+        line1: "12 Green Street",
+        barangay: "Bagong Pagasa",
+        city: "Quezon City",
+        province: "Metro Manila",
+        postalCode: "1105",
+      }),
+    });
+    const putBody = deliveryAddressResponseSchema.parse(await put.json());
+
+    expect(put.status).toBe(200);
+    expect(putBody.data).toMatchObject({
+      recipientName: "Maria Santos",
+      postalCode: "1105",
+      updatedAt: "2026-08-20T10:00:00.000Z",
+    });
+    expect(putBody.data).not.toHaveProperty("customerId");
+
+    const get = await addressApp.request("/api/v1/delivery-address");
+    const getBody = deliveryAddressResponseSchema.parse(await get.json());
+    expect(get.status).toBe(200);
+    expect(getBody.data?.city).toBe("Quezon City");
+    expect(getBody.data?.serviceable).toBe(true);
+
+    const unavailable = await addressApp.request("/api/v1/delivery-address", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recipientName: "Maria Santos",
+        phone: "+639171234567",
+        line1: "12 Green Street",
+        barangay: "Bagong Pagasa",
+        city: "Quezon City",
+        province: "Metro Manila",
+        postalCode: "9999",
+      }),
+    });
+    const unavailableBody = apiErrorResponseSchema.parse(await unavailable.json());
+    expect(unavailable.status).toBe(409);
+    expect(unavailableBody.error.code).toBe("DELIVERY_ADDRESS_UNSERVICEABLE");
+  });
+
   it("persists customer carts and resolves prices from the catalog", async () => {
     const cartRepository = new InMemoryCartRepository();
     const cartApp = createApi({
@@ -582,6 +653,55 @@ describe("API worker", () => {
 
     expect(response.status).toBe(409);
     expect(body.error.code).toBe("SKU_NOT_AVAILABLE");
+  });
+
+  it("requires a saved serviceable delivery address before locking an order", async () => {
+    const orderApp = createApi({
+      sink: () => undefined,
+      deliveryAddressRepository: new InMemoryDeliveryAddressRepository(),
+      serviceablePostalCodes: ["1105"],
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      planLookup: new InMemoryPlanReader(),
+      orderLockService: new DefaultCartLockService(
+        new InMemoryOrderRepository(),
+        new InMemoryOutboxPublisher(),
+      ),
+      subscriptionReader: new InMemorySubscriptionReader([
+        createSubscription({
+          id: "subscription-1",
+          customerId: "customer-1",
+          planId: "plan-small",
+          status: "active",
+          skippedCycleId: null,
+          lastAction: null,
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z",
+        }),
+      ]),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await orderApp.request("/api/v1/orders", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "checkout-address" },
+      body: JSON.stringify({ lines: [{ skuId: "sku-bananas", quantity: 1 }] }),
+    });
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(409);
+    expect(body.error.code).toBe("DELIVERY_ADDRESS_REQUIRED");
   });
 
   it("locks a saved cart when order lines are omitted and clears it after success", async () => {

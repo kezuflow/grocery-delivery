@@ -34,7 +34,7 @@ conversation history or temporary handoff files.
 | 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
 | 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
 | 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                      |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | next     | Customer identity and order snapshots are available                  |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | next     | Address and geofence complete; weekly windows remain                 |
 | 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
 | 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
 | 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
@@ -265,6 +265,36 @@ and an idempotency key. The API resolves customer scope, subscription, cart, cat
 credit, and delivery fee server-side, then returns the locked order and clears the saved cart. Focused
 client tests, the production web build, and `pnpm check` pass with the Vitest threads pool on Windows.
 Slice 005 is complete; the next slice is delivery addresses, serviceability, and weekly windows.
+
+### Current increment: Customer delivery address and postal geofence
+
+Scope:
+
+- Add a customer-owned default delivery address with server-side field validation and D1 persistence.
+- Add protected GET/PUT address routes that derive customer ownership from the active session.
+- Enforce a configurable `DELIVERY_SERVICE_POSTAL_CODES` allowlist before saving an address.
+- Render address editing and server-derived serviceability status in the customer account.
+
+Acceptance checks:
+
+- Address reads and writes cannot cross customer boundaries or accept a client customer ID.
+- Invalid phone, postal-code, and bounded text inputs are rejected before persistence.
+- A postal code outside the configured allowlist returns `DELIVERY_ADDRESS_UNSERVICEABLE` and is not
+  saved.
+- The API response owns the `serviceable` flag; the browser does not submit or calculate it.
+- Order creation requires a saved address that remains within the current server-side geofence.
+- Focused domain, contract, repository, API, and web tests pass.
+
+The allowlist is intentionally runtime configuration rather than a domain constant. Configure
+`DELIVERY_SERVICE_POSTAL_CODES` per Worker environment before enabling customer delivery in staging or
+production. Local development is permissive when unset; staging and production fail closed.
+
+Completion record: all acceptance checks passed. Customers can save one validated delivery address
+through protected API routes and see server-derived serviceability in the account shell. Postal-code
+geofencing rejects out-of-area addresses before persistence and blocks checkout without a saved,
+currently serviceable address. Migration `0015` adds the D1 address record. Focused tests, the
+production web build, and all 53 `pnpm check` tasks pass. The next 006 increment is weekly delivery
+windows and capacity.
 
 ### 006-010: Operational delivery
 
