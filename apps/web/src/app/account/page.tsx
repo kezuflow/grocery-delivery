@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { loadCustomerAccount } from "../../lib/account";
 import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
+import { CartEditor } from "./cart-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,6 @@ export default async function AccountPage() {
   const plan = account.subscription
     ? account.plans.find((candidate) => candidate.id === account.subscription?.planId)
     : null;
-  const catalogById = new Map(account.catalog.items.map((item) => [item.id, item]));
 
   return (
     <main className="account-page">
@@ -95,22 +95,20 @@ export default async function AccountPage() {
               <p className="eyebrow">Saved cart</p>
               <span>{account.cart.lines.length} items</span>
             </div>
+            <CartEditor
+              catalog={account.catalog.items.map((item) => ({
+                id: item.id,
+                name: item.name,
+                priceCentavos: item.price.centavos,
+              }))}
+              initialLines={account.cart.lines.map((line) => ({
+                skuId: line.skuId,
+                quantity: line.quantity,
+                unitPriceCentavos: line.unitPrice.centavos,
+              }))}
+            />
             {account.cart.lines.length > 0 ? (
               <>
-                <ul className="account-cart-lines">
-                  {account.cart.lines.map((line) => {
-                    const item = catalogById.get(line.skuId);
-                    return (
-                      <li key={line.skuId}>
-                        <div>
-                          <strong>{item?.name ?? "Unavailable item"}</strong>
-                          <span>Quantity {line.quantity}</span>
-                        </div>
-                        <span>{formatPrice(line.unitPrice.centavos * line.quantity)}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
                 <div className="account-total">
                   <span>Subtotal</span>
                   <strong>{formatPrice(account.cart.subtotal.centavos)}</strong>
@@ -119,12 +117,7 @@ export default async function AccountPage() {
             ) : (
               <div className="account-empty">
                 <h2>Your cart is empty</h2>
-                <p>
-                  Browse this week&apos;s catalog and return here when you have made a selection.
-                </p>
-                <a className="button button-small" href="/#storefront-heading">
-                  Browse catalog
-                </a>
+                <p>Add an available catalog item above to begin your weekly order.</p>
               </div>
             )}
           </article>

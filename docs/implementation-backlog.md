@@ -26,21 +26,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                                   |
-| ----- | --------------------------------------------------------------- | -------- | ----------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                      |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                               |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                               |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                               |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                               |
-| 005   | Web-to-API service binding and customer flows                   | next     | Customer shell complete; cart, subscription, and order mutations remain |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                        |
-| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                   |
-| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing    |
-| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                     |
-| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies                |
-| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete     |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                       |
+| Slice | Area                                                            | Status   | Commit / resume point                                                |
+| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
+| 005   | Web-to-API service binding and customer flows                   | next     | Cart editing complete; subscription and order mutations remain       |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                     |
+| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
+| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
+| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
+| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
+| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
+| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
 
 ## Completed Slice: 004
 
@@ -190,6 +190,30 @@ server-owned subscription and cart state, validates every response through share
 catalog labels without inventing missing product data, and provides signed-out, empty, and unavailable
 states. Focused account tests, the production web build, and `pnpm check` pass. The next 005 increment
 is cart editing, followed by subscription actions and order creation.
+
+### Current increment: Cart editing
+
+Scope:
+
+- Proxy same-origin `/api/v1/*` requests through the web API service binding for browser mutations.
+- Add a typed cart update client that sends only SKU identifiers and quantities.
+- Let authenticated customers change quantities or remove items from the account shell.
+- Refresh the server-rendered account state after a successful update and show validation or API
+  failures without changing local prices.
+
+Acceptance checks:
+
+- The browser mutation preserves the HTTP-only session cookie and reaches the protected API route.
+- Client requests never submit unit prices, totals, credits, or customer identifiers.
+- Empty carts and quantity changes render correctly after a successful server response.
+- Invalid or unavailable SKU responses remain actionable and do not corrupt displayed totals.
+- Focused web tests, the production web build, and `pnpm check` pass.
+
+Completion record: all acceptance checks passed. Authenticated customers can add catalog items,
+change quantities, remove lines, and save an empty or populated cart through the same-origin API
+proxy. Browser mutations contain only SKU identifiers and quantities; the API remains authoritative
+for availability, prices, totals, and customer scope. Focused client tests, the production web build,
+and `pnpm check` pass. The next 005 increment is subscription actions, followed by order creation.
 
 ### 006-010: Operational delivery
 

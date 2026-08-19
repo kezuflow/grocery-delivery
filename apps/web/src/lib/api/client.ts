@@ -1,11 +1,13 @@
 import {
   apiErrorResponseSchema,
   cartResponseSchema,
+  cartUpdateRequestSchema,
   catalogListResponseSchema,
   currentSessionResponseSchema,
   plansListResponseSchema,
   subscriptionResponseSchema,
   type CartResponse,
+  type CartUpdateRequest,
   type CatalogListResponse,
   type CurrentSessionResponse,
   type PlansListResponse,
@@ -15,6 +17,19 @@ import {
 export type ApiTransport = Readonly<{
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }>;
+
+export function createSameOriginApiTransport(
+  fetchImplementation: typeof fetch = fetch,
+): ApiTransport {
+  return {
+    fetch(input, init) {
+      const url = new URL(
+        input instanceof URL ? input.toString() : typeof input === "string" ? input : input.url,
+      );
+      return fetchImplementation(`${url.pathname}${url.search}`, init);
+    },
+  };
+}
 
 export class ApiClientError extends Error {
   readonly status: number;
@@ -44,6 +59,17 @@ export function createApiClient(transport: ApiTransport) {
     },
     getCart(init?: RequestInit): Promise<CartResponse> {
       return getJson(transport, "/api/v1/cart", cartResponseSchema, init);
+    },
+    updateCart(input: CartUpdateRequest, init?: RequestInit): Promise<CartResponse> {
+      const payload = cartUpdateRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return getJson(transport, "/api/v1/cart", cartResponseSchema, {
+        ...init,
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
     },
   };
 }
