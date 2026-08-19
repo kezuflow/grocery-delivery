@@ -10,3 +10,4 @@ export * from "./orders.js";
 export * from "./delivery.js";
 export * from "./procurement.js";
 export * from "./dispatch.js";
+export * from "./delivery-events.js";

@@ -37,7 +37,7 @@ conversation history or temporary handoff files.
 | 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete             |
 | 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests        |
 | 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                             |
-| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                 |
+| 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync           |
 | 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies            |
 | 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete |
 | 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                   |
@@ -345,6 +345,29 @@ Completion record: slices 007 and 008 are complete for the first operational inc
 `0017` adds procurement purchases, shortages, substitutions, packing manifests, and dispatch
 assignments. Admin APIs expose demand and exception handling with server-derived cycle scope, while
 dispatch assignments are persisted against the selected delivery window and deliveryman user.
+
+### Slice 009: Deliveryman PWA and offline event sync
+
+Scope:
+
+- Add deliveryman-scoped assignment reads for the active weekly cycle.
+- Add immutable delivery events with client event IDs for retry-safe offline synchronization.
+- Add a deliveryman web console that queues events locally and flushes them when connectivity returns.
+
+Acceptance checks:
+
+- Customers and unrelated deliverymen cannot read or write another deliveryman assignment.
+- Event writes verify assignment, order, and deliveryman ownership server-side.
+- Replaying the same client event ID returns the original durable event without duplication.
+- Event timestamps are supplied by the client for occurrence and by the server for receipt.
+- The deliveryman console preserves unsent events across refreshes and retries after reconnect.
+- Focused domain, repository, contract, API, web tests, and the production web build pass.
+
+Completion record: migration `0018` adds immutable delivery events with unique client event IDs.
+Protected deliveryman routes expose current-cycle assignments, event history, and idempotent event
+submission. The `/deliveryman` console stores pending events in local storage and retries them when
+the browser is online again. Slice 009 is complete; the next slice is customer tracking,
+notifications, and delivery media.
 
 ### 006-010: Operational delivery
 

@@ -31,7 +31,8 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
   listDemand(cycleId: string) {
     return Promise.resolve([...this.demand.values()].filter((value) => value.cycleId === cycleId));
   }
-  savePurchase(cycleId: string, skuId: string, quantity: number, _updatedAt: string) {
+  savePurchase(cycleId: string, skuId: string, quantity: number, updatedAt: string) {
+    void updatedAt;
     const key = `${cycleId}:${skuId}`;
     const current = this.demand.get(key);
     if (!current) return Promise.reject(new Error("procurement demand was not found"));

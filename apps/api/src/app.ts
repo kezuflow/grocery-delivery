@@ -27,6 +27,10 @@ import {
   deliveryAddressResponseSchema,
   deliveryWindowSelectionRequestSchema,
   deliveryWindowsResponseSchema,
+  deliveryEventRequestSchema,
+  deliveryEventResponseSchema,
+  deliverymanAssignmentsResponseSchema,
+  deliverymanEventsResponseSchema,
   dispatchAssignmentRequestSchema,
   dispatchResponseSchema,
   packingManifestRequestSchema,
@@ -72,6 +76,7 @@ import {
   D1CatalogReader,
   D1DeliveryAddressRepository,
   D1DeliveryWindowRepository,
+  D1DeliveryEventRepository,
   D1DispatchRepository,
   D1ProcurementRepository,
   D1OrderRepository,
@@ -95,6 +100,7 @@ import {
   type SubscriptionReader,
   type DeliveryAddressRepository,
   type DeliveryWindowRepository,
+  type DeliveryEventRepository,
   type DispatchRepository,
   type ProcurementRepository,
 } from "@carbon/db";
@@ -103,6 +109,7 @@ import {
   assignWeeklyCycle,
   createMoney,
   createDeliveryAddress,
+  createDeliveryEvent,
   createDispatchAssignment,
   createPackingManifest,
   createProcurementShortage,
@@ -159,6 +166,7 @@ export type ApiOptions = Readonly<{
   deliveryWindowRepository?: DeliveryWindowRepository;
   procurementRepository?: ProcurementRepository;
   dispatchRepository?: DispatchRepository;
+  deliveryEventRepository?: DeliveryEventRepository;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -247,6 +255,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/delivery-windows" ||
       context.req.path.startsWith("/api/v1/admin/procurement") ||
       context.req.path.startsWith("/api/v1/admin/dispatch") ||
+      context.req.path.startsWith("/api/v1/deliveryman/") ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
@@ -1307,6 +1316,137 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       },
       200,
     );
+  });
+
+  app.get("/api/v1/deliveryman/assignments", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.deliveryEventRepository ??
+      (bindings.DB ? new D1DeliveryEventRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "deliveryman")
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "an active deliveryman session is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "DELIVERYMAN_UNAVAILABLE",
+          "deliveryman operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const cycle = assignWeeklyCycle(now());
+    const body = {
+      data: {
+        cycleId: cycle.id,
+        assignments: await repository.listAssignments(session.userId, cycle.id),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliverymanAssignmentsResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/deliveryman/assignments/:id/events", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.deliveryEventRepository ??
+      (bindings.DB ? new D1DeliveryEventRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "deliveryman")
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "an active deliveryman session is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "DELIVERYMAN_UNAVAILABLE",
+          "deliveryman operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const body = {
+      data: await repository.listEvents(context.req.param("id"), session.userId),
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliverymanEventsResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/deliveryman/events", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.deliveryEventRepository ??
+      (bindings.DB ? new D1DeliveryEventRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "deliveryman")
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "an active deliveryman session is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "DELIVERYMAN_UNAVAILABLE",
+          "deliveryman operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = deliveryEventRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_DELIVERY_EVENT",
+          "delivery event is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    try {
+      const event = await repository.saveEvent(
+        createDeliveryEvent({
+          id: crypto.randomUUID(),
+          clientEventId: input.data.clientEventId,
+          assignmentId: input.data.assignmentId,
+          orderId: input.data.orderId,
+          deliverymanUserId: session.userId,
+          type: input.data.type,
+          occurredAt: input.data.occurredAt,
+          receivedAt: now().toISOString(),
+          note: input.data.note,
+        }),
+      );
+      const body = { data: event, meta: { correlationId: context.get("correlationId") } };
+      deliveryEventResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_EVENT_REJECTED",
+          error instanceof Error ? error.message : "delivery event was rejected",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
   });
 
   app.post("/api/v1/orders", async (context) => {

@@ -8,6 +8,8 @@ import {
   deliveryAddressResponseSchema,
   deliveryWindowsResponseSchema,
   dispatchResponseSchema,
+  deliverymanAssignmentsResponseSchema,
+  deliveryEventResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
@@ -49,6 +51,7 @@ import {
   InMemoryDeliveryAddressRepository,
   InMemoryDeliveryWindowRepository,
   InMemoryDispatchRepository,
+  InMemoryDeliveryEventRepository,
   InMemoryProcurementRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
@@ -374,6 +377,63 @@ describe("API worker", () => {
     });
     expect(dispatch.status).toBe(200);
     dispatchResponseSchema.parse(await dispatch.json());
+  });
+
+  it("scopes deliveryman assignments and deduplicates event retries", async () => {
+    const repository = new InMemoryDeliveryEventRepository([
+      {
+        id: "assignment-1",
+        cycleId: "cycle-2026-08-22",
+        orderId: "order-1",
+        windowId: "window-1",
+        deliverymanUserId: "driver-1",
+        status: "assigned",
+        assignedAt: "2026-08-19T00:00:00.000Z",
+        lastEventType: null,
+      },
+    ]);
+    const deliverymanApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      deliveryEventRepository: repository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-driver",
+              userId: "driver-1",
+              role: "deliveryman",
+              adminPermissions: [],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const assignments = await deliverymanApp.request("/api/v1/deliveryman/assignments");
+    expect(assignments.status).toBe(200);
+    deliverymanAssignmentsResponseSchema.parse(await assignments.json());
+    const request = {
+      clientEventId: "client-event-1",
+      assignmentId: "assignment-1",
+      orderId: "order-1",
+      type: "delivered",
+      occurredAt: "2026-08-22T04:00:00.000Z",
+    };
+    const first = await deliverymanApp.request("/api/v1/deliveryman/events", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    const second = await deliverymanApp.request("/api/v1/deliveryman/events", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    deliveryEventResponseSchema.parse(await second.json());
   });
 
   it("returns the authenticated customer's current subscription", async () => {

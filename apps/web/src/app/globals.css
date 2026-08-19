@@ -164,6 +164,38 @@ a {
   opacity: 0.55;
 }
 
+.deliveryman-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.deliveryman-list {
+  display: grid;
+  gap: 16px;
+}
+
+.deliveryman-card {
+  align-items: center;
+  border: 1px solid var(--line);
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 22px;
+}
+
+.deliveryman-card h2 {
+  margin: 6px 0;
+}
+
+.deliveryman-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .account-panel,
 .account-state {
   border-top: 1px solid var(--line);
@@ -822,6 +854,16 @@ h3 {
 
   .delivery-window-list {
     grid-template-columns: 1fr;
+  }
+
+  .deliveryman-card,
+  .deliveryman-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .deliveryman-actions {
+    justify-content: flex-start;
   }
 
   .address-form-wide {

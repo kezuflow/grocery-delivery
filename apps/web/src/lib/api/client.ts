@@ -8,6 +8,10 @@ import {
   deliveryAddressResponseSchema,
   deliveryWindowSelectionRequestSchema,
   deliveryWindowsResponseSchema,
+  deliveryEventRequestSchema,
+  deliveryEventResponseSchema,
+  deliverymanAssignmentsResponseSchema,
+  deliverymanEventsResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
   plansListResponseSchema,
@@ -21,6 +25,8 @@ import {
   type DeliveryAddressResponse,
   type DeliveryWindowSelectionRequest,
   type DeliveryWindowsResponse,
+  type DeliveryEventRequest,
+  type DeliverymanAssignmentsResponse,
   type OrderCreateRequest,
   type OrderResponse,
   type PlansListResponse,
@@ -104,6 +110,33 @@ export function createApiClient(transport: ApiTransport) {
       return getJson(transport, "/api/v1/delivery-windows", deliveryWindowsResponseSchema, {
         ...init,
         method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    },
+    getDeliverymanAssignments(init?: RequestInit): Promise<DeliverymanAssignmentsResponse> {
+      return getJson(
+        transport,
+        "/api/v1/deliveryman/assignments",
+        deliverymanAssignmentsResponseSchema,
+        init,
+      );
+    },
+    getDeliverymanEvents(assignmentId: string, init?: RequestInit) {
+      return getJson(
+        transport,
+        `/api/v1/deliveryman/assignments/${encodeURIComponent(assignmentId)}/events`,
+        deliverymanEventsResponseSchema,
+        init,
+      );
+    },
+    submitDeliveryEvent(input: DeliveryEventRequest, init?: RequestInit) {
+      const payload = deliveryEventRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return getJson(transport, "/api/v1/deliveryman/events", deliveryEventResponseSchema, {
+        ...init,
+        method: "POST",
         headers,
         body: JSON.stringify(payload),
       });
