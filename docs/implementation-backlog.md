@@ -42,6 +42,16 @@ conversation history or temporary handoff files.
 | 010   | Customer tracking, notifications, and delivery media            | complete    | Customer tracking, idempotent notification adapter, and media URLs |
 | 011   | Jobs, workflows, retries, and operational projections           | complete    | Durable outbox, workflow retries, and operational projections      |
 | 012   | Release hardening and production rehearsal                      | in progress | Rate limits and API metrics complete; OpenAPI and rehearsals next  |
+| 013   | Production identity and account lifecycle                       | planned     | Depends on Slice 012 security boundaries                           |
+| 014   | Subscription onboarding and plan selection                      | planned     | Depends on production identity and server-side plan validation     |
+| 015   | Real payments and customer checkout                             | planned     | Depends on subscription onboarding and provider sandbox            |
+| 016   | Immutable order fulfillment and cutoff enforcement              | planned     | Depends on checkout, address, window, and payment state            |
+| 017   | Admin operations console                                        | planned     | Depends on operational APIs and order fulfillment invariants       |
+| 018   | Deployable jobs, queues, workflows, and notifications           | planned     | Depends on outbox and operational workflows                        |
+| 019   | Customer fulfillment, support, and payment history              | planned     | Depends on orders, payments, tracking, and notifications           |
+| 020   | Delivery staff production workflow                              | planned     | Depends on immutable orders, dispatch, storage, and offline sync   |
+| 021   | Privacy, audit, compliance, and launch observability            | planned     | Depends on identity, payments, admin, and operational events       |
+| 022   | Staging launch rehearsal and go/no-go gate                      | planned     | Depends on all launch-critical slices                              |
 
 ### Current Slice: 012 release hardening and production rehearsal
 
@@ -77,6 +87,194 @@ process-pool crash; the complete `pnpm check` passes all 55 tasks.
 Next resume point: add generated OpenAPI documentation for the existing contract-backed endpoints,
 then continue service-binding hardening, CSRF/origin verification, and deterministic production
 rehearsal runbooks. Do not mark Slice 012 complete until those remaining areas pass their checks.
+
+## Review-Derived Launch Roadmap
+
+The following slices turn the production-readiness review into bounded vertical increments. Only one
+slice may be `in progress` at a time. Do not start a later slice by assuming an earlier foundation is
+good enough; its acceptance checks must be recorded as complete first.
+
+### Slice 012 remaining: API hardening and deterministic rehearsal foundations
+
+Scope:
+
+- Generate OpenAPI documentation from the existing contracts and protected routes.
+- Complete service-binding configuration and explicit CSRF/origin checks for state-changing requests.
+- Add deterministic runbooks and executable checks for migration rehearsal, backup/restore, Friday
+  cutoff, provider sandbox, load, and incident-response preparation.
+- Keep rate-limit and metrics adapters injectable and document their production bindings.
+
+Acceptance checks:
+
+- OpenAPI output is generated from server-owned contracts and is checked in or reproducibly built.
+- State-changing requests reject missing or untrusted origins with the standard correlation-aware
+  error envelope; same-origin and configured trusted origins remain usable.
+- Staging migration, backup/restore, and Friday-cycle procedures run without production credentials.
+- Provider sandbox and load-test commands have documented prerequisites, bounded data, and cleanup.
+- Focused checks and `pnpm check` pass.
+
+### Slice 013: Production identity and account lifecycle
+
+Scope:
+
+- Make Better Auth the explicit staging/production mode with validated secret, URL, trusted origins,
+  secure cookies, and service bindings.
+- Add email verification, password reset, session revocation including sign-out-all-devices, admin
+  bootstrap/role assignment, and MFA enforcement for administrators and sensitive payment actions.
+- Add account export, correction, deletion eligibility, and consent records behind server-owned scope.
+
+Acceptance checks:
+
+- A new production-configured customer can verify an email, sign in, reset a password, and revoke
+  every active session.
+- Admin access requires server-owned role assignment and MFA; customer input cannot grant roles.
+- Account lifecycle operations are idempotent, auditable, and covered by focused API and repository
+  tests.
+- Persistent-session mode remains explicitly local-only or is removed after migration evidence.
+
+### Slice 014: Subscription onboarding and plan selection
+
+Scope:
+
+- Add an idempotent customer plan-selection/subscription-creation command.
+- Resolve the selected plan server-side and define plan-change timing, cancellation, pause, and
+  past-due behavior.
+- Add customer-facing plan selection and confirmation states that never submit prices or customer IDs.
+
+Acceptance checks:
+
+- A verified customer can move from public plans to one active subscription through the web UI.
+- Invalid, inactive, or changed plans are rejected before persistence.
+- Replaying an idempotency key returns the original subscription; conflicting reuse is rejected.
+- Plan changes and cancellation have explicit effective-cycle semantics and focused tests.
+
+### Slice 015: Real payments and customer checkout
+
+Scope:
+
+- Add a real Philippine payment-provider adapter behind the existing billing boundary and complete
+  sandbox contract tests.
+- Add customer payment-method setup, checkout authorization, recurring weekly charging, retries,
+  failed-payment/past-due states, webhook queue processing, reconciliation, and payment history.
+- Add customer payment UI and finance-admin refund/partial-refund workflows.
+
+Acceptance checks:
+
+- Staging can tokenize a payment method, authorize a checkout, process a recurring charge, and
+  reconcile a webhook without storing raw payment credentials.
+- Provider retries and webhook replays are idempotent and observable.
+- Production configuration rejects `disabled` and `fake` providers for launch environments.
+- Refunds verify permissions, ownership, amount bounds, idempotency, and durable provider state.
+
+### Slice 016: Immutable order fulfillment and cutoff enforcement
+
+Scope:
+
+- Snapshot delivery address, delivery window, cycle, plan/credit, fees, and payment state into the
+  locked order.
+- Enforce the weekly cutoff server-side and prevent post-lock edits from changing fulfillment facts.
+- Require packed, payable, cycle-matching orders before dispatch assignment.
+
+Acceptance checks:
+
+- Changing an address or window after checkout does not change the locked order snapshot.
+- Orders after the cutoff receive a deterministic error and do not clear the cart.
+- Dispatch rejects unpacked, unpaid, cross-cycle, or window-mismatched orders.
+- Migration and repository tests cover snapshot restoration and concurrent idempotent locking.
+
+### Slice 017: Admin operations console
+
+Scope:
+
+- Build authenticated admin screens for catalog/pricing, delivery windows/capacity, customer and
+  subscription support, procurement, shortages/substitutions, packing, dispatch, exceptions,
+  refunds, audit history, projections, and alerts.
+- Use existing permission-scoped API contracts; do not duplicate business rules in the web app.
+
+Acceptance checks:
+
+- Authorized administrators can complete a full weekly operations cycle through the UI.
+- Each screen shows server-owned status, errors, correlation IDs, and actionable empty states.
+- Permission boundaries are tested for every admin area; customers cannot access admin data.
+
+### Slice 018: Deployable jobs, queues, workflows, and notifications
+
+Scope:
+
+- Add production Worker entrypoints and Wrangler bindings for queue producers/consumers, cron
+  triggers, workflow bindings, dead-letter handling, outbox dispatch, payment/webhook jobs,
+  notification jobs, and retention jobs.
+- Wire API writes to the durable outbox and expose queue lag/dead-letter alerts.
+
+Acceptance checks:
+
+- Staging can publish, consume, retry, dead-letter, and replay an outbox event without duplication.
+- Cron starts the weekly workflow and every step preserves correlation and idempotency.
+- Failed payment, notification, and retention jobs are observable with bounded retries and alerts.
+
+### Slice 019: Customer fulfillment, support, and payment history
+
+Scope:
+
+- Add customer order history, receipts, payment history, tracking, proof-of-delivery media, delivery
+  notifications/preferences, substitution approval, cancellation/refund requests, multiple saved
+  addresses, support/contact workflow, and clear cutoff/payment/delivery status messaging.
+
+Acceptance checks:
+
+- Customers see only their own orders, payment records, media, substitutions, and support requests.
+- Every state shown in the web app comes from validated server responses; no optimistic commerce
+  totals or statuses are invented client-side.
+- Notification preferences and support requests are persisted, auditable, and retry-safe.
+
+### Slice 020: Delivery staff production workflow
+
+Scope:
+
+- Add customer name/address/phone/instructions, route ordering and map integration, contact/support
+  actions, required event sequencing, real R2 proof-of-delivery storage, failure reason codes,
+  offline conflict resolution, and delivery privacy/safety controls.
+
+Acceptance checks:
+
+- Delivery staff see only assigned orders and the minimum data required for the current route.
+- Event sequencing and failure reasons are validated server-side and remain idempotent offline.
+- Proof media is stored and retrieved through real signed storage URLs with retention controls.
+
+### Slice 021: Privacy, audit, compliance, and launch observability
+
+Scope:
+
+- Add audit events for refunds, dispatch changes, role changes, manual status changes, and account
+  lifecycle operations.
+- Add consent UI, data export/deletion workflows, secret-rotation procedures, security-header
+  verification, webhook replay protection tests, abuse monitoring, and operational alerts.
+
+Acceptance checks:
+
+- Sensitive operations have actor, target, reason, correlation, and timestamp audit records.
+- Customers can view and manage consent and request export/deletion within documented eligibility.
+- Alerts exist for failed payments, dead letters, cutoff failures, delivery exceptions, and abusive
+  request patterns, with an owner and response procedure.
+
+### Slice 022: Staging launch rehearsal and go/no-go gate
+
+Scope:
+
+- Run full customer-to-delivery E2E tests, migration rehearsal, backup/restore, Friday-cycle,
+  provider-sandbox, security, and bounded 20,000-cart load tests in staging.
+- Record launch configuration for catalog, windows, service zones, delivery pricing, payment provider,
+  secrets, retention, alerts, incident ownership, and rollback procedures.
+
+Acceptance checks:
+
+- All launch-critical flows pass from signup through payment, order lock, operations, delivery, and
+  customer tracking.
+- Restore and rollback procedures are timed, verified, and documented with named owners.
+- No environment uses fake/disabled payment settings, zero-value production defaults, or missing
+  serviceability configuration.
+- Slice 012 through Slice 021 completion records are present; only then may Slice 022 be marked
+  complete and the product considered launch-ready.
 
 ## Completed Slice: 004
 
