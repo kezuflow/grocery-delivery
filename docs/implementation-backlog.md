@@ -1,189 +1,115 @@
 # Implementation Backlog
 
-This backlog turns the accepted production architecture into dependency-ordered
-implementation milestones. Each milestone should land with focused tests and
-keep the dependency direction from workers to application to domain intact.
+This is the durable implementation task list for Carbon Food Delivery. Work is organized into
+small, dependency-ordered slices so another engineer can resume from this file without relying on
+conversation history or temporary handoff files.
 
-## Completed
+## Working Rules
 
-### Platform foundation
+- Work directly on `main`.
+- Keep one slice small enough to review and verify independently.
+- Update this backlog only as part of an intentional documentation or feature commit.
+- Before starting a slice, mark it `in progress` and record its scope and acceptance checks.
+- Before moving to another slice, run the narrowest focused checks plus `pnpm check`, commit the
+  completed slice, inspect the staged diff, and push `origin/main`.
+- Never commit or push temporary handoff files. The committed Git history and this backlog are the
+  resume record.
+- Preserve unrelated working-tree changes, including the existing `docs/ui-mockups` deletions.
 
-- PHP centavo money value object with overflow and arithmetic checks.
-- Role and permission vocabulary for customer, deliveryman, and admin access.
-- Runtime environment and CORS origin parsing.
-- Correlation ID validation and structured logging primitives.
-- Zod system response/error contracts.
-- Hono API Worker with `/health` and `/api/v1/health`.
-- Wrangler development, staging, and production environments for the API.
+## Status Legend
 
-### Catalog and pricing
+- `complete`: implemented, verified, committed, and pushed.
+- `in progress`: the only slice currently being changed.
+- `next`: highest-priority slice that can start after the current slice is complete.
+- `planned`: ordered work that is not yet ready to start.
+- `blocked`: cannot proceed without an explicit external decision or dependency.
 
-- Catalog entities for categories, SKUs, units, images, and active state.
-- Effective-dated price history and markup rules with per-SKU override precedence.
-- Forward-only D1 catalog schema plus read and pricing repositories isolated from domain code.
-- Public catalog contracts and API reads with bounded cursor pagination and category filtering.
-- Cache headers, conditional ETags, and D1-backed cache-version invalidation on price changes.
+## Slice Ledger
 
-## Next
+| Slice | Area | Status | Commit / resume point |
+| --- | --- | --- | --- |
+| 000 | Repository and domain foundation | complete | Existing history through `c3da0bc` |
+| 001 | API environment database bindings | complete | `03ef3bc` |
+| 002 | API runtime composition | complete | `5f6a64e` |
+| 003 | Payment-method revocation administration | next | Start with existing payment-method persistence and protected API routes |
+| 004 | Better Auth production integration | planned | Requires a concrete Better Auth runtime/configuration decision |
+| 005 | Web-to-API service binding and customer flows | planned | Depends on stable API runtime and auth configuration |
+| 006 | Delivery addresses, serviceability, and weekly delivery windows | planned | Depends on customer identity and order snapshots |
+| 007 | Procurement, shortages, substitutions, and packing | planned | Depends on delivery cycles and paid-order projections |
+| 008 | Dispatch, route planning, and driver assignments | planned | Depends on packages, windows, capacity, and provider-neutral routing |
+| 009 | Deliveryman PWA and offline event sync | planned | Depends on dispatch assignments and delivery events |
+| 010 | Customer tracking, notifications, and delivery media | planned | Depends on delivery events, outbox jobs, and R2 policies |
+| 011 | Jobs, workflows, retries, and operational projections | planned | Coordinate with slices 007-010 as their async needs become concrete |
+| 012 | Release hardening and production rehearsal | planned | Depends on all launch-critical operational slices |
 
-### Identity and access
+## Active Slice: 003
 
-- Session resolver boundary, secure HTTP-only cookie policy, role assignment validation,
-  permission-scoped admin checks, customer ownership checks, consent/audit records, and
-  public identity contracts.
-- Protected `/api/v1/me` route with active-session resolution and test fixtures.
-- Better Auth session adapter with secure cookie and bearer-token resolution, D1 persistence for
-  users, sessions, roles, consents, audit events, and MFA challenges, session revocation storage,
-  and centralized middleware on all protected application routes.
-- Remaining: configure the production Better Auth instance and add provider-specific sign-in
-  handlers.
+### Payment-method revocation administration
 
-### Plans and subscriptions
+Current implementation already supports provider-neutral payment-method creation, durable metadata,
+idempotent registration, protected customer listing, and server-side token handling. The remaining
+gap is an authorized revocation flow.
 
-- Admin-configurable plan models with seeded Small, Medium, and Large defaults
-  (PHP 699/699, 999/999, and 1399/1399 weekly fee/credit), slug validation, and display order.
-- Pause, resume, skip, and cancel transitions before the cutoff.
-- Application subscription commands with idempotency-key replay and conflict handling.
-- Customer-facing plan contracts, cacheable `/api/v1/plans`, and protected subscription actions.
-- Forward-only D1 schema for plans, subscriptions, and idempotency records.
-- Durable D1 subscription reads/upserts and immutable idempotency result snapshots.
-- Protected customer current-subscription reads with ownership checks and private caching policy.
-- Atomic D1 subscription command/idempotency persistence and replay snapshots.
-- Permission-scoped admin plan writes with D1 persistence, cache-version invalidation,
-  and public ETag validation.
-- Independent pricing proposals with finance approval, self-approval protection, rejection
-  reasons, atomic approved-plan/cache/audit persistence, and decision API contracts.
+Scope:
 
-### Weekly commerce
+- Add an application command that verifies customer ownership, current active state, and idempotency.
+- Add a billing/provider boundary operation for revoking or detaching a provider method when the
+  selected provider supports it; preserve a durable local `revoked` state when it does not.
+- Add a repository operation and forward-only D1 migration only if the existing schema cannot
+  represent the transition.
+- Add a protected API route and response contract for customer revocation.
+- Return the existing correlation-aware error envelope for unauthenticated, unauthorized,
+  missing, already-revoked, and idempotency-conflict cases.
+- Add focused unit, repository, and API tests for ownership, replay, conflict, persistence, and
+  provider failure behavior.
 
-- Asia/Manila cycle assignment and deterministic Friday cutoff logic with fake clocks.
-- Cart validation, server-side credit application, overage, delivery fees, and immutable price snapshots.
-- Idempotent application-level cart locking into immutable orders with an outbox publisher boundary.
-- Focused tests for duplicate lock replay, conflicting idempotency keys, and lock totals.
-- Durable D1 order/line snapshots and atomic order-plus-outbox writes are now available;
-- Customer order contracts and protected `/api/v1/orders` route now resolve server-side prices,
-  credits, delivery fees, and subscription ownership.
-- Persistent customer cart drafts with D1 and in-memory repositories, protected `GET`/`PUT`
-  `/api/v1/cart` routes, catalog price resolution, duplicate/unavailable SKU validation, and
-  saved-cart checkout with post-lock cart clearing.
-- Live D1 lock retry and concurrent idempotency integration tests now cover durable order/outbox
-  behavior.
+Acceptance checks:
 
-### Billing and fulfillment
+- Customer A cannot revoke Customer B's payment method.
+- Repeating the same idempotency key returns the original result without a second provider call.
+- Reusing an idempotency key for a different method is rejected.
+- A revoked method is excluded from active payment-method listings and cannot be charged.
+- Provider failure does not silently mark a method revoked unless the provider contract explicitly
+  reports a successful detach or an already-detached result.
+- Focused package tests and `pnpm check` pass.
 
-- Provider-neutral payment capabilities and adapter interfaces with a deterministic fake
-  provider for idempotent customers, payment methods, charges, refunds, signed webhooks, and
-  reconciliation fixtures.
-- Durable payment attempt, webhook deduplication, refund, and append-only ledger storage with
-  forward-only D1 migration and repository implementations.
-- Provider-neutral charge/refund orchestration now enforces idempotency fingerprints, persists
-  successful ledger entries, and applies signed webhook state transitions exactly once.
-- Protected customer charge and signed provider webhook ingress are now exposed through the API
-  worker with server-side order total resolution.
-- Provider reconciliation now compares persisted charges/refunds with provider activity, stores
-  deterministic discrepancy records, and exposes a clock-controlled jobs-worker adapter.
-- Finance-authorized refund administration is now exposed through the API with idempotency,
-  provider-backed execution, public response contracts, and append-only ledger coverage.
-- Customer tokenized payment-method registration now has provider-only token handling, idempotent
-  orchestration, durable D1 metadata, and protected create/list API contracts.
-- Remaining: add payment-method revocation administration flows.
-- Add procurement aggregation, shortage substitution, packing manifests, and dispatch.
-- Add queues, workflows, retry policies, and operational projections.
+Resume point after a usage limit: inspect the Slice 003 diff and tests, then continue from the first
+unchecked acceptance item. Do not create a temporary handoff file.
 
-### Operational delivery expansion
+## Later Slice Notes
 
-The first operational release targets more than 1,000 weekend drops with admin-controlled
-dispatch, Saturday/Sunday delivery, broad morning/afternoon windows, and an offline-capable
-deliveryman PWA. Routing and geocoding remain provider-neutral adapters. Packages use QR labels;
-photo proof is the default delivery completion policy, with OTP/signature support configurable
-later. Drivers report failed attempts and dispatchers decide retry, Sunday reassignment,
-reschedule, or return-to-depot.
+### 004: Better Auth production integration
 
-#### Phase 1: delivery foundation
+Resolve the concrete Better Auth package/configuration, D1 adapter ownership, secure cookie policy,
+sign-in handlers, session revocation, and environment secrets before implementation. The current
+API runtime intentionally fails with a clear `503 SERVICE_CONFIGURATION_INVALID` response when
+`AUTH_MODE=better-auth` has no runtime factory.
 
-- Add structured customer addresses with Philippine address fields, landmark/instructions,
-  latitude/longitude, geocode confidence, and service-zone validation.
-- Add weekly delivery cycles, Saturday/Sunday windows, capacity reservations, and immutable order
-  snapshots for cycle, address, zone, delivery day, and window.
-- Require a serviceable address and an idempotent capacity reservation before an order can lock.
-- Add customer APIs for address management, serviceability, available windows, and delivery
-  selection.
+### 005: Web-to-API service binding and customer flows
 
-#### Phase 2: procurement and packing
+Keep D1 access behind the API Worker. Add the service binding, typed web client, authenticated
+customer shell, and end-to-end plan/cart/subscription journeys only after the API and auth runtime
+contracts are stable.
 
-- Add admin-configurable `STOCKED`, `DEMAND_DRIVEN`, and `MIXED` fulfillment modes. Keep the
-  cycle default separate from per-SKU overrides so a cycle can contain both stocked and sourced
-  items.
-- For stocked SKUs, track on-hand, reserved, available, receiving, and shortage quantities.
-- For demand-driven SKUs, aggregate paid-order demand by cycle and expose purchased quantity and
-  quality-check state.
-- Model shortages and admin-approved equal-value substitutions or line-item refunds.
-- Generate packing manifests and package records with human-readable codes and QR payloads.
-- Add package state transitions for packed, loaded, exception, delivered, and returned.
-- Add exception-first admin views for shortages, unpaid orders, capacity failures, and unassigned
-  work.
+### 006-010: Operational delivery
 
-#### Phase 3: dispatch and route planning
+Follow the production architecture in `docs/architecture/production-plan.md`: structured address
+and serviceability data, weekly cycles and capacity, procurement and packing, dispatch and routing,
+driver workflows, offline synchronization, customer tracking, notifications, and R2 delivery media.
+Each area must remain split into independently testable application, repository, contract, and
+worker slices.
 
-- Model driver accounts, delivery permissions, vehicles, package capacity, shifts, route plans,
-  route stops, publication state, and idempotent assignments.
-- Make driver and vehicle limits configurable at global, per-driver, and per-shift scope. Treat
-  planned stops, route minutes, overtime, and capacity as warning-producing policies that admins
-  may override with an explicit reason and audit event; retain hard validation for invalid windows,
-  duplicate assignments, and unauthorized access.
-- Add provider-neutral geocoding, travel-time matrix, and route-optimization interfaces.
-- Optimize asynchronously through workflows/jobs using driver shifts, vehicle/package capacity,
-  zones, delivery windows, travel times, and depot start/end constraints.
-- Add admin review, manual adjustment, publish, force-publish, reassign, and reopen operations with
-  audit events and visible over-capacity/unassigned status.
+### 011-012: Async and release hardening
 
-#### Phase 4: deliveryman PWA
+Add queues, workflows, retries, dead-letter handling, projections, service bindings, rate limits,
+CSRF/origin controls, OpenAPI generation, metrics, backup/restore rehearsal, Friday-cycle rehearsal,
+load tests, provider sandbox tests, and incident runbooks after their upstream workflows exist.
 
-- Add a role-scoped mobile workflow for shift start, vehicle/load checklist, assigned routes,
-  package scans, map launch, masked customer contact, delivery notes, and route progress.
-- Add delivered and failed-attempt events with photo proof, server timestamp, stop identity,
-  uploader identity, and approximate device location when available.
-- Queue delivery events offline and synchronize them idempotently with explicit conflict states.
-- Keep drivers limited to assigned delivery data; never expose payment details, unrelated customers,
-  or unassigned routes.
+## Completed Capability Notes
 
-#### Phase 5: tracking and notifications
-
-- Add customer order timelines, delivery day/window, route status, delay state, substitution or
-  refund decisions, and completion status.
-- Add idempotent email/SMS/push adapters and outbox jobs for payment, shortage, route, delay, and
-  completion notifications.
-- Store delivery photos in R2 with presigned upload authorization, metadata in D1, and retention
-  policies.
-
-#### Cross-cutting prerequisites
-
-- Store customer-managed structured addresses with provider-neutral geocoding metadata, serviceability
-  results, and immutable order address snapshots. Interactive autocomplete/map providers remain
-  replaceable adapters; the provider is never the source of truth.
-- Add `weekly_cycle_id`, delivery snapshots, and operational projections before route planning.
-- Resolve charges from server-owned payment methods and provider customer records; do not trust
-  client-supplied provider references.
-- Include a non-reversible token digest in payment-method idempotency fingerprints without storing
-  raw tokens, and enforce cumulative refund limits in billing.
-- Validate persisted admin permissions, consume and retry outbox events, and split the API route
-  composition before adding the operational surface.
-- Add OpenAPI generation, rate limits, CSRF/origin controls, production Better Auth configuration,
-  metrics, backup/restore rehearsal, and provider sandbox contract tests.
-
-#### Operational acceptance tests
-
-- Address serviceability, geocode confidence, cycle cutoff, and concurrent window-capacity tests.
-- Stocked reservation, demand-driven aggregation, mixed-mode baskets, shortage approval,
-  substitution/refund, package state, QR scan, and route-capacity/shift/window tests.
-- Driver assignment authorization, offline event replay, failed-delivery decisions, proof upload,
-  and outbox retry/dead-letter tests.
-- End-to-end coverage from address and window selection through lock, payment, procurement, packing,
-  dispatch, delivery proof, and customer tracking.
-
-### Release hardening
-
-- Add service bindings between web and API Workers.
-- Add D1 migrations, R2 media policies, WAF/rate limits, and secrets.
-- Add end-to-end customer checkout and admin operations journeys.
-- Add backup/restore rehearsal, Friday-cycle rehearsal, load tests, and incident runbooks.
+The repository already contains the following implemented foundations: PHP centavo money rules,
+identity/session domain contracts and persistent D1 sessions, catalog and pricing reads, plans and
+subscriptions, carts and idempotent order locking, provider-neutral billing with reconciliation,
+payment methods, protected API routes, correlation-aware errors, and Wrangler development/staging/
+production database environments. See the slice commits above and the architecture document for
+the boundary rationale.
