@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@carbon/billing": "workspace:*"
+    "@carbon/billing": "workspace:*",
+    "@carbon/db": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260818.1",

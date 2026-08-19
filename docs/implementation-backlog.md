@@ -27,21 +27,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                               |
-| ----- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                  |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                           |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                           |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                           |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                           |
-| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                     |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete             |
-| 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests        |
-| 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                             |
-| 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync           |
-| 010   | Customer tracking, notifications, and delivery media            | complete | Customer tracking, idempotent notification adapter, and media URLs  |
-| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                   |
+| Slice | Area                                                            | Status      | Commit / resume point                                              |
+| ----- | --------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| 000   | Repository and domain foundation                                | complete    | Existing history through `c3da0bc`                                 |
+| 001   | API environment database bindings                               | complete    | `03ef3bc`                                                          |
+| 002   | API runtime composition                                         | complete    | `5f6a64e`                                                          |
+| 003   | Payment-method revocation administration                        | complete    | `7229e08`                                                          |
+| 004   | Better Auth production integration                              | complete    | `51a8de1`                                                          |
+| 005   | Web-to-API service binding and customer flows                   | complete    | Complete through order creation                                    |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete    | Address geofence and weekly capacity selection complete            |
+| 007   | Procurement, shortages, substitutions, and packing              | complete    | Demand aggregation, exceptions, substitutions, and manifests       |
+| 008   | Dispatch, route planning, and driver assignments                | complete    | Cycle-scoped admin dispatch assignments                            |
+| 009   | Deliveryman PWA and offline event sync                          | complete    | Deliveryman assignments and idempotent offline event sync          |
+| 010   | Customer tracking, notifications, and delivery media            | complete    | Customer tracking, idempotent notification adapter, and media URLs |
+| 011   | Jobs, workflows, retries, and operational projections           | in progress | Outbox delivery, retry limits, and dead-letter state               |
+| 012   | Release hardening and production rehearsal                      | planned     | Depends on all launch-critical operational slices                  |
 
 ## Completed Slice: 004
 
@@ -404,6 +404,44 @@ and serviceability data, weekly cycles and capacity, procurement and packing, di
 driver workflows, offline synchronization, customer tracking, notifications, and R2 delivery media.
 Each area must remain split into independently testable application, repository, contract, and
 worker slices.
+
+### Completed increment: Outbox delivery and retryable jobs
+
+Scope:
+
+- Add a repository boundary for claiming pending outbox events and recording successful delivery,
+  retry attempts, and dead-letter state without exposing SQL to workers.
+- Add a queue consumer adapter that acknowledges successful jobs, retries transient failures with a
+  bounded delay, and leaves exhausted messages available for dead-letter handling.
+- Keep job messages correlation-aware and idempotent by durable outbox event ID.
+- Preserve the existing order-lock transaction and event payload contract.
+
+Acceptance checks:
+
+- A pending outbox event can be claimed once, even when multiple consumers race.
+- Successful handling marks the event published and a replay does not invoke the handler twice.
+- Failed handling increments attempts and retries until the configured limit, then records a
+  dead-letter state without losing the original payload.
+- Queue acknowledgements and retries are explicit and testable without a live Cloudflare Queue.
+- Focused DB and jobs tests, typechecks, lint, and `pnpm check` pass.
+
+Completion record: migration `0020` adds leased claims, retry scheduling, error details, and
+dead-letter timestamps to the existing outbox table. `@carbon/db` now owns the D1 and in-memory
+outbox lifecycle, while `@carbon/jobs` provides a queue publisher and consumer adapter with
+correlation-aware, idempotent messages. The existing order-lock transaction remains unchanged.
+Focused DB/jobs tests and `pnpm check` pass. Slice 011 remains in progress; the next increment is
+workflow orchestration and operational projections.
+
+### Next increment: Workflow orchestration and operational projections
+
+Scope:
+
+- Add a framework-independent workflow definition for weekly operational steps and explicit retry
+  boundaries, then adapt it to the Cloudflare Workflows runtime.
+- Add server-owned operational projection reads for outbox lag, delivery progress, and procurement
+  exceptions without duplicating transactional state.
+- Keep workflow state separate from D1 source-of-truth records and preserve correlation IDs across
+  every step.
 
 ### 011-012: Async and release hardening
 

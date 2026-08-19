@@ -105,6 +105,9 @@ importers:
       '@carbon/billing':
         specifier: workspace:*
         version: link:../../packages/billing
+      '@carbon/db':
+        specifier: workspace:*
+        version: link:../../packages/db
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20260818.1
