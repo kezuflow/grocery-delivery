@@ -5,12 +5,14 @@ import {
   catalogListResponseSchema,
   currentSessionResponseSchema,
   plansListResponseSchema,
+  subscriptionActionRequestSchema,
   subscriptionResponseSchema,
   type CartResponse,
   type CartUpdateRequest,
   type CatalogListResponse,
   type CurrentSessionResponse,
   type PlansListResponse,
+  type SubscriptionActionRequest,
   type SubscriptionResponse,
 } from "@carbon/contracts";
 
@@ -67,6 +69,22 @@ export function createApiClient(transport: ApiTransport) {
       return getJson(transport, "/api/v1/cart", cartResponseSchema, {
         ...init,
         method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    },
+    performSubscriptionAction(
+      input: SubscriptionActionRequest,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<SubscriptionResponse> {
+      const payload = subscriptionActionRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      headers.set("idempotency-key", idempotencyKey);
+      return getJson(transport, "/api/v1/subscription/actions", subscriptionResponseSchema, {
+        ...init,
+        method: "POST",
         headers,
         body: JSON.stringify(payload),
       });

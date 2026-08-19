@@ -26,21 +26,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                                |
-| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
-| 005   | Web-to-API service binding and customer flows                   | next     | Cart editing complete; subscription and order mutations remain       |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                     |
-| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
-| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
-| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
-| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
-| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
+| Slice | Area                                                            | Status      | Commit / resume point                                                |
+| ----- | --------------------------------------------------------------- | ----------- | -------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete    | Existing history through `c3da0bc`                                   |
+| 001   | API environment database bindings                               | complete    | `03ef3bc`                                                            |
+| 002   | API runtime composition                                         | complete    | `5f6a64e`                                                            |
+| 003   | Payment-method revocation administration                        | complete    | `7229e08`                                                            |
+| 004   | Better Auth production integration                              | complete    | `51a8de1`                                                            |
+| 005   | Web-to-API service binding and customer flows                   | in progress | Subscription actions increment                                       |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned     | Depends on customer identity and order snapshots                     |
+| 007   | Procurement, shortages, substitutions, and packing              | planned     | Depends on delivery cycles and paid-order projections                |
+| 008   | Dispatch, route planning, and driver assignments                | planned     | Depends on packages, windows, capacity, and provider-neutral routing |
+| 009   | Deliveryman PWA and offline event sync                          | planned     | Depends on dispatch assignments and delivery events                  |
+| 010   | Customer tracking, notifications, and delivery media            | planned     | Depends on delivery events, outbox jobs, and R2 policies             |
+| 011   | Jobs, workflows, retries, and operational projections           | planned     | Coordinate with slices 007-010 as their async needs become concrete  |
+| 012   | Release hardening and production rehearsal                      | planned     | Depends on all launch-critical operational slices                    |
 
 ## Completed Slice: 004
 
@@ -214,6 +214,26 @@ change quantities, remove lines, and save an empty or populated cart through the
 proxy. Browser mutations contain only SKU identifiers and quantities; the API remains authoritative
 for availability, prices, totals, and customer scope. Focused client tests, the production web build,
 and `pnpm check` pass. The next 005 increment is subscription actions, followed by order creation.
+
+### Current increment: Subscription actions
+
+Scope:
+
+- Add typed pause, resume, skip, and cancel mutations to the web API client.
+- Render only actions that are valid for the server-owned subscription status.
+- Attach a retry-stable idempotency key to every retriable subscription command.
+- Refresh the account after success and keep API or cutoff failures actionable.
+
+Acceptance checks:
+
+- The browser submits only the requested action and never submits customer, cycle, status, or plan
+  data.
+- Every command reaches the protected API route with an idempotency key and the HTTP-only session
+  cookie.
+- Active, paused, and canceled subscriptions expose appropriate controls without inventing state.
+- Failed commands retain their idempotency key for a safe retry and do not optimistically change the
+  displayed subscription.
+- Focused web tests, the production web build, and `pnpm check` pass.
 
 ### 006-010: Operational delivery
 

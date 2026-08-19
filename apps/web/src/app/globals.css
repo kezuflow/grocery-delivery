@@ -135,6 +135,24 @@ a {
   margin: 0;
 }
 
+.subscription-actions {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
+.subscription-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.subscription-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0 0 14px;
+}
+
 .account-cart-lines {
   list-style: none;
   margin: 28px 0 0;
@@ -288,6 +306,18 @@ nav a:not(.button) {
   background: transparent;
   border: 1px solid var(--deep);
   color: var(--deep);
+}
+
+.button-danger {
+  background: transparent;
+  border: 1px solid #9b3c2e;
+  color: #8d3325;
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+  transform: none;
 }
 
 .auth-controls {

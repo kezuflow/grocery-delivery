@@ -160,3 +160,4 @@ export type CartResponse = z.infer<typeof cartResponseSchema>;
 export type CartUpdateRequest = z.infer<typeof cartUpdateRequestSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;
+export type SubscriptionActionRequest = z.infer<typeof subscriptionActionRequestSchema>;

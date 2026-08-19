@@ -5,6 +5,7 @@ import { loadCustomerAccount } from "../../lib/account";
 import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
 import { CartEditor } from "./cart-editor";
+import { SubscriptionActions } from "./subscription-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,10 @@ export default async function AccountPage() {
                     <dd>{new Date(account.subscription.updatedAt).toLocaleDateString("en-PH")}</dd>
                   </div>
                 </dl>
+                <SubscriptionActions
+                  skippedCycleId={account.subscription.skippedCycleId}
+                  status={account.subscription.status}
+                />
               </>
             ) : (
               <div className="account-empty">
