@@ -17,8 +17,10 @@
   ],
   "vars": {
     "APP_ENV": "development",
+    "AUTH_MODE": "persistent-session",
     "VERSION": "0.0.0-dev",
     "DELIVERY_FEE_CENTAVOS": "0",
+    "PAYMENT_PROVIDER": "fake",
   },
   "env": {
     "staging": {
@@ -33,7 +35,9 @@
       ],
       "vars": {
         "APP_ENV": "staging",
+        "AUTH_MODE": "persistent-session",
         "DELIVERY_FEE_CENTAVOS": "0",
+        "PAYMENT_PROVIDER": "disabled",
       },
     },
     "production": {
@@ -48,7 +52,9 @@
       ],
       "vars": {
         "APP_ENV": "production",
+        "AUTH_MODE": "persistent-session",
         "DELIVERY_FEE_CENTAVOS": "0",
+        "PAYMENT_PROVIDER": "disabled",
       },
     },
   },

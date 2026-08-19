@@ -93,11 +93,13 @@ import { secureHeaders } from "hono/secure-headers";
 
 export type ApiBindings = Readonly<{
   APP_ENV?: string;
+  AUTH_MODE?: string;
   CATALOG_CACHE_VERSION?: string;
   CORS_ORIGINS?: string;
   DB?: CatalogDatabase;
   DELIVERY_FEE_CENTAVOS?: string;
   PLAN_CACHE_VERSION?: string;
+  PAYMENT_PROVIDER?: string;
   VERSION?: string;
 }>;
 
