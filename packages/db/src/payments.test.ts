@@ -58,6 +58,63 @@ describe("payment repository", () => {
     expect(database.calls[1]?.values).not.toContain("tok_private_123");
   });
 
+  it("stores payment method revocations atomically and restores replay snapshots", async () => {
+    const database = new FakePaymentDatabase([
+      [
+        {
+          id: "method-1",
+          customer_id: "customer-1",
+          provider_name: "fake",
+          provider_reference: "provider-method-1",
+          method_type: "card",
+          status: "active",
+          idempotency_key: "method-1",
+          request_fingerprint: "fingerprint-method-1",
+          created_at: "2026-08-20T10:00:00.000Z",
+          updated_at: "2026-08-20T10:00:00.000Z",
+        },
+      ],
+      [
+        {
+          id: "revocation-1",
+          customer_id: "customer-1",
+          payment_method_id: "method-1",
+          idempotency_key: "revoke-1",
+          request_fingerprint: "fingerprint-revoke-1",
+          created_at: "2026-08-20T10:01:00.000Z",
+          updated_at: "2026-08-20T10:01:00.000Z",
+        },
+      ],
+    ]);
+    const repository = new D1PaymentRepository(database);
+    const method = await repository.findPaymentMethodById("customer-1", "method-1");
+
+    await expect(
+      repository.findPaymentMethodRevocationByIdempotencyKey("customer-1", "revoke-1"),
+    ).resolves.toMatchObject({ paymentMethodId: "method-1" });
+    await repository.saveRevokedPaymentMethod(
+      { ...method!, status: "revoked", updatedAt: "2026-08-20T10:01:00.000Z" },
+      {
+        id: "revocation-1",
+        customerId: "customer-1",
+        paymentMethodId: "method-1",
+        idempotencyKey: "revoke-1",
+        requestFingerprint: "fingerprint-revoke-1",
+        createdAt: "2026-08-20T10:01:00.000Z",
+        updatedAt: "2026-08-20T10:01:00.000Z",
+      },
+    );
+
+    expect(database.batches).toHaveLength(1);
+    expect(database.batches[0]).toHaveLength(2);
+    expect(database.calls.map((call) => call.sql)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("UPDATE payment_methods"),
+        expect.stringContaining("INSERT INTO payment_method_revocations"),
+      ]),
+    );
+  });
+
   it("restores payment attempts and refunds from D1 rows", async () => {
     const database = new FakePaymentDatabase([
       [

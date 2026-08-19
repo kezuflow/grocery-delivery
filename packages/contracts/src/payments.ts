@@ -29,6 +29,10 @@ export const paymentMethodRequestSchema = z.object({
   token: z.string().trim().min(1).max(2048),
 });
 
+export const paymentMethodRevocationRequestSchema = z.object({
+  customerReference: z.string().trim().min(1).max(256),
+});
+
 export const paymentMethodSchema = z.object({
   id: z.string().min(1),
   providerReference: z.string().min(1),
@@ -85,5 +89,6 @@ export const paymentWebhookResponseSchema = z.object({
 export type PaymentAttemptResponse = z.infer<typeof paymentAttemptResponseSchema>;
 export type PaymentMethodResponse = z.infer<typeof paymentMethodResponseSchema>;
 export type PaymentMethodListResponse = z.infer<typeof paymentMethodListResponseSchema>;
+export type PaymentMethodRevocationRequest = z.infer<typeof paymentMethodRevocationRequestSchema>;
 export type PaymentRefundResponse = z.infer<typeof paymentRefundResponseSchema>;
 export type PaymentWebhookResponse = z.infer<typeof paymentWebhookResponseSchema>;

@@ -6,6 +6,7 @@ import {
   type CreateCustomerInput,
   type CreatePaymentMethodInput,
   type PaymentCapabilities,
+  type PaymentMethodRevocationResult,
   PaymentProviderError,
   type ProviderCustomer,
   type ProviderPaymentMethod,
@@ -14,6 +15,7 @@ import {
   type ReconciliationResult,
   type RefundInput,
   type RefundResult,
+  type ProviderRevokePaymentMethodInput,
   type VerifiedWebhook,
   type VerifyWebhookInput,
   type PaymentProvider,
@@ -32,6 +34,7 @@ type StoredResult = Readonly<{
 
 const CAPABILITIES: PaymentCapabilities = Object.freeze({
   tokenizedCharges: true,
+  paymentMethodRevocation: true,
   mandates: false,
   invoices: false,
   refunds: true,
@@ -48,6 +51,8 @@ export class FakePaymentProvider implements PaymentProvider {
   private readonly idempotentResults = new Map<string, StoredResult>();
   private readonly charges = new Map<string, ChargeResult>();
   private readonly refunds = new Map<string, RefundResult>();
+  private readonly paymentMethods = new Set<string>();
+  private readonly revokedPaymentMethods = new Set<string>();
 
   constructor(options: FakePaymentProviderOptions = {}) {
     this.now = options.now ?? (() => new Date());
@@ -86,12 +91,41 @@ export class FakePaymentProvider implements PaymentProvider {
       type: input.type,
       status: "active",
     };
+    this.paymentMethods.add(result.reference);
     return this.idempotent(
       "payment-method",
       idempotencyKey,
       { customerReference, type: input.type, token },
       result,
     );
+  }
+
+  async revokePaymentMethod(
+    input: ProviderRevokePaymentMethodInput,
+  ): Promise<PaymentMethodRevocationResult> {
+    await Promise.resolve();
+    const customerReference = required(input.customerReference, "customerReference");
+    const paymentMethodReference = required(input.paymentMethodReference, "paymentMethodReference");
+    const idempotencyKey = requiredIdempotencyKey(input.idempotencyKey);
+    const fingerprint = { customerReference, paymentMethodReference };
+    const replay = this.replay<PaymentMethodRevocationResult>(
+      "payment-method-revocation",
+      idempotencyKey,
+      fingerprint,
+    );
+    if (replay) {
+      return replay;
+    }
+    if (!this.paymentMethods.has(paymentMethodReference)) {
+      throw new PaymentProviderError("PAYMENT_METHOD_NOT_FOUND", "payment method was not found");
+    }
+    const result: PaymentMethodRevocationResult = {
+      status: this.revokedPaymentMethods.has(paymentMethodReference)
+        ? "already_revoked"
+        : "revoked",
+    };
+    this.revokedPaymentMethods.add(paymentMethodReference);
+    return this.remember("payment-method-revocation", idempotencyKey, fingerprint, result);
   }
 
   async charge(input: ChargeInput): Promise<ChargeResult> {
@@ -101,6 +135,9 @@ export class FakePaymentProvider implements PaymentProvider {
     const paymentMethodReference = required(input.paymentMethodReference, "paymentMethodReference");
     const idempotencyKey = requiredIdempotencyKey(input.idempotencyKey);
     assertChargeAmount(input.amount);
+    if (this.revokedPaymentMethods.has(paymentMethodReference)) {
+      throw new PaymentProviderError("PAYMENT_METHOD_REVOKED", "payment method is revoked");
+    }
     const processedAt = this.timestamp();
     const status = this.declinedPaymentAttemptIds.has(paymentAttemptId)
       ? "failed"

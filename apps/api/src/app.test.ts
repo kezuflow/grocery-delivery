@@ -786,6 +786,25 @@ describe("API worker", () => {
     expect(replay.status).toBe(201);
     expect(replayBody.data.id).toBe(body.data.id);
     await expect(paymentRepository.listPaymentMethods("customer-1")).resolves.toHaveLength(1);
+
+    const revoked = await paymentApp.request(`/api/v1/payments/methods/${body.data.id}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json", "idempotency-key": "revoke-api-1" },
+      body: JSON.stringify({ customerReference: "provider-customer-1" }),
+    });
+    const revokedJson: unknown = await revoked.json();
+
+    expect(revoked.status).toBe(200);
+    const revokedBody = paymentMethodResponseSchema.parse(revokedJson);
+    expect(revokedBody.data.status).toBe("revoked");
+    const revokeReplay = await paymentApp.request(`/api/v1/payments/methods/${body.data.id}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json", "idempotency-key": "revoke-api-1" },
+      body: JSON.stringify({ customerReference: "provider-customer-1" }),
+    });
+    expect(revokeReplay.status).toBe(200);
+    const emptyList = await paymentApp.request("/api/v1/payments/methods");
+    expect(paymentMethodListResponseSchema.parse(await emptyList.json()).data.methods).toEqual([]);
   });
 
   it("allows finance admins to refund a successful payment and records the ledger entry", async () => {

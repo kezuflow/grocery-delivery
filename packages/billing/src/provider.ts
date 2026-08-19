@@ -2,6 +2,7 @@ import type { Money } from "@carbon/domain";
 
 export type PaymentCapabilities = Readonly<{
   tokenizedCharges: boolean;
+  paymentMethodRevocation: boolean;
   mandates: boolean;
   invoices: boolean;
   refunds: boolean;
@@ -32,6 +33,16 @@ export type ProviderPaymentMethod = Readonly<{
   customerReference: string;
   type: CreatePaymentMethodInput["type"];
   status: "active";
+}>;
+
+export type ProviderRevokePaymentMethodInput = Readonly<{
+  customerReference: string;
+  paymentMethodReference: string;
+  idempotencyKey: string;
+}>;
+
+export type PaymentMethodRevocationResult = Readonly<{
+  status: "revoked" | "already_revoked";
 }>;
 
 export type ChargeInput = Readonly<{
@@ -103,6 +114,9 @@ export interface PaymentProvider {
   capabilities(): PaymentCapabilities;
   createCustomer(input: CreateCustomerInput): Promise<ProviderCustomer>;
   createPaymentMethod(input: CreatePaymentMethodInput): Promise<ProviderPaymentMethod>;
+  revokePaymentMethod(
+    input: ProviderRevokePaymentMethodInput,
+  ): Promise<PaymentMethodRevocationResult>;
   charge(input: ChargeInput): Promise<ChargeResult>;
   refund(input: RefundInput): Promise<RefundResult>;
   verifyWebhook(input: VerifyWebhookInput): Promise<VerifiedWebhook>;

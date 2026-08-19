@@ -12,6 +12,7 @@ describe("FakePaymentProvider", () => {
 
     expect(provider.capabilities()).toMatchObject({
       tokenizedCharges: true,
+      paymentMethodRevocation: true,
       refunds: true,
       webhookVerification: true,
       reconciliation: true,
@@ -43,6 +44,33 @@ describe("FakePaymentProvider", () => {
       status: "succeeded",
       amount: { centavos: 69_900, currency: "PHP" },
     });
+  });
+
+  it("revokes payment methods idempotently", async () => {
+    const provider = new FakePaymentProvider({ now });
+    const method = await provider.createPaymentMethod({
+      customerReference: "customer-1",
+      type: "card",
+      token: "tok_1",
+      idempotencyKey: "method-1",
+    });
+    const input = {
+      customerReference: "customer-1",
+      paymentMethodReference: method.reference,
+      idempotencyKey: "revoke-1",
+    };
+
+    await expect(provider.revokePaymentMethod(input)).resolves.toEqual({ status: "revoked" });
+    await expect(provider.revokePaymentMethod(input)).resolves.toEqual({ status: "revoked" });
+    await expect(
+      provider.charge({
+        paymentAttemptId: "attempt-1",
+        customerReference: "customer-1",
+        paymentMethodReference: method.reference,
+        amount: createMoney(1_000),
+        idempotencyKey: "charge-1",
+      }),
+    ).rejects.toThrow("payment method is revoked");
   });
 
   it("supports deterministic pending and declined outcomes", async () => {

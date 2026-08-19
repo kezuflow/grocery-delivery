@@ -9,6 +9,7 @@ import {
   type PaymentAttempt,
   type PaymentLedgerEntry,
   type PaymentMethod,
+  type PaymentMethodRevocation,
   type PaymentRepository,
   type Refund,
 } from "./payments.js";
@@ -42,6 +43,14 @@ export type RefundPaymentInput = Readonly<{
   now: string;
 }>;
 
+export type RevokePaymentMethodInput = Readonly<{
+  customerId: string;
+  customerReference: string;
+  paymentMethodId: string;
+  idempotencyKey: string;
+  now: string;
+}>;
+
 export type PaymentWebhookInput = Readonly<{
   providerName: string;
   event: VerifiedWebhook;
@@ -56,6 +65,7 @@ export type PaymentWebhookResult = Readonly<{
 export interface PaymentService {
   addPaymentMethod(input: AddPaymentMethodInput): Promise<PaymentMethod>;
   listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]>;
+  revokePaymentMethod(input: RevokePaymentMethodInput): Promise<PaymentMethod>;
   charge(input: ChargePaymentInput): Promise<PaymentAttempt>;
   refund(input: RefundPaymentInput): Promise<Refund>;
   handleWebhook(input: PaymentWebhookInput): Promise<PaymentWebhookResult>;
@@ -107,6 +117,62 @@ export class DefaultPaymentService implements PaymentService {
     return this.repository.listPaymentMethods(customerId);
   }
 
+  async revokePaymentMethod(input: RevokePaymentMethodInput): Promise<PaymentMethod> {
+    const idempotencyKey = normalizeKey(input.idempotencyKey);
+    const fingerprint = JSON.stringify({
+      customerId: input.customerId,
+      paymentMethodId: input.paymentMethodId,
+    });
+    const existingRevocation = await this.repository.findPaymentMethodRevocationByIdempotencyKey(
+      input.customerId,
+      idempotencyKey,
+    );
+    if (existingRevocation) {
+      assertFingerprint(existingRevocation.requestFingerprint, fingerprint);
+      const replay = await this.repository.findPaymentMethodById(
+        input.customerId,
+        existingRevocation.paymentMethodId,
+      );
+      if (!replay) {
+        throw new PaymentProviderError("PAYMENT_METHOD_NOT_FOUND", "payment method was not found");
+      }
+      return replay;
+    }
+
+    const method = await this.repository.findPaymentMethodById(
+      input.customerId,
+      input.paymentMethodId,
+    );
+    if (!method) {
+      throw new PaymentProviderError("PAYMENT_METHOD_NOT_FOUND", "payment method was not found");
+    }
+    if (method.status !== "active") {
+      throw new PaymentProviderError(
+        "PAYMENT_METHOD_ALREADY_REVOKED",
+        "payment method is already revoked",
+      );
+    }
+    if (this.provider.capabilities().paymentMethodRevocation) {
+      await this.provider.revokePaymentMethod({
+        customerReference: input.customerReference,
+        paymentMethodReference: method.providerReference,
+        idempotencyKey,
+      });
+    }
+    const revoked = createPaymentMethod({ ...method, status: "revoked", updatedAt: input.now });
+    const revocation: PaymentMethodRevocation = {
+      id: `payment-method-revocation:${input.customerId}:${idempotencyKey}`,
+      customerId: input.customerId,
+      paymentMethodId: method.id,
+      idempotencyKey,
+      requestFingerprint: fingerprint,
+      createdAt: input.now,
+      updatedAt: input.now,
+    };
+    await this.repository.saveRevokedPaymentMethod(revoked, revocation);
+    return revoked;
+  }
+
   async charge(input: ChargePaymentInput): Promise<PaymentAttempt> {
     const idempotencyKey = normalizeKey(input.idempotencyKey);
     const operationKey = `${input.customerId}:${idempotencyKey}`;
@@ -134,6 +200,7 @@ export class DefaultPaymentService implements PaymentService {
       assertFingerprint(existing.requestFingerprint, fingerprint);
       return existing;
     }
+
     const attempt = await this.repository.findPaymentAttemptById(input.paymentAttemptId);
     if (!attempt || attempt.customerId !== input.customerId) {
       throw new PaymentProviderError("PAYMENT_ATTEMPT_NOT_FOUND", "payment attempt was not found");
@@ -277,6 +344,14 @@ export class DefaultPaymentService implements PaymentService {
     if (existing) {
       assertFingerprint(existing.requestFingerprint, fingerprint);
       return existing;
+    }
+
+    const method = await this.repository.findPaymentMethodByProviderReference(
+      input.customerId,
+      input.paymentMethodReference,
+    );
+    if (method?.status === "revoked") {
+      throw new PaymentProviderError("PAYMENT_METHOD_REVOKED", "payment method is revoked");
     }
 
     const attempt = createPaymentAttempt({

@@ -4,6 +4,15 @@ export type PaymentAttemptStatus = "pending" | "succeeded" | "failed";
 export type RefundStatus = "succeeded" | "failed";
 export type PaymentMethodType = "card" | "bank_account" | "ewallet";
 export type PaymentMethodStatus = "active" | "revoked";
+export type PaymentMethodRevocation = Readonly<{
+  id: string;
+  customerId: string;
+  paymentMethodId: string;
+  idempotencyKey: string;
+  requestFingerprint: string;
+  createdAt: string;
+  updatedAt: string;
+}>;
 export type PaymentLedgerEntryType = "charge" | "refund" | "adjustment";
 export type PaymentLedgerDirection = "debit" | "credit";
 export type ReconciliationDiscrepancyKind =
@@ -92,8 +101,21 @@ export interface PaymentRepository {
     customerId: string,
     idempotencyKey: string,
   ): Promise<PaymentMethod | null>;
+  findPaymentMethodById(customerId: string, methodId: string): Promise<PaymentMethod | null>;
+  findPaymentMethodByProviderReference(
+    customerId: string,
+    providerReference: string,
+  ): Promise<PaymentMethod | null>;
+  findPaymentMethodRevocationByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMethodRevocation | null>;
   listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]>;
   savePaymentMethod(method: PaymentMethod): Promise<void>;
+  saveRevokedPaymentMethod(
+    method: PaymentMethod,
+    revocation: PaymentMethodRevocation,
+  ): Promise<void>;
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null>;
   findPaymentAttemptByIdempotencyKey(
     customerId: string,
@@ -149,6 +171,7 @@ export function createPaymentLedgerEntry(input: PaymentLedgerEntry): PaymentLedg
 
 export class InMemoryPaymentRepository implements PaymentRepository {
   private readonly paymentMethods = new Map<string, PaymentMethod>();
+  private readonly paymentMethodRevocations = new Map<string, PaymentMethodRevocation>();
   private readonly attempts = new Map<string, PaymentAttempt>();
   private readonly refunds = new Map<string, Refund>();
   private readonly ledger = new Map<string, PaymentLedgerEntry>();
@@ -174,8 +197,46 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     );
   }
 
+  findPaymentMethodById(customerId: string, methodId: string): Promise<PaymentMethod | null> {
+    const method = this.paymentMethods.get(methodId);
+    return Promise.resolve(method?.customerId === customerId ? method : null);
+  }
+
+  findPaymentMethodByProviderReference(
+    customerId: string,
+    providerReference: string,
+  ): Promise<PaymentMethod | null> {
+    return Promise.resolve(
+      [...this.paymentMethods.values()].find(
+        (method) =>
+          method.customerId === customerId && method.providerReference === providerReference,
+      ) ?? null,
+    );
+  }
+
+  findPaymentMethodRevocationByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMethodRevocation | null> {
+    return Promise.resolve(
+      [...this.paymentMethodRevocations.values()].find(
+        (revocation) =>
+          revocation.customerId === customerId && revocation.idempotencyKey === idempotencyKey,
+      ) ?? null,
+    );
+  }
+
   savePaymentMethod(method: PaymentMethod): Promise<void> {
     this.paymentMethods.set(method.id, createPaymentMethod(method));
+    return Promise.resolve();
+  }
+
+  saveRevokedPaymentMethod(
+    method: PaymentMethod,
+    revocation: PaymentMethodRevocation,
+  ): Promise<void> {
+    this.paymentMethods.set(method.id, createPaymentMethod(method));
+    this.paymentMethodRevocations.set(revocation.id, Object.freeze({ ...revocation }));
     return Promise.resolve();
   }
 

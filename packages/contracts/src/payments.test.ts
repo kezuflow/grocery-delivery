@@ -6,6 +6,7 @@ import {
   paymentMethodRequestSchema,
   paymentMethodListResponseSchema,
   paymentMethodResponseSchema,
+  paymentMethodRevocationRequestSchema,
   paymentRefundRequestSchema,
 } from "./payments.js";
 
@@ -47,6 +48,12 @@ describe("payment contracts", () => {
         meta: { correlationId: "corr-1" },
       }),
     ).toMatchObject({ data: { methods: [] } });
+  });
+
+  it("validates payment method revocation requests", () => {
+    expect(
+      paymentMethodRevocationRequestSchema.parse({ customerReference: "provider-customer-1" }),
+    ).toEqual({ customerReference: "provider-customer-1" });
   });
 
   it("validates public payment attempt responses", () => {

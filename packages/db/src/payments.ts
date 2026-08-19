@@ -7,6 +7,7 @@ import {
   type PaymentAttempt,
   type PaymentLedgerEntry,
   type PaymentMethod,
+  type PaymentMethodRevocation,
   type PaymentRepository,
   type PaymentWebhookEvent,
   type ReconciliationDiscrepancy,
@@ -36,6 +37,67 @@ export class D1PaymentRepository implements PaymentRepository {
       .all<PaymentMethodRow>();
     const row = rows.results[0];
     return row ? mapPaymentMethod(row) : null;
+  }
+
+  async findPaymentMethodById(customerId: string, methodId: string): Promise<PaymentMethod | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, provider_name, provider_reference, method_type,
+                status, idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_methods
+         WHERE customer_id = ? AND id = ?
+         LIMIT 1`,
+      )
+      .bind(customerId, methodId)
+      .all<PaymentMethodRow>();
+    const row = rows.results[0];
+    return row ? mapPaymentMethod(row) : null;
+  }
+
+  async findPaymentMethodByProviderReference(
+    customerId: string,
+    providerReference: string,
+  ): Promise<PaymentMethod | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, provider_name, provider_reference, method_type,
+                status, idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_methods
+         WHERE customer_id = ? AND provider_reference = ?
+         LIMIT 1`,
+      )
+      .bind(customerId, providerReference)
+      .all<PaymentMethodRow>();
+    const row = rows.results[0];
+    return row ? mapPaymentMethod(row) : null;
+  }
+
+  async findPaymentMethodRevocationByIdempotencyKey(
+    customerId: string,
+    idempotencyKey: string,
+  ): Promise<PaymentMethodRevocation | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, payment_method_id, idempotency_key,
+                request_fingerprint, created_at, updated_at
+         FROM payment_method_revocations
+         WHERE customer_id = ? AND idempotency_key = ?
+         LIMIT 1`,
+      )
+      .bind(customerId, idempotencyKey)
+      .all<PaymentMethodRevocationRow>();
+    const row = rows.results[0];
+    return row
+      ? {
+          id: row.id,
+          customerId: row.customer_id,
+          paymentMethodId: row.payment_method_id,
+          idempotencyKey: row.idempotency_key,
+          requestFingerprint: row.request_fingerprint,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }
+      : null;
   }
 
   async listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]> {
@@ -76,6 +138,37 @@ export class D1PaymentRepository implements PaymentRepository {
           value.requestFingerprint,
           value.createdAt,
           value.updatedAt,
+        ),
+    ]);
+  }
+
+  async saveRevokedPaymentMethod(
+    method: PaymentMethod,
+    revocation: PaymentMethodRevocation,
+  ): Promise<void> {
+    const value = createPaymentMethod(method);
+    await this.database.batch([
+      this.database
+        .prepare(
+          `UPDATE payment_methods SET status = ?, updated_at = ?
+           WHERE id = ? AND customer_id = ? AND status = 'active'`,
+        )
+        .bind(value.status, value.updatedAt, value.id, value.customerId),
+      this.database
+        .prepare(
+          `INSERT INTO payment_method_revocations (
+             id, customer_id, payment_method_id, idempotency_key,
+             request_fingerprint, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          revocation.id,
+          revocation.customerId,
+          revocation.paymentMethodId,
+          revocation.idempotencyKey,
+          revocation.requestFingerprint,
+          revocation.createdAt,
+          revocation.updatedAt,
         ),
     ]);
   }
@@ -446,6 +539,16 @@ type PaymentMethodRow = Record<string, unknown> & {
   provider_reference: string;
   method_type: PaymentMethod["type"];
   status: PaymentMethod["status"];
+  idempotency_key: string;
+  request_fingerprint: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type PaymentMethodRevocationRow = Record<string, unknown> & {
+  id: string;
+  customer_id: string;
+  payment_method_id: string;
   idempotency_key: string;
   request_fingerprint: string;
   created_at: string;

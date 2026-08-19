@@ -5,6 +5,7 @@ import { createMoney } from "@carbon/domain";
 import { FakePaymentProvider } from "./fake-provider.js";
 import { DefaultPaymentService } from "./orchestration.js";
 import { InMemoryPaymentRepository } from "./payments.js";
+import { PaymentProviderError } from "./provider.js";
 
 describe("payment orchestration", () => {
   const chargeInput = {
@@ -44,6 +45,134 @@ describe("payment orchestration", () => {
     });
     expect(JSON.stringify(method)).not.toContain("tok_private_123");
     await expect(repository.listPaymentMethods("customer-1")).resolves.toHaveLength(1);
+  });
+
+  it("revokes an owned payment method idempotently and excludes it from active methods", async () => {
+    const repository = new InMemoryPaymentRepository();
+    const provider = new FakePaymentProvider({ now: () => new Date(chargeInput.now) });
+    const service = new DefaultPaymentService(repository, provider);
+    const method = await service.addPaymentMethod({
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      type: "card",
+      token: "tok_private_123",
+      idempotencyKey: "method-key-1",
+      now: chargeInput.now,
+    });
+    const input = {
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      paymentMethodId: method.id,
+      idempotencyKey: "revoke-key-1",
+      now: "2026-08-20T10:01:00.000Z",
+    };
+
+    const revoked = await service.revokePaymentMethod(input);
+    const replay = await service.revokePaymentMethod(input);
+
+    expect(revoked).toEqual(replay);
+    expect(revoked.status).toBe("revoked");
+    await expect(repository.listPaymentMethods("customer-1")).resolves.toEqual([]);
+    await expect(
+      service.charge({
+        ...chargeInput,
+        paymentMethodReference: method.providerReference,
+        idempotencyKey: "charge-revoked-1",
+      }),
+    ).rejects.toMatchObject({ code: "PAYMENT_METHOD_REVOKED" });
+  });
+
+  it("rejects revocation ownership violations and idempotency conflicts", async () => {
+    const repository = new InMemoryPaymentRepository();
+    const service = new DefaultPaymentService(repository, new FakePaymentProvider());
+    const first = await service.addPaymentMethod({
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      type: "card",
+      token: "tok_1",
+      idempotencyKey: "method-1",
+      now: chargeInput.now,
+    });
+    const second = await service.addPaymentMethod({
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      type: "ewallet",
+      token: "tok_2",
+      idempotencyKey: "method-2",
+      now: chargeInput.now,
+    });
+    await expect(
+      service.revokePaymentMethod({
+        customerId: "customer-2",
+        customerReference: "provider-customer-2",
+        paymentMethodId: first.id,
+        idempotencyKey: "revoke-owned",
+        now: chargeInput.now,
+      }),
+    ).rejects.toMatchObject({ code: "PAYMENT_METHOD_NOT_FOUND" });
+    await service.revokePaymentMethod({
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      paymentMethodId: first.id,
+      idempotencyKey: "revoke-shared",
+      now: chargeInput.now,
+    });
+    await expect(
+      service.revokePaymentMethod({
+        customerId: "customer-1",
+        customerReference: "provider-customer-1",
+        paymentMethodId: second.id,
+        idempotencyKey: "revoke-shared",
+        now: chargeInput.now,
+      }),
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REUSED" });
+  });
+
+  it("keeps provider failures active and supports local-only revocation", async () => {
+    const failedRepository = new InMemoryPaymentRepository();
+    const failingProvider = new FailingRevocationProvider();
+    const failedService = new DefaultPaymentService(failedRepository, failingProvider);
+    const failedMethod = await failedService.addPaymentMethod({
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      type: "card",
+      token: "tok_1",
+      idempotencyKey: "method-failure",
+      now: chargeInput.now,
+    });
+
+    await expect(
+      failedService.revokePaymentMethod({
+        customerId: "customer-1",
+        customerReference: "provider-customer-1",
+        paymentMethodId: failedMethod.id,
+        idempotencyKey: "revoke-failure",
+        now: chargeInput.now,
+      }),
+    ).rejects.toMatchObject({ code: "PROVIDER_UNAVAILABLE" });
+    await expect(failedRepository.listPaymentMethods("customer-1")).resolves.toHaveLength(1);
+
+    const localRepository = new InMemoryPaymentRepository();
+    const localProvider = new LocalOnlyRevocationProvider();
+    const localService = new DefaultPaymentService(localRepository, localProvider);
+    const localMethod = await localService.addPaymentMethod({
+      customerId: "customer-1",
+      customerReference: "provider-customer-1",
+      type: "card",
+      token: "tok_2",
+      idempotencyKey: "method-local",
+      now: chargeInput.now,
+    });
+    await expect(
+      localService.revokePaymentMethod({
+        customerId: "customer-1",
+        customerReference: "provider-customer-1",
+        paymentMethodId: localMethod.id,
+        idempotencyKey: "revoke-local",
+        now: chargeInput.now,
+      }),
+    ).resolves.toMatchObject({ status: "revoked" });
+    expect(localProvider.revocationCalls).toBe(0);
   });
 
   it("charges once, replays the attempt, and writes one charge ledger entry", async () => {
@@ -122,3 +251,22 @@ describe("payment orchestration", () => {
     expect(repository.ledgerEntries).toHaveLength(2);
   });
 });
+
+class FailingRevocationProvider extends FakePaymentProvider {
+  override revokePaymentMethod(): Promise<never> {
+    return Promise.reject(new PaymentProviderError("PROVIDER_UNAVAILABLE", "provider unavailable"));
+  }
+}
+
+class LocalOnlyRevocationProvider extends FakePaymentProvider {
+  revocationCalls = 0;
+
+  override capabilities() {
+    return { ...super.capabilities(), paymentMethodRevocation: false };
+  }
+
+  override revokePaymentMethod(): Promise<never> {
+    this.revocationCalls += 1;
+    return Promise.reject(new Error("should not be called"));
+  }
+}
