@@ -42,6 +42,7 @@ import {
   procurementResponseSchema,
   procurementShortageRequestSchema,
   procurementSubstitutionRequestSchema,
+  operationalProjectionResponseSchema,
   type DeliveryWindowsResponse,
   type DeliveryAddressResponse,
   type CurrentSessionResponse,
@@ -85,6 +86,7 @@ import {
   D1DeliveryMediaRepository,
   D1DispatchRepository,
   D1ProcurementRepository,
+  D1OperationalProjectionRepository,
   D1OrderRepository,
   D1OutboxPublisher,
   D1PaymentRepository,
@@ -112,6 +114,7 @@ import {
   type DeliveryMediaRecord,
   type DispatchRepository,
   type ProcurementRepository,
+  type OperationalProjectionRepository,
 } from "@carbon/db";
 import {
   addMoney,
@@ -178,6 +181,7 @@ export type ApiOptions = Readonly<{
   deliveryWindowRepository?: DeliveryWindowRepository;
   procurementRepository?: ProcurementRepository;
   dispatchRepository?: DispatchRepository;
+  operationalProjectionRepository?: OperationalProjectionRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
   deliveryMediaRepository?: DeliveryMediaRepository;
@@ -271,6 +275,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/delivery-windows" ||
       context.req.path.startsWith("/api/v1/admin/procurement") ||
       context.req.path.startsWith("/api/v1/admin/dispatch") ||
+      context.req.path === "/api/v1/admin/operations/projection" ||
       context.req.path.startsWith("/api/v1/deliveryman/") ||
       context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
@@ -1232,6 +1237,42 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       200,
     );
   });
+  app.get("/api/v1/admin/operations/projection", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.operationalProjectionRepository ??
+      (bindings.DB ? new D1OperationalProjectionRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "reporting")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "reporting administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "OPERATIONS_UNAVAILABLE",
+          "operational projections are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const cycleId = assignWeeklyCycle(now()).id;
+    const body = {
+      data: await repository.get(cycleId, now().toISOString()),
+      meta: { correlationId: context.get("correlationId") },
+    };
+    operationalProjectionResponseSchema.parse(body);
+    context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
   app.get("/api/v1/admin/dispatch", async (context) => {
     const bindings = context.env ?? {};
     const repository =

@@ -81,3 +81,29 @@ export const dispatchAssignmentRequestSchema = z.object({
 });
 export type ProcurementResponse = z.infer<typeof procurementResponseSchema>;
 export type DispatchResponse = z.infer<typeof dispatchResponseSchema>;
+
+export const operationalProjectionResponseSchema = z.object({
+  data: z.object({
+    cycleId: z.string().min(1),
+    generatedAt: z.string().datetime(),
+    outbox: z.object({
+      pendingCount: z.number().int().nonnegative(),
+      oldestPendingAt: z.string().datetime().nullable(),
+      deadLetteredCount: z.number().int().nonnegative(),
+    }),
+    delivery: z.object({
+      totalAssignments: z.number().int().nonnegative(),
+      assigned: z.number().int().nonnegative(),
+      outForDelivery: z.number().int().nonnegative(),
+      delivered: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
+    }),
+    procurement: z.object({
+      openShortages: z.number().int().nonnegative(),
+      exceptionalManifests: z.number().int().nonnegative(),
+    }),
+  }),
+  meta: responseMetaSchema,
+});
+
+export type OperationalProjectionResponse = z.infer<typeof operationalProjectionResponseSchema>;

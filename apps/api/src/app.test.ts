@@ -8,6 +8,7 @@ import {
   deliveryAddressResponseSchema,
   deliveryWindowsResponseSchema,
   dispatchResponseSchema,
+  operationalProjectionResponseSchema,
   deliverymanAssignmentsResponseSchema,
   deliveryEventResponseSchema,
   deliveryTrackingResponseSchema,
@@ -61,6 +62,7 @@ import {
   InMemoryProcurementRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
+  InMemoryOperationalProjectionRepository,
 } from "@carbon/db";
 import { createApi } from "./app.js";
 
@@ -338,6 +340,15 @@ describe("API worker", () => {
       sink: () => undefined,
       procurementRepository,
       dispatchRepository,
+      operationalProjectionRepository: new InMemoryOperationalProjectionRepository({
+        outbox: {
+          pendingCount: 1,
+          oldestPendingAt: "2026-08-20T09:00:00.000Z",
+          deadLetteredCount: 0,
+        },
+        delivery: { totalAssignments: 1, assigned: 1, outForDelivery: 0, delivered: 0, failed: 0 },
+        procurement: { openShortages: 1, exceptionalManifests: 0 },
+      }),
       deliveryWindowRepository: new InMemoryDeliveryWindowRepository([
         {
           id: "window-1",
@@ -358,7 +369,7 @@ describe("API worker", () => {
               id: "session-ops",
               userId: "admin-ops",
               role: "admin",
-              adminPermissions: ["procurement", "packing", "dispatch"],
+              adminPermissions: ["procurement", "packing", "dispatch", "reporting"],
               customerId: null,
               expiresAt: "2026-08-21T00:00:00.000Z",
               revokedAt: null,
@@ -383,6 +394,30 @@ describe("API worker", () => {
     });
     expect(dispatch.status).toBe(200);
     dispatchResponseSchema.parse(await dispatch.json());
+    const projection = await operationsApp.request("/api/v1/admin/operations/projection");
+    expect(projection.status).toBe(200);
+    const projectionBody = operationalProjectionResponseSchema.parse(await projection.json());
+    expect(projectionBody.data.cycleId).toBe(cycleId);
+
+    const deniedApp = createApi({
+      sink: () => undefined,
+      operationalProjectionRepository: new InMemoryOperationalProjectionRepository(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-dispatch",
+              userId: "admin-dispatch",
+              role: "admin",
+              adminPermissions: ["dispatch"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    expect((await deniedApp.request("/api/v1/admin/operations/projection")).status).toBe(403);
   });
 
   it("scopes deliveryman assignments and deduplicates event retries", async () => {
