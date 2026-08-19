@@ -157,6 +157,15 @@ Scope:
 - Add customer payment-method setup, checkout authorization, recurring weekly charging, retries,
   failed-payment/past-due states, webhook queue processing, reconciliation, and payment history.
 - Add customer payment UI and finance-admin refund/partial-refund workflows.
+- Add a server-owned promotion and discount engine for coupon codes and automatic offers. Support
+  fixed PHP-centavo discounts, percentage discounts with a maximum cap, free-delivery discounts,
+  first-order/first-week eligibility, minimum subtotals, plan/SKU/category eligibility, campaign
+  budgets, total and per-customer redemption limits, scheduling, pause/expire/archive states, and
+  explicit non-stacking rules.
+- Add customer coupon apply/remove controls that submit only a normalized code. Resolve eligibility,
+  savings, and final totals server-side and revalidate the promotion during order locking.
+- Require marketing creation and finance approval for price-affecting campaigns, with emergency pause
+  and redemption reporting.
 
 Acceptance checks:
 
@@ -165,6 +174,11 @@ Acceptance checks:
 - Provider retries and webhook replays are idempotent and observable.
 - Production configuration rejects `disabled` and `fake` providers for launch environments.
 - Refunds verify permissions, ownership, amount bounds, idempotency, and durable provider state.
+- Invalid, expired, ineligible, exhausted, paused, and conflicting coupon codes return stable errors;
+  redemption is idempotent and cannot exceed campaign or customer limits.
+- Automatic offers and coupon codes cannot be stacked unless an explicit server-owned rule allows it.
+- Checkout responses expose original subtotal, discount, delivery fee, credit, and final total from
+  server calculation only; the browser never submits a discount amount.
 
 ### Slice 016: Immutable order fulfillment and cutoff enforcement
 
@@ -172,6 +186,8 @@ Scope:
 
 - Snapshot delivery address, delivery window, cycle, plan/credit, fees, and payment state into the
   locked order.
+- Snapshot every applied promotion/coupon reference, promotion rule version, and discount amount in
+  the locked order so later campaign edits cannot change historical totals.
 - Enforce the weekly cutoff server-side and prevent post-lock edits from changing fulfillment facts.
 - Require packed, payable, cycle-matching orders before dispatch assignment.
 
@@ -181,6 +197,8 @@ Acceptance checks:
 - Orders after the cutoff receive a deterministic error and do not clear the cart.
 - Dispatch rejects unpacked, unpaid, cross-cycle, or window-mismatched orders.
 - Migration and repository tests cover snapshot restoration and concurrent idempotent locking.
+- Refunds and partial refunds use the immutable paid amount and recorded discount allocation rather
+  than recalculating against the current promotion configuration.
 
 ### Slice 017: Admin operations console
 
@@ -189,6 +207,19 @@ Scope:
 - Build authenticated admin screens for catalog/pricing, delivery windows/capacity, customer and
   subscription support, procurement, shortages/substitutions, packing, dispatch, exceptions,
   refunds, audit history, projections, and alerts.
+- Add a marketing administration area for draft, scheduled, active, expired, paused, and archived
+  campaigns; coupon/automatic-offer rules; finance approval; emergency pause; redemption counts;
+  remaining budget; and audit history.
+- Add banner content management with home-hero, storefront-strip, and account-banner placements;
+  title, copy, CTA label/destination, accessible alt text, priority, start/end schedule, desktop and
+  mobile assets, preview, publish, replace, and archive actions.
+- Upload promotional assets through a dedicated R2 media boundary using signed URLs, immutable object
+  keys, content-type/file-size/dimension validation, orphan cleanup, retention rules, and safe public
+  download URLs. Do not reuse delivery proof media authorization or object paths.
+- Expose a public active-promotions read endpoint with server-resolved schedule, placement, priority,
+  and cache version/ETag behavior. The storefront renders a safe fallback when media is unavailable.
+- Record bounded impression/click analytics for published campaigns without allowing client-provided
+  prices, eligibility, or campaign status.
 - Use existing permission-scoped API contracts; do not duplicate business rules in the web app.
 
 Acceptance checks:
@@ -196,6 +227,12 @@ Acceptance checks:
 - Authorized administrators can complete a full weekly operations cycle through the UI.
 - Each screen shows server-owned status, errors, correlation IDs, and actionable empty states.
 - Permission boundaries are tested for every admin area; customers cannot access admin data.
+- Marketing users can draft and preview campaigns, while only authorized finance users can approve
+  price-affecting rules. Publishing and emergency pause actions are audited with actor and timestamp.
+- Banner uploads reject unsupported media, oversized files, invalid dimensions, and unsafe CTA
+  destinations before publication; replacing an asset does not serve stale content.
+- Public promotion reads expose only currently active, approved campaigns and never reveal draft,
+  paused, expired, budget-exhausted, or audience-ineligible campaigns.
 
 ### Slice 018: Deployable jobs, queues, workflows, and notifications
 
