@@ -162,6 +162,7 @@ describe("API worker", () => {
 
   it("rejects plan writes without pricing permission", async () => {
     const adminApp = createApi({
+      now: () => new Date("2026-08-18T01:00:00.000Z"),
       sink: () => undefined,
       planRepository: new InMemoryPlanReader(),
       sessionResolver: {

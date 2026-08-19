@@ -41,6 +41,21 @@ Run the API Worker locally in a second terminal:
 pnpm dev:api
 ```
 
+The API Worker uses one D1 database per Wrangler environment. Apply the existing
+forward-only migrations before using persistent catalog, identity, commerce, or
+payment routes:
+
+```powershell
+pnpm --filter @carbon/api db:migrate:local
+pnpm --filter @carbon/api db:migrate:development
+pnpm --filter @carbon/api db:migrate:staging
+pnpm --filter @carbon/api db:migrate:production
+```
+
+The remote database IDs are committed in `apps/api/wrangler.jsonc`. Production
+secrets and payment-provider configuration remain deployment-specific and are
+not stored in the repository.
+
 Its health endpoints are `/health` and `/api/v1/health`.
 
 This builds `.open-next` and starts the app through Wrangler. The first real

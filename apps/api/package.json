@@ -6,6 +6,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "wrangler dev",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:development": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:staging": "wrangler d1 migrations apply DB --env staging --remote",
+    "db:migrate:production": "wrangler d1 migrations apply DB --env production --remote",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:production": "wrangler deploy --env production",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",

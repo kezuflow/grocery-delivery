@@ -7,6 +7,14 @@
   "observability": {
     "enabled": true,
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "carbon-food-delivery-development",
+      "database_id": "7c4d107e-87dc-43ed-9ea2-52f0435aa9aa",
+      "migrations_dir": "../../packages/db/migrations",
+    },
+  ],
   "vars": {
     "APP_ENV": "development",
     "VERSION": "0.0.0-dev",
@@ -15,6 +23,14 @@
   "env": {
     "staging": {
       "name": "carbon-food-delivery-api-staging",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "carbon-food-delivery-staging",
+          "database_id": "05a1e958-5e7d-451b-9cc3-dfab99778900",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+      ],
       "vars": {
         "APP_ENV": "staging",
         "DELIVERY_FEE_CENTAVOS": "0",
@@ -22,6 +38,14 @@
     },
     "production": {
       "name": "carbon-food-delivery-api-production",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "carbon-food-delivery-production",
+          "database_id": "8472f405-c722-46e0-ba96-cfec387f283e",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+      ],
       "vars": {
         "APP_ENV": "production",
         "DELIVERY_FEE_CENTAVOS": "0",
