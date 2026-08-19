@@ -6,6 +6,8 @@ import {
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
+  deliveryWindowSelectionRequestSchema,
+  deliveryWindowsResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
   plansListResponseSchema,
@@ -17,6 +19,8 @@ import {
   type CurrentSessionResponse,
   type DeliveryAddressInput,
   type DeliveryAddressResponse,
+  type DeliveryWindowSelectionRequest,
+  type DeliveryWindowsResponse,
   type OrderCreateRequest,
   type OrderResponse,
   type PlansListResponse,
@@ -81,6 +85,23 @@ export function createApiClient(transport: ApiTransport) {
       const headers = new Headers(init?.headers);
       headers.set("content-type", "application/json");
       return getJson(transport, "/api/v1/delivery-address", deliveryAddressResponseSchema, {
+        ...init,
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    },
+    getDeliveryWindows(init?: RequestInit): Promise<DeliveryWindowsResponse> {
+      return getJson(transport, "/api/v1/delivery-windows", deliveryWindowsResponseSchema, init);
+    },
+    selectDeliveryWindow(
+      input: DeliveryWindowSelectionRequest,
+      init?: RequestInit,
+    ): Promise<DeliveryWindowsResponse> {
+      const payload = deliveryWindowSelectionRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return getJson(transport, "/api/v1/delivery-windows", deliveryWindowsResponseSchema, {
         ...init,
         method: "PUT",
         headers,

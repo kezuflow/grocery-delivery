@@ -4,6 +4,7 @@ import type {
   CartResponse,
   CatalogListResponse,
   DeliveryAddressResponse,
+  DeliveryWindowsResponse,
   PlansListResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
@@ -14,6 +15,7 @@ import { createRuntimeApiTransport } from "./api/runtime";
 export type CustomerAccountData = Readonly<{
   subscription: SubscriptionResponse["data"] | null;
   deliveryAddress: DeliveryAddressResponse["data"];
+  deliveryWindows: DeliveryWindowsResponse["data"];
   cart: CartResponse["data"];
   plans: PlansListResponse["data"]["plans"];
   catalog: CatalogListResponse["data"];
@@ -39,19 +41,22 @@ export async function resolveCustomerAccount(
   const init: RequestInit = { headers: { cookie: cookieHeader } };
 
   try {
-    const [subscription, cart, deliveryAddress, plans, catalog] = await Promise.all([
-      client.getCurrentSubscription(init).catch((error: unknown) => {
-        if (error instanceof ApiClientError && error.status === 404) return null;
-        throw error;
-      }),
-      client.getCart(init),
-      client.getDeliveryAddress(init),
-      client.listPlans(),
-      client.listCatalog(100),
-    ]);
+    const [subscription, cart, deliveryAddress, deliveryWindows, plans, catalog] =
+      await Promise.all([
+        client.getCurrentSubscription(init).catch((error: unknown) => {
+          if (error instanceof ApiClientError && error.status === 404) return null;
+          throw error;
+        }),
+        client.getCart(init),
+        client.getDeliveryAddress(init),
+        client.getDeliveryWindows(init),
+        client.listPlans(),
+        client.listCatalog(100),
+      ]);
     return {
       subscription: subscription?.data ?? null,
       deliveryAddress: deliveryAddress.data,
+      deliveryWindows: deliveryWindows.data,
       cart: cart.data,
       plans: plans.data.plans,
       catalog: catalog.data,
@@ -61,6 +66,7 @@ export async function resolveCustomerAccount(
     return {
       subscription: null,
       deliveryAddress: null,
+      deliveryWindows: { cycleId: "", windows: [], selectedWindowId: null },
       cart: emptyCart,
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },

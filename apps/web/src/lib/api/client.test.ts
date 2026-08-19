@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|subscription\/actions|orders)$/,
+        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|subscription\/actions|orders)$/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));

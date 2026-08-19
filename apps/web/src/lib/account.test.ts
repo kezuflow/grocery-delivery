@@ -50,6 +50,14 @@ describe("customer account hydration", () => {
       if (url.pathname === "/api/v1/delivery-address") {
         return Promise.resolve(Response.json({ data: null, meta }));
       }
+      if (url.pathname === "/api/v1/delivery-windows") {
+        return Promise.resolve(
+          Response.json({
+            data: { cycleId: "cycle-1", windows: [], selectedWindowId: null },
+            meta,
+          }),
+        );
+      }
       if (url.pathname === "/api/v1/plans") {
         return Promise.resolve(Response.json({ data: { plans: [] }, meta }));
       }
@@ -94,6 +102,14 @@ describe("customer account hydration", () => {
       }
       if (url.pathname === "/api/v1/delivery-address") {
         return Promise.resolve(Response.json({ data: null, meta }));
+      }
+      if (url.pathname === "/api/v1/delivery-windows") {
+        return Promise.resolve(
+          Response.json({
+            data: { cycleId: "cycle-1", windows: [], selectedWindowId: null },
+            meta,
+          }),
+        );
       }
       if (url.pathname === "/api/v1/plans") {
         return Promise.resolve(Response.json({ data: { plans: [] }, meta }));

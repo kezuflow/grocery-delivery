@@ -127,6 +127,43 @@ a {
   margin-top: 20px;
 }
 
+.delivery-window-selector {
+  margin-top: 22px;
+}
+
+.delivery-window-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.delivery-window-option {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  text-align: left;
+}
+
+.delivery-window-option span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.delivery-window-option.selected {
+  background: var(--accent);
+  border-color: var(--accent-dark);
+}
+
+.delivery-window-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .account-panel,
 .account-state {
   border-top: 1px solid var(--line);
@@ -780,6 +817,10 @@ h3 {
   }
 
   .address-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-window-list {
     grid-template-columns: 1fr;
   }
 

@@ -25,6 +25,9 @@ import {
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
+  deliveryWindowSelectionRequestSchema,
+  deliveryWindowsResponseSchema,
+  type DeliveryWindowsResponse,
   type DeliveryAddressResponse,
   type CurrentSessionResponse,
   planAdminUpsertRequestSchema,
@@ -61,6 +64,7 @@ import {
   D1CartRepository,
   D1CatalogReader,
   D1DeliveryAddressRepository,
+  D1DeliveryWindowRepository,
   D1OrderRepository,
   D1OutboxPublisher,
   D1PaymentRepository,
@@ -81,6 +85,7 @@ import {
   type OrderRepository,
   type SubscriptionReader,
   type DeliveryAddressRepository,
+  type DeliveryWindowRepository,
 } from "@carbon/db";
 import {
   addMoney,
@@ -136,6 +141,7 @@ export type ApiOptions = Readonly<{
   catalogCheckoutReader?: CatalogCheckoutReader;
   cartRepository?: CartRepository;
   deliveryAddressRepository?: DeliveryAddressRepository;
+  deliveryWindowRepository?: DeliveryWindowRepository;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -221,6 +227,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/subscription/actions" ||
       context.req.path === "/api/v1/cart" ||
       context.req.path === "/api/v1/delivery-address" ||
+      context.req.path === "/api/v1/delivery-windows" ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
@@ -777,6 +784,123 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       return context.json(
         errorResponse("INVALID_DELIVERY_ADDRESS", message, context.get("correlationId")),
         400,
+      );
+    }
+  });
+
+  app.get("/api/v1/delivery-windows", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryWindowRepository ??
+      (bindings.DB ? new D1DeliveryWindowRepository(bindings.DB) : undefined);
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_WINDOWS_UNAVAILABLE",
+          "delivery windows are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const cycle = assignWeeklyCycle(now());
+    const windows = await repository.listForCycle(cycle.id);
+    const selected = await repository.findSelection(session.customerId, cycle.id);
+    const body: DeliveryWindowsResponse = {
+      data: {
+        cycleId: cycle.id,
+        windows: windows.map((window) => ({
+          id: window.id,
+          cycleId: window.cycleId,
+          label: window.label,
+          startsAt: window.startsAt,
+          endsAt: window.endsAt,
+          capacity: window.capacity,
+          reserved: window.reserved,
+          remaining: window.remaining,
+          active: window.active,
+        })),
+        selectedWindowId: selected?.windowId ?? null,
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliveryWindowsResponseSchema.parse(body);
+    context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
+  app.put("/api/v1/delivery-windows", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryWindowRepository ??
+      (bindings.DB ? new D1DeliveryWindowRepository(bindings.DB) : undefined);
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_WINDOWS_UNAVAILABLE",
+          "delivery windows are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const input = deliveryWindowSelectionRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_DELIVERY_WINDOW",
+          "delivery window selection is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const cycle = assignWeeklyCycle(now());
+    try {
+      await repository.select({
+        customerId: session.customerId,
+        cycleId: cycle.id,
+        windowId: input.data.windowId,
+        selectedAt: now().toISOString(),
+      });
+      const selected = await repository.findSelection(session.customerId, cycle.id);
+      if (!selected) throw new Error("delivery window selection was not saved");
+      return context.json(
+        {
+          data: { cycleId: cycle.id, windows: [], selectedWindowId: selected.windowId },
+          meta: { correlationId: context.get("correlationId") },
+        },
+        200,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "delivery window selection failed";
+      return context.json(
+        errorResponse("DELIVERY_WINDOW_UNAVAILABLE", message, context.get("correlationId")),
+        409,
       );
     }
   });

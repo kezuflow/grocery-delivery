@@ -34,7 +34,7 @@ conversation history or temporary handoff files.
 | 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
 | 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
 | 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                      |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | next     | Address and geofence complete; weekly windows remain                 |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete              |
 | 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
 | 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
 | 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
@@ -295,6 +295,31 @@ geofencing rejects out-of-area addresses before persistence and blocks checkout 
 currently serviceable address. Migration `0015` adds the D1 address record. Focused tests, the
 production web build, and all 53 `pnpm check` tasks pass. The next 006 increment is weekly delivery
 windows and capacity.
+
+### Current increment: Weekly delivery windows and capacity
+
+Scope:
+
+- Add validated weekly delivery windows and customer-scoped selections with D1 persistence.
+- Add protected GET/PUT routes that derive the active cycle and customer ownership server-side.
+- Enforce per-window capacity while allowing a customer to change their current-cycle selection.
+- Render available Saturday windows, remaining capacity, and the selected window in the account.
+
+Acceptance checks:
+
+- The browser submits only a window ID; customer ownership and cycle assignment come from the server.
+- Inactive, missing, cross-cycle, and full windows cannot be selected.
+- Capacity counts exclude the customer's existing selection when changing windows and cannot exceed
+  the configured window capacity.
+- Window reads expose server-derived reserved and remaining capacity and the customer's selection.
+- Focused domain, contract, repository, API, and web tests, the production web build, and `pnpm check`
+  pass.
+
+Completion record: all acceptance checks passed. Customers can view active windows for the
+server-assigned weekly cycle and reserve one through protected API routes. Migration `0016` adds
+delivery windows and one customer selection per cycle. Capacity and ownership remain server-owned,
+with an atomic guarded D1 write preventing full-window selection. Slice 006 is complete; the next
+slice is procurement, shortages, substitutions, and packing.
 
 ### 006-010: Operational delivery
 

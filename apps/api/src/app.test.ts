@@ -6,6 +6,7 @@ import {
   catalogListResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
+  deliveryWindowsResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
@@ -45,6 +46,7 @@ import {
   createDefaultCatalogReader,
   InMemoryCartRepository,
   InMemoryDeliveryAddressRepository,
+  InMemoryDeliveryWindowRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
 } from "@carbon/db";
@@ -450,6 +452,53 @@ describe("API worker", () => {
     const unavailableBody = apiErrorResponseSchema.parse(await unavailable.json());
     expect(unavailable.status).toBe(409);
     expect(unavailableBody.error.code).toBe("DELIVERY_ADDRESS_UNSERVICEABLE");
+  });
+
+  it("lists and selects a current weekly delivery window", async () => {
+    const repository = new InMemoryDeliveryWindowRepository([
+      {
+        id: "window-1",
+        cycleId: "cycle-2026-08-22",
+        label: "Saturday morning",
+        startsAt: "2026-08-22T00:00:00.000Z",
+        endsAt: "2026-08-22T04:00:00.000Z",
+        capacity: 10,
+        active: true,
+        createdAt: "2026-08-19T00:00:00.000Z",
+        updatedAt: "2026-08-19T00:00:00.000Z",
+      },
+    ]);
+    const windowsApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      deliveryWindowRepository: repository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const listed = await windowsApp.request("/api/v1/delivery-windows");
+    const listedBody = deliveryWindowsResponseSchema.parse(await listed.json());
+    expect(listed.status).toBe(200);
+    expect(listedBody.data.windows[0]?.remaining).toBe(10);
+    const selected = await windowsApp.request("/api/v1/delivery-windows", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ windowId: "window-1" }),
+    });
+    const selectedBody = deliveryWindowsResponseSchema.parse(await selected.json());
+    expect(selected.status).toBe(200);
+    expect(selectedBody.data.selectedWindowId).toBe("window-1");
   });
 
   it("persists customer carts and resolves prices from the catalog", async () => {

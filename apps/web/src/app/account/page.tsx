@@ -6,6 +6,7 @@ import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
 import { CartEditor } from "./cart-editor";
 import { DeliveryAddressEditor } from "./delivery-address-editor";
+import { DeliveryWindowSelector } from "./delivery-window-selector";
 import { PlaceOrderButton } from "./place-order-button";
 import { SubscriptionActions } from "./subscription-actions";
 
@@ -145,6 +146,13 @@ export default async function AccountPage() {
               </span>
             </div>
             <DeliveryAddressEditor initialAddress={account.deliveryAddress} />
+          </article>
+          <article className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
+              <p className="eyebrow">Delivery window</p>
+              <span>{account.deliveryWindows.selectedWindowId ? "selected" : "not selected"}</span>
+            </div>
+            <DeliveryWindowSelector initial={account.deliveryWindows} />
           </article>
         </section>
       )}

@@ -15,6 +15,25 @@ export type DeliveryAddress = Readonly<{
   updatedAt: string;
 }>;
 
+export type DeliveryWindow = Readonly<{
+  id: string;
+  cycleId: string;
+  label: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type DeliveryWindowSelection = Readonly<{
+  customerId: string;
+  cycleId: string;
+  windowId: string;
+  selectedAt: string;
+}>;
+
 export function createDeliveryAddress(input: DeliveryAddress): DeliveryAddress {
   assertText(input.customerId, "address customer id");
   assertText(input.recipientName, "recipient name");
@@ -35,6 +54,40 @@ export function createDeliveryAddress(input: DeliveryAddress): DeliveryAddress {
   if (input.instructions !== null) assertLength(input.instructions, 500, "delivery instructions");
   assertIsoTimestamp(input.createdAt, "address createdAt");
   assertIsoTimestamp(input.updatedAt, "address updatedAt");
+  return Object.freeze({ ...input });
+}
+
+export function createDeliveryWindow(input: DeliveryWindow): DeliveryWindow {
+  assertText(input.id, "delivery window id");
+  assertText(input.cycleId, "delivery window cycle id");
+  assertText(input.label, "delivery window label");
+  assertLength(input.label, 120, "delivery window label");
+  assertIsoTimestamp(input.startsAt, "delivery window startsAt");
+  assertIsoTimestamp(input.endsAt, "delivery window endsAt");
+  if (input.startsAt >= input.endsAt) {
+    throw new DomainValidationError(
+      "INVALID_DELIVERY_WINDOW",
+      "delivery window must end after it starts",
+    );
+  }
+  if (!Number.isSafeInteger(input.capacity) || input.capacity < 1 || input.capacity > 100_000) {
+    throw new DomainValidationError(
+      "INVALID_DELIVERY_CAPACITY",
+      "delivery window capacity is invalid",
+    );
+  }
+  assertIsoTimestamp(input.createdAt, "delivery window createdAt");
+  assertIsoTimestamp(input.updatedAt, "delivery window updatedAt");
+  return Object.freeze({ ...input });
+}
+
+export function createDeliveryWindowSelection(
+  input: DeliveryWindowSelection,
+): DeliveryWindowSelection {
+  assertText(input.customerId, "delivery selection customer id");
+  assertText(input.cycleId, "delivery selection cycle id");
+  assertText(input.windowId, "delivery selection window id");
+  assertIsoTimestamp(input.selectedAt, "delivery selection selectedAt");
   return Object.freeze({ ...input });
 }
 
