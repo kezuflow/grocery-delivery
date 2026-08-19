@@ -26,23 +26,23 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status      | Commit / resume point                                                             |
-| ----- | --------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete    | Existing history through `c3da0bc`                                                |
-| 001   | API environment database bindings                               | complete    | `03ef3bc`                                                                         |
-| 002   | API runtime composition                                         | complete    | `5f6a64e`                                                                         |
-| 003   | Payment-method revocation administration                        | in progress | Implementing against existing payment-method persistence and protected API routes |
-| 004   | Better Auth production integration                              | planned     | Requires a concrete Better Auth runtime/configuration decision                    |
-| 005   | Web-to-API service binding and customer flows                   | planned     | Depends on stable API runtime and auth configuration                              |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned     | Depends on customer identity and order snapshots                                  |
-| 007   | Procurement, shortages, substitutions, and packing              | planned     | Depends on delivery cycles and paid-order projections                             |
-| 008   | Dispatch, route planning, and driver assignments                | planned     | Depends on packages, windows, capacity, and provider-neutral routing              |
-| 009   | Deliveryman PWA and offline event sync                          | planned     | Depends on dispatch assignments and delivery events                               |
-| 010   | Customer tracking, notifications, and delivery media            | planned     | Depends on delivery events, outbox jobs, and R2 policies                          |
-| 011   | Jobs, workflows, retries, and operational projections           | planned     | Coordinate with slices 007-010 as their async needs become concrete               |
-| 012   | Release hardening and production rehearsal                      | planned     | Depends on all launch-critical operational slices                                 |
+| Slice | Area                                                            | Status   | Commit / resume point                                                |
+| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
+| 004   | Better Auth production integration                              | next     | Requires a concrete Better Auth runtime/configuration decision       |
+| 005   | Web-to-API service binding and customer flows                   | planned  | Depends on stable API runtime and auth configuration                 |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                     |
+| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
+| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
+| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
+| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
+| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
+| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
 
-## Active Slice: 003
+## Completed Slice: 003
 
 ### Payment-method revocation administration
 
@@ -73,8 +73,8 @@ Acceptance checks:
   reports a successful detach or an already-detached result.
 - Focused package tests and `pnpm check` pass.
 
-Resume point after a usage limit: inspect the Slice 003 diff and tests, then continue from the first
-unchecked acceptance item. Do not create a temporary handoff file.
+Completion record: all acceptance checks passed, including focused package tests and `pnpm check`.
+The implementation is pushed in `7229e08`. Do not create a temporary handoff file.
 
 ## Later Slice Notes
 
