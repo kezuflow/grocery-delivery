@@ -10,6 +10,10 @@
   },
   "services": [
     {
+      "binding": "API",
+      "service": "carbon-food-delivery-api",
+    },
+    {
       "binding": "WORKER_SELF_REFERENCE",
       "service": "carbon-food-delivery-web",
     },
@@ -28,6 +32,10 @@
       "name": "carbon-food-delivery-web-staging",
       "services": [
         {
+          "binding": "API",
+          "service": "carbon-food-delivery-api-staging",
+        },
+        {
           "binding": "WORKER_SELF_REFERENCE",
           "service": "carbon-food-delivery-web-staging",
         },
@@ -42,6 +50,10 @@
     "production": {
       "name": "carbon-food-delivery-web-production",
       "services": [
+        {
+          "binding": "API",
+          "service": "carbon-food-delivery-api-production",
+        },
         {
           "binding": "WORKER_SELF_REFERENCE",
           "service": "carbon-food-delivery-web-production",

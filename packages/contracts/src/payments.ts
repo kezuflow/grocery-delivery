@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { responseMetaSchema } from "./system.js";
+import { responseMetaSchema } from "./system";
 
 export const paymentAttemptStatusSchema = z.enum(["pending", "succeeded", "failed"]);
 export const paymentMethodTypeSchema = z.enum(["card", "bank_account", "ewallet"]);

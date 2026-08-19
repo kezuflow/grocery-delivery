@@ -1,3 +1,7 @@
+import { loadStorefront } from "../lib/storefront";
+
+export const dynamic = "force-dynamic";
+
 const highlights = [
   {
     title: "Weekly, not wasteful",
@@ -15,7 +19,17 @@ const highlights = [
   },
 ];
 
-export default function HomePage() {
+function formatPrice(centavos: number) {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 2,
+  }).format(centavos / 100);
+}
+
+export default async function HomePage() {
+  const storefront = await loadStorefront();
+
   return (
     <main>
       <header className="site-header">
@@ -79,6 +93,62 @@ export default function HomePage() {
             Get early access <span aria-hidden="true">-&gt;</span>
           </a>
         </div>
+      </section>
+
+      <section className="section storefront" aria-labelledby="storefront-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Available this week</p>
+            <h2 id="storefront-heading">Plans and produce, from the API.</h2>
+          </div>
+          <p className="section-note">
+            Prices and availability come from the server-owned catalog. Nothing here is calculated
+            from client input.
+          </p>
+        </div>
+
+        {storefront.error ? (
+          <div className="storefront-state" role="status">
+            <h3>Storefront temporarily unavailable</h3>
+            <p>{storefront.error}</p>
+          </div>
+        ) : (
+          <>
+            <div className="plan-grid">
+              {storefront.plans.map((plan) => (
+                <article className="plan-card" key={plan.id}>
+                  <p className="plan-card-code">{plan.code}</p>
+                  <h3>{plan.name}</h3>
+                  <strong>{formatPrice(plan.weeklyFee.centavos)} / week</strong>
+                  <p>
+                    Includes {formatPrice(plan.weeklyCredit.centavos)} in weekly product credit.
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="catalog-heading">
+              <h3>Catalog preview</h3>
+              <span>{storefront.catalog.items.length} items</span>
+            </div>
+            <div className="catalog-grid">
+              {storefront.catalog.items.map((item) => (
+                <article className="catalog-item" key={item.id}>
+                  <div>
+                    <p className="catalog-category">
+                      {storefront.catalog.categories.find(
+                        (category) => category.id === item.categoryId,
+                      )?.name ?? "Catalog"}
+                    </p>
+                    <h3>{item.name}</h3>
+                    <p>{item.description}</p>
+                  </div>
+                  <strong>{formatPrice(item.price.centavos)}</strong>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <footer className="site-footer">

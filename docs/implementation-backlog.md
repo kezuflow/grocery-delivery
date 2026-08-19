@@ -26,21 +26,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                                |
-| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
-| 005   | Web-to-API service binding and customer flows                   | next     | Depends on stable API runtime and auth configuration                 |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                     |
-| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
-| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
-| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
-| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
-| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
+| Slice | Area                                                            | Status   | Commit / resume point                                                                  |
+| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                                     |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                                              |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                                              |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                                              |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                                              |
+| 005   | Web-to-API service binding and customer flows                   | next     | Current public storefront increment complete in this commit; auth and mutations remain |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | planned  | Depends on customer identity and order snapshots                                       |
+| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                                  |
+| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing                   |
+| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                                    |
+| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies                               |
+| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete                    |
+| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                                      |
 
 ## Completed Slice: 004
 
@@ -111,9 +111,30 @@ The implementation is pushed in `7229e08`. Do not create a temporary handoff fil
 
 ### 005: Web-to-API service binding and customer flows
 
-Keep D1 access behind the API Worker. Add the service binding, typed web client, authenticated
-customer shell, and end-to-end plan/cart/subscription journeys only after the API and auth runtime
-contracts are stable.
+This slice is intentionally delivered as small vertical increments. The current increment keeps D1
+access behind the API Worker, adds the Cloudflare service binding, and introduces a typed web client
+that validates the existing plans and catalog contracts. The public storefront consumes those reads
+on the server and renders a useful unavailable state when the API cannot be reached.
+
+Acceptance checks for the current increment:
+
+- Web production configuration binds `API` to the matching API Worker in development, staging, and
+  production.
+- The web client uses only the API transport and shared Zod contracts; it never imports D1 or API
+  implementation modules.
+- Public plans and catalog responses are validated before rendering, and API errors are surfaced as
+  a stable web-facing error state.
+- The storefront remains usable when the API is unavailable, without inventing prices or customer
+  state.
+- Focused web client tests, the web typecheck/lint/build, and `pnpm check` pass.
+
+Completion record: the current public storefront increment is complete in this commit. It adds
+environment-specific API service bindings, a shared-contract client, server-rendered plans and
+catalog reads, an unavailable state, and focused transport/client tests. The remaining 005 work is
+intentionally left as follow-up increments.
+
+Follow-up increments within 005 will add Better Auth sign-in/session hydration, the authenticated
+customer shell, and then cart, subscription, and order journeys as separate reviewable changes.
 
 ### 006-010: Operational delivery
 

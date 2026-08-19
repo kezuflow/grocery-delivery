@@ -8,6 +8,7 @@ if (process.env.NODE_ENV === "development") {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  transpilePackages: ["@carbon/contracts"],
 };
 
 export default nextConfig;

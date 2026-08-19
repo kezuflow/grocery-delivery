@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { responseMetaSchema } from "./system.js";
+import { responseMetaSchema } from "./system";
 
 export const roleSchema = z.enum(["customer", "deliveryman", "admin"]);
 export const adminPermissionSchema = z.enum([

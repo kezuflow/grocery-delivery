@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { responseMetaSchema } from "./system.js";
+import { responseMetaSchema } from "./system";
 
 export const catalogUnitSchema = z.enum([
   "piece",
