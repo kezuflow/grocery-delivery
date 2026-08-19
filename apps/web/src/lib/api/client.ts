@@ -12,6 +12,8 @@ import {
   deliveryEventResponseSchema,
   deliverymanAssignmentsResponseSchema,
   deliverymanEventsResponseSchema,
+  deliveryTrackingResponseSchema,
+  deliveryMediaListResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
   plansListResponseSchema,
@@ -27,6 +29,8 @@ import {
   type DeliveryWindowsResponse,
   type DeliveryEventRequest,
   type DeliverymanAssignmentsResponse,
+  type DeliveryTrackingResponse,
+  type DeliveryMediaListResponse,
   type OrderCreateRequest,
   type OrderResponse,
   type PlansListResponse,
@@ -140,6 +144,22 @@ export function createApiClient(transport: ApiTransport) {
         headers,
         body: JSON.stringify(payload),
       });
+    },
+    getOrderTracking(orderId: string, init?: RequestInit): Promise<DeliveryTrackingResponse> {
+      return getJson(
+        transport,
+        `/api/v1/orders/${encodeURIComponent(orderId)}/tracking`,
+        deliveryTrackingResponseSchema,
+        init,
+      );
+    },
+    getOrderMedia(orderId: string, init?: RequestInit): Promise<DeliveryMediaListResponse> {
+      return getJson(
+        transport,
+        `/api/v1/orders/${encodeURIComponent(orderId)}/media`,
+        deliveryMediaListResponseSchema,
+        init,
+      );
     },
     updateCart(input: CartUpdateRequest, init?: RequestInit): Promise<CartResponse> {
       const payload = cartUpdateRequestSchema.parse(input);

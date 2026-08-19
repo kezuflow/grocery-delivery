@@ -6,6 +6,8 @@ export * from "./delivery-windows.js";
 export * from "./procurement.js";
 export * from "./dispatch.js";
 export * from "./delivery-events.js";
+export * from "./delivery-tracking.js";
+export * from "./delivery-media.js";
 export * from "./identity.js";
 export * from "./plans.js";
 export * from "./orders.js";

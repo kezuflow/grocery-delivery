@@ -28,6 +28,10 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 - Use ASCII by default and `apply_patch` for manual edits.
 - Keep admin-configurable values configurable. Do not encode current plan prices or other
   operational settings as domain invariants unless the requirement explicitly calls for it.
+- Before committing a completed slice, update `docs/implementation-backlog.md` with the slice's
+  completion record and resume point. Stage that handoff update together with the implementation
+  so each slice lands as one clean conventional commit; do not create a separate documentation
+  commit afterward.
 
 ## Data And API Rules
 

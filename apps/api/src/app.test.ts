@@ -10,6 +10,9 @@ import {
   dispatchResponseSchema,
   deliverymanAssignmentsResponseSchema,
   deliveryEventResponseSchema,
+  deliveryTrackingResponseSchema,
+  deliveryMediaUploadResponseSchema,
+  deliveryMediaListResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
@@ -44,6 +47,7 @@ import {
   createMoney,
   createSession,
   createSubscription,
+  assignWeeklyCycle,
 } from "@carbon/domain";
 import {
   createDefaultCatalogReader,
@@ -52,6 +56,8 @@ import {
   InMemoryDeliveryWindowRepository,
   InMemoryDispatchRepository,
   InMemoryDeliveryEventRepository,
+  InMemoryDeliveryTrackingRepository,
+  InMemoryDeliveryMediaRepository,
   InMemoryProcurementRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
@@ -434,6 +440,114 @@ describe("API worker", () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     deliveryEventResponseSchema.parse(await second.json());
+  });
+
+  it("scopes customer tracking and media reads to the active customer", async () => {
+    const trackingRepository = new InMemoryDeliveryTrackingRepository([
+      {
+        orderId: "order-track",
+        customerId: "customer-1",
+        assignmentId: "assignment-1",
+        windowId: "window-1",
+        status: "delivered",
+        latestEventType: null,
+        events: [],
+      },
+    ]);
+    const mediaRepository = new InMemoryDeliveryMediaRepository();
+    const customerApp = createApi({
+      sink: () => undefined,
+      deliveryTrackingRepository: trackingRepository,
+      deliveryMediaRepository: mediaRepository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-customer",
+              userId: "user-1",
+              role: "customer",
+              customerId: "customer-1",
+              adminPermissions: [],
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const tracking = await customerApp.request("/api/v1/orders/order-track/tracking");
+    expect(tracking.status).toBe(200);
+    deliveryTrackingResponseSchema.parse(await tracking.json());
+    const media = await customerApp.request("/api/v1/orders/order-track/media");
+    expect(media.status).toBe(200);
+    deliveryMediaListResponseSchema.parse(await media.json());
+    const hidden = await customerApp.request("/api/v1/orders/other-order/tracking");
+    expect(hidden.status).toBe(404);
+  });
+
+  it("keeps delivery media retries idempotent and rejects conflicting payloads", async () => {
+    const now = new Date("2026-08-20T10:00:00.000Z");
+    const assignmentRepository = new InMemoryDeliveryEventRepository([
+      {
+        id: "assignment-media",
+        cycleId: assignWeeklyCycle(now).id,
+        orderId: "order-media",
+        windowId: "window-1",
+        deliverymanUserId: "driver-1",
+        status: "assigned",
+        assignedAt: "2026-08-19T00:00:00.000Z",
+        lastEventType: null,
+      },
+    ]);
+    const mediaRepository = new InMemoryDeliveryMediaRepository();
+    const mediaApp = createApi({
+      now: () => now,
+      sink: () => undefined,
+      deliveryEventRepository: assignmentRepository,
+      deliveryMediaRepository: mediaRepository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-driver",
+              userId: "driver-1",
+              role: "deliveryman",
+              customerId: null,
+              adminPermissions: [],
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const request = {
+      clientMediaId: "client-media-1",
+      assignmentId: "assignment-media",
+      orderId: "order-media",
+      kind: "proof_of_delivery",
+      contentType: "image/jpeg",
+      sizeBytes: 100,
+    };
+    const first = await mediaApp.request("/api/v1/deliveryman/media", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    const retry = await mediaApp.request("/api/v1/deliveryman/media", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    const conflict = await mediaApp.request("/api/v1/deliveryman/media", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...request, sizeBytes: 101 }),
+    });
+    expect(first.status).toBe(200);
+    expect(retry.status).toBe(200);
+    expect(conflict.status).toBe(409);
+    const firstBody = deliveryMediaUploadResponseSchema.parse(await first.json());
+    const retryBody = deliveryMediaUploadResponseSchema.parse(await retry.json());
+    expect(retryBody.data.id).toBe(firstBody.data.id);
   });
 
   it("returns the authenticated customer's current subscription", async () => {

@@ -33,6 +33,8 @@
     "@carbon/db": "workspace:*",
     "@carbon/domain": "workspace:*",
     "@carbon/observability": "workspace:*",
+    "@carbon/notifications": "workspace:*",
+    "@carbon/storage": "workspace:*",
     "better-auth": "1.7.1",
     "hono": "4.13.2"
   }

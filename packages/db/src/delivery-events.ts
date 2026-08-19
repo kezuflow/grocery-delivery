@@ -51,9 +51,15 @@ export class InMemoryDeliveryEventRepository implements DeliveryEventRepository 
       return Promise.reject(new Error("delivery assignment was not found"));
     }
     this.events.set(normalized.clientEventId, normalized);
+    const latestEvent = [...this.events.values()]
+      .filter((item) => item.assignmentId === normalized.assignmentId)
+      .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt))
+      .at(-1);
+    if (!latestEvent) return Promise.resolve(normalized);
     this.assignments.set(normalized.assignmentId, {
       ...assignment,
-      lastEventType: normalized.type,
+      status: statusForEvent(latestEvent.type),
+      lastEventType: latestEvent.type,
     });
     return Promise.resolve(normalized);
   }
@@ -111,6 +117,22 @@ export class D1DeliveryEventRepository implements DeliveryEventRepository {
           normalized.occurredAt,
           normalized.receivedAt,
           normalized.note,
+          normalized.assignmentId,
+          normalized.orderId,
+          normalized.deliverymanUserId,
+        ),
+      this.database
+        .prepare(
+          `UPDATE dispatch_assignments
+         SET status = CASE (SELECT type FROM delivery_events WHERE assignment_id = ? ORDER BY occurred_at DESC LIMIT 1)
+           WHEN 'delivered' THEN 'delivered'
+           WHEN 'failed' THEN 'failed'
+           ELSE 'out_for_delivery'
+         END
+         WHERE id = ? AND order_id = ? AND deliveryman_user_id = ?`,
+        )
+        .bind(
+          normalized.assignmentId,
           normalized.assignmentId,
           normalized.orderId,
           normalized.deliverymanUserId,
@@ -180,3 +202,15 @@ const mapEvent = (row: EventRow): DeliveryEvent =>
     receivedAt: row.received_at,
     note: row.note,
   });
+
+function statusForEvent(type: DeliveryEventType): DeliverymanAssignment["status"] {
+  switch (type) {
+    case "delivered":
+      return "delivered";
+    case "failed":
+      return "failed";
+    case "picked_up":
+    case "arrived":
+      return "out_for_delivery";
+  }
+}

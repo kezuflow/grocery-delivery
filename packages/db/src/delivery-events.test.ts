@@ -28,7 +28,17 @@ describe("delivery event repository", () => {
     };
     await repository.saveEvent(event);
     await repository.saveEvent({ ...event, id: "event-2" });
-    await expect(repository.listEvents("assignment-1", "driver-1")).resolves.toHaveLength(1);
+    await repository.saveEvent({
+      ...event,
+      id: "event-3",
+      clientEventId: "client-2",
+      type: "picked_up",
+      occurredAt: "2026-08-22T03:00:00.000Z",
+    });
+    await expect(repository.listEvents("assignment-1", "driver-1")).resolves.toHaveLength(2);
+    await expect(repository.listAssignments("driver-1", "cycle-2026-08-22")).resolves.toMatchObject(
+      [{ id: "assignment-1", status: "delivered", lastEventType: "delivered" }],
+    );
     await expect(repository.listAssignments("driver-2", "cycle-2026-08-22")).resolves.toHaveLength(
       0,
     );

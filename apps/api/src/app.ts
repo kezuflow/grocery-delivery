@@ -31,6 +31,10 @@ import {
   deliveryEventResponseSchema,
   deliverymanAssignmentsResponseSchema,
   deliverymanEventsResponseSchema,
+  deliveryTrackingResponseSchema,
+  deliveryMediaUploadRequestSchema,
+  deliveryMediaUploadResponseSchema,
+  deliveryMediaListResponseSchema,
   dispatchAssignmentRequestSchema,
   dispatchResponseSchema,
   packingManifestRequestSchema,
@@ -77,6 +81,8 @@ import {
   D1DeliveryAddressRepository,
   D1DeliveryWindowRepository,
   D1DeliveryEventRepository,
+  D1DeliveryTrackingRepository,
+  D1DeliveryMediaRepository,
   D1DispatchRepository,
   D1ProcurementRepository,
   D1OrderRepository,
@@ -101,6 +107,9 @@ import {
   type DeliveryAddressRepository,
   type DeliveryWindowRepository,
   type DeliveryEventRepository,
+  type DeliveryTrackingRepository,
+  type DeliveryMediaRepository,
+  type DeliveryMediaRecord,
   type DispatchRepository,
   type ProcurementRepository,
 } from "@carbon/db";
@@ -120,6 +129,8 @@ import {
   type Session,
 } from "@carbon/domain";
 import { createLogger, resolveCorrelationId, type LogSink } from "@carbon/observability";
+import type { NotificationSender } from "@carbon/notifications";
+import { DeterministicMediaSigner, type DeliveryMediaSigner } from "@carbon/storage";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
@@ -138,6 +149,7 @@ export type ApiBindings = Readonly<{
   PLAN_CACHE_VERSION?: string;
   PAYMENT_PROVIDER?: string;
   VERSION?: string;
+  MEDIA_BASE_URL?: string;
 }>;
 
 type ApiVariables = {
@@ -167,6 +179,10 @@ export type ApiOptions = Readonly<{
   procurementRepository?: ProcurementRepository;
   dispatchRepository?: DispatchRepository;
   deliveryEventRepository?: DeliveryEventRepository;
+  deliveryTrackingRepository?: DeliveryTrackingRepository;
+  deliveryMediaRepository?: DeliveryMediaRepository;
+  notificationSender?: NotificationSender;
+  mediaSigner?: DeliveryMediaSigner;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -256,6 +272,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path.startsWith("/api/v1/admin/procurement") ||
       context.req.path.startsWith("/api/v1/admin/dispatch") ||
       context.req.path.startsWith("/api/v1/deliveryman/") ||
+      context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
@@ -1434,6 +1451,22 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           note: input.data.note,
         }),
       );
+      if (options.notificationSender) {
+        const customerId = options.deliveryTrackingRepository
+          ? await options.deliveryTrackingRepository.findCustomerId(event.orderId)
+          : null;
+        if (customerId) {
+          await options.notificationSender.send({
+            id: `delivery-notification:${event.id}`,
+            idempotencyKey: `delivery-event:${event.id}`,
+            customerId,
+            orderId: event.orderId,
+            type: "delivery_update",
+            eventType: event.type,
+            occurredAt: event.occurredAt,
+          });
+        }
+      }
       const body = { data: event, meta: { correlationId: context.get("correlationId") } };
       deliveryEventResponseSchema.parse(body);
       return context.json(body, 200);
@@ -1447,6 +1480,200 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         409,
       );
     }
+  });
+
+  app.get("/api/v1/orders/:id/tracking", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.deliveryTrackingRepository ??
+      (bindings.DB ? new D1DeliveryTrackingRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId)
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "TRACKING_UNAVAILABLE",
+          "tracking is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const tracking = await repository.get(context.req.param("id"), session.customerId);
+    if (!tracking)
+      return context.json(
+        errorResponse("ORDER_NOT_FOUND", "order was not found", context.get("correlationId")),
+        404,
+      );
+    const body = { data: tracking, meta: { correlationId: context.get("correlationId") } };
+    deliveryTrackingResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/deliveryman/media", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.deliveryMediaRepository ??
+      (bindings.DB ? new D1DeliveryMediaRepository(bindings.DB) : undefined);
+    const assignmentRepository =
+      options.deliveryEventRepository ??
+      (bindings.DB ? new D1DeliveryEventRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "deliveryman")
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "an active deliveryman session is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository || !assignmentRepository)
+      return context.json(
+        errorResponse(
+          "MEDIA_UNAVAILABLE",
+          "delivery media is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = deliveryMediaUploadRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_DELIVERY_MEDIA",
+          "delivery media is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const cycle = assignWeeklyCycle(now());
+    const assignment = (await assignmentRepository.listAssignments(session.userId, cycle.id)).find(
+      (item) => item.id === input.data.assignmentId && item.orderId === input.data.orderId,
+    );
+    if (!assignment)
+      return context.json(
+        errorResponse(
+          "DELIVERY_MEDIA_FORBIDDEN",
+          "media assignment is not owned by this deliveryman",
+          context.get("correlationId"),
+        ),
+        403,
+      );
+    const existing = await repository.findByClientId(input.data.clientMediaId);
+    if (existing && !isSameDeliveryMediaRequest(existing, input.data, session.userId))
+      return context.json(
+        errorResponse(
+          "MEDIA_IDEMPOTENCY_CONFLICT",
+          "client media id was already used for a different upload",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    const mediaId = crypto.randomUUID();
+    const requestedRecord: DeliveryMediaRecord = {
+      id: mediaId,
+      clientMediaId: input.data.clientMediaId,
+      orderId: input.data.orderId,
+      assignmentId: input.data.assignmentId,
+      uploadedByUserId: session.userId,
+      kind: input.data.kind,
+      objectKey: `orders/${input.data.orderId}/delivery/${mediaId}`,
+      contentType: input.data.contentType,
+      sizeBytes: input.data.sizeBytes,
+      createdAt: now().toISOString(),
+    };
+    const saved = existing ?? (await repository.save(requestedRecord));
+    if (!isSameDeliveryMediaRequest(saved, input.data, session.userId))
+      return context.json(
+        errorResponse(
+          "MEDIA_IDEMPOTENCY_CONFLICT",
+          "client media id was already used for a different upload",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    const expiresAt = new Date(now().getTime() + 15 * 60_000).toISOString();
+    const signer = options.mediaSigner ?? new DeterministicMediaSigner(bindings.MEDIA_BASE_URL);
+    const signed = await signer.createUploadUrl({
+      objectKey: saved.objectKey,
+      contentType: saved.contentType,
+      expiresAt,
+    });
+    const body = {
+      data: { id: saved.id, uploadUrl: signed.uploadUrl, uploadUrlExpiresAt: expiresAt },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliveryMediaUploadResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/orders/:id/media", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.deliveryMediaRepository ??
+      (bindings.DB ? new D1DeliveryMediaRepository(bindings.DB) : undefined);
+    const trackingRepository =
+      options.deliveryTrackingRepository ??
+      (bindings.DB ? new D1DeliveryTrackingRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId)
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository || !trackingRepository)
+      return context.json(
+        errorResponse(
+          "MEDIA_UNAVAILABLE",
+          "delivery media is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const orderId = context.req.param("id");
+    if (!(await trackingRepository.get(orderId, session.customerId)))
+      return context.json(
+        errorResponse("ORDER_NOT_FOUND", "order was not found", context.get("correlationId")),
+        404,
+      );
+    const signer = options.mediaSigner ?? new DeterministicMediaSigner(bindings.MEDIA_BASE_URL);
+    const expiresAt = new Date(now().getTime() + 15 * 60_000).toISOString();
+    const media = await repository.listForCustomer(orderId, session.customerId);
+    const body = {
+      data: {
+        media: await Promise.all(
+          media.map(async (item) => ({
+            id: item.id,
+            orderId: item.orderId,
+            assignmentId: item.assignmentId,
+            kind: item.kind,
+            contentType: item.contentType,
+            sizeBytes: item.sizeBytes,
+            createdAt: item.createdAt,
+            downloadUrl: (await signer.createDownloadUrl({ objectKey: item.objectKey, expiresAt }))
+              .downloadUrl,
+            downloadUrlExpiresAt: expiresAt,
+          })),
+        ),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliveryMediaListResponseSchema.parse(body);
+    return context.json(body, 200);
   });
 
   app.post("/api/v1/orders", async (context) => {
@@ -2290,6 +2517,27 @@ function errorResponse(code: string, message: string, correlationId: string): Ap
     error: { code, message },
     meta: { correlationId },
   };
+}
+
+function isSameDeliveryMediaRequest(
+  record: DeliveryMediaRecord,
+  input: {
+    orderId: string;
+    assignmentId: string;
+    kind: "proof_of_delivery";
+    contentType: string;
+    sizeBytes: number;
+  },
+  uploadedByUserId: string,
+): boolean {
+  return (
+    record.orderId === input.orderId &&
+    record.assignmentId === input.assignmentId &&
+    record.uploadedByUserId === uploadedByUserId &&
+    record.kind === input.kind &&
+    record.contentType === input.contentType &&
+    record.sizeBytes === input.sizeBytes
+  );
 }
 
 function encodeCursor(id: string): string {

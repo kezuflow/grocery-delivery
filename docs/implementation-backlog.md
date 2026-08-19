@@ -10,8 +10,9 @@ conversation history or temporary handoff files.
 - Keep one slice small enough to review and verify independently.
 - Update this backlog only as part of an intentional documentation or feature commit.
 - Before starting a slice, mark it `in progress` and record its scope and acceptance checks.
-- Before moving to another slice, run the narrowest focused checks plus `pnpm check`, commit the
-  completed slice, inspect the staged diff, and push `origin/main`.
+- Before committing a completed slice, update this backlog with its completion record and resume
+  point, then stage the handoff and implementation together as one conventional commit. Run the
+  narrowest focused checks plus `pnpm check`, inspect the staged diff, and push `origin/main`.
 - Never commit or push temporary handoff files. The committed Git history and this backlog are the
   resume record.
 - Preserve unrelated working-tree changes, including the existing `docs/ui-mockups` deletions.
@@ -38,7 +39,7 @@ conversation history or temporary handoff files.
 | 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests        |
 | 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                             |
 | 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync           |
-| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies            |
+| 010   | Customer tracking, notifications, and delivery media            | complete | Customer tracking, idempotent notification adapter, and media URLs  |
 | 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete |
 | 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                   |
 
@@ -368,6 +369,33 @@ Protected deliveryman routes expose current-cycle assignments, event history, an
 submission. The `/deliveryman` console stores pending events in local storage and retries them when
 the browser is online again. Slice 009 is complete; the next slice is customer tracking,
 notifications, and delivery media.
+
+### Slice 010: Customer tracking, notifications, and delivery media
+
+Scope:
+
+- Expose customer-owned delivery tracking snapshots backed by dispatch assignments and immutable
+  delivery events.
+- Define an idempotent notification sender boundary for delivery updates.
+- Authorize deliveryman proof-of-delivery media and issue short-lived upload/download URLs through
+  the storage boundary.
+
+Acceptance checks:
+
+- Tracking and media reads derive customer ownership from the active session and hide other orders.
+- Delivery media requests verify the active-cycle assignment belongs to the deliveryman.
+- Media retries use a client media ID and return the original durable record without duplication.
+- Only bounded image content types and sizes are accepted; object keys and signed URL expiry are
+  server-owned.
+- Notification retries are deduplicated by an event-derived idempotency key.
+- Focused domain, repository, contract, notification, storage, API, and web checks pass.
+
+Completion record: migration `0019` adds delivery-media metadata while binary objects remain behind
+the storage signer boundary. Protected customer routes expose tracking timelines and signed proof
+downloads; the deliveryman media route validates assignment ownership and returns a short-lived
+upload URL. The notification package now provides a retry-safe adapter contract for delivery-event
+messages. Slice 010 is complete; the next increment is jobs, workflows, retries, and operational
+projections.
 
 ### 006-010: Operational delivery
 

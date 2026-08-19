@@ -7,3 +7,5 @@ export * from "./identity";
 export * from "./plans";
 export * from "./payments";
 export * from "./system";
+export * from "./tracking";
+export * from "./media";
