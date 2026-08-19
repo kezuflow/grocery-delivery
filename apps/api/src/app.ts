@@ -27,6 +27,13 @@ import {
   deliveryAddressResponseSchema,
   deliveryWindowSelectionRequestSchema,
   deliveryWindowsResponseSchema,
+  dispatchAssignmentRequestSchema,
+  dispatchResponseSchema,
+  packingManifestRequestSchema,
+  procurementPurchaseRequestSchema,
+  procurementResponseSchema,
+  procurementShortageRequestSchema,
+  procurementSubstitutionRequestSchema,
   type DeliveryWindowsResponse,
   type DeliveryAddressResponse,
   type CurrentSessionResponse,
@@ -65,6 +72,8 @@ import {
   D1CatalogReader,
   D1DeliveryAddressRepository,
   D1DeliveryWindowRepository,
+  D1DispatchRepository,
+  D1ProcurementRepository,
   D1OrderRepository,
   D1OutboxPublisher,
   D1PaymentRepository,
@@ -86,12 +95,18 @@ import {
   type SubscriptionReader,
   type DeliveryAddressRepository,
   type DeliveryWindowRepository,
+  type DispatchRepository,
+  type ProcurementRepository,
 } from "@carbon/db";
 import {
   addMoney,
   assignWeeklyCycle,
   createMoney,
   createDeliveryAddress,
+  createDispatchAssignment,
+  createPackingManifest,
+  createProcurementShortage,
+  createProcurementSubstitution,
   createPlan,
   hasAdminPermission,
   multiplyMoney,
@@ -142,6 +157,8 @@ export type ApiOptions = Readonly<{
   cartRepository?: CartRepository;
   deliveryAddressRepository?: DeliveryAddressRepository;
   deliveryWindowRepository?: DeliveryWindowRepository;
+  procurementRepository?: ProcurementRepository;
+  dispatchRepository?: DispatchRepository;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -228,6 +245,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/cart" ||
       context.req.path === "/api/v1/delivery-address" ||
       context.req.path === "/api/v1/delivery-windows" ||
+      context.req.path.startsWith("/api/v1/admin/procurement") ||
+      context.req.path.startsWith("/api/v1/admin/dispatch") ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
@@ -903,6 +922,391 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         409,
       );
     }
+  });
+
+  app.get("/api/v1/admin/procurement", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.procurementRepository ??
+      (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "procurement"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "procurement administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROCUREMENT_UNAVAILABLE",
+          "procurement is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const cycle = assignWeeklyCycle(now());
+    const body = {
+      data: {
+        cycleId: cycle.id,
+        demand: await repository.listDemand(cycle.id),
+        shortages: await repository.listShortages(cycle.id),
+        substitutions: await repository.listSubstitutions(cycle.id),
+        manifests: await repository.listManifests(cycle.id),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    procurementResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+  app.put("/api/v1/admin/procurement/purchases", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.procurementRepository ??
+      (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "procurement"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "procurement administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROCUREMENT_UNAVAILABLE",
+          "procurement is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = procurementPurchaseRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_PROCUREMENT",
+          "purchase input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const cycle = assignWeeklyCycle(now());
+    await repository.savePurchase(
+      cycle.id,
+      input.data.skuId,
+      input.data.purchasedQuantity,
+      now().toISOString(),
+    );
+    return context.json(
+      {
+        data: {
+          cycleId: cycle.id,
+          demand: await repository.listDemand(cycle.id),
+          shortages: await repository.listShortages(cycle.id),
+          substitutions: await repository.listSubstitutions(cycle.id),
+          manifests: await repository.listManifests(cycle.id),
+        },
+        meta: { correlationId: context.get("correlationId") },
+      },
+      200,
+    );
+  });
+  app.post("/api/v1/admin/procurement/shortages", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.procurementRepository ??
+      (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "procurement"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "procurement administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROCUREMENT_UNAVAILABLE",
+          "procurement is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = procurementShortageRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_SHORTAGE",
+          "shortage input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const cycle = assignWeeklyCycle(now());
+    await repository.saveShortage(
+      createProcurementShortage({
+        id: crypto.randomUUID(),
+        cycleId: cycle.id,
+        skuId: input.data.skuId,
+        requestedQuantity: input.data.requestedQuantity,
+        availableQuantity: input.data.availableQuantity,
+        status: "open",
+        createdAt: now().toISOString(),
+      }),
+    );
+    return context.json(
+      {
+        data: {
+          cycleId: cycle.id,
+          demand: await repository.listDemand(cycle.id),
+          shortages: await repository.listShortages(cycle.id),
+          substitutions: await repository.listSubstitutions(cycle.id),
+          manifests: await repository.listManifests(cycle.id),
+        },
+        meta: { correlationId: context.get("correlationId") },
+      },
+      200,
+    );
+  });
+  app.post("/api/v1/admin/procurement/substitutions", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.procurementRepository ??
+      (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "procurement"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "procurement administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROCUREMENT_UNAVAILABLE",
+          "procurement is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = procurementSubstitutionRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_SUBSTITUTION",
+          "substitution input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const shortages = await repository.listShortages(assignWeeklyCycle(now()).id);
+    const shortage = shortages.find((value) => value.id === input.data.shortageId);
+    if (!shortage)
+      return context.json(
+        errorResponse("SHORTAGE_NOT_FOUND", "shortage was not found", context.get("correlationId")),
+        404,
+      );
+    await repository.saveSubstitution(
+      createProcurementSubstitution({
+        id: crypto.randomUUID(),
+        shortageId: shortage.id,
+        originalSkuId: shortage.skuId,
+        substituteSkuId: input.data.substituteSkuId,
+        quantity: input.data.quantity,
+        status: input.data.status,
+        approvedAt: input.data.status === "approved" ? now().toISOString() : null,
+      }),
+    );
+    const cycle = assignWeeklyCycle(now());
+    return context.json(
+      {
+        data: {
+          cycleId: cycle.id,
+          demand: await repository.listDemand(cycle.id),
+          shortages: await repository.listShortages(cycle.id),
+          substitutions: await repository.listSubstitutions(cycle.id),
+          manifests: await repository.listManifests(cycle.id),
+        },
+        meta: { correlationId: context.get("correlationId") },
+      },
+      200,
+    );
+  });
+  app.post("/api/v1/admin/packing/manifests", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.procurementRepository ??
+      (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "packing"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "packing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PACKING_UNAVAILABLE",
+          "packing is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = packingManifestRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse("INVALID_PACKING", "manifest input is invalid", context.get("correlationId")),
+        400,
+      );
+    const cycle = assignWeeklyCycle(now());
+    await repository.saveManifest(
+      createPackingManifest({
+        id: crypto.randomUUID(),
+        cycleId: cycle.id,
+        orderId: input.data.orderId,
+        status: input.data.status,
+        createdAt: now().toISOString(),
+      }),
+    );
+    return context.json(
+      {
+        data: {
+          cycleId: cycle.id,
+          demand: await repository.listDemand(cycle.id),
+          shortages: await repository.listShortages(cycle.id),
+          substitutions: await repository.listSubstitutions(cycle.id),
+          manifests: await repository.listManifests(cycle.id),
+        },
+        meta: { correlationId: context.get("correlationId") },
+      },
+      200,
+    );
+  });
+  app.get("/api/v1/admin/dispatch", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.dispatchRepository ??
+      (bindings.DB ? new D1DispatchRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "dispatch"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "dispatch administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "DISPATCH_UNAVAILABLE",
+          "dispatch is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const cycle = assignWeeklyCycle(now());
+    const body = {
+      data: { cycleId: cycle.id, assignments: await repository.list(cycle.id) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    dispatchResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+  app.post("/api/v1/admin/dispatch", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.dispatchRepository ??
+      (bindings.DB ? new D1DispatchRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "dispatch"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "dispatch administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "DISPATCH_UNAVAILABLE",
+          "dispatch is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = dispatchAssignmentRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_DISPATCH",
+          "assignment input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const cycle = assignWeeklyCycle(now());
+    const windowRepository =
+      options.deliveryWindowRepository ??
+      (bindings.DB ? new D1DeliveryWindowRepository(bindings.DB) : undefined);
+    if (windowRepository) {
+      const windows = await windowRepository.listForCycle(cycle.id);
+      if (!windows.some((window) => window.id === input.data.windowId))
+        return context.json(
+          errorResponse(
+            "INVALID_DISPATCH_WINDOW",
+            "dispatch window is not active for the current cycle",
+            context.get("correlationId"),
+          ),
+          400,
+        );
+    }
+    const assignment = createDispatchAssignment({
+      id: crypto.randomUUID(),
+      cycleId: cycle.id,
+      orderId: input.data.orderId,
+      windowId: input.data.windowId,
+      deliverymanUserId: input.data.deliverymanUserId,
+      status: "assigned",
+      assignedAt: now().toISOString(),
+    });
+    await repository.save(assignment);
+    return context.json(
+      {
+        data: { cycleId: cycle.id, assignments: await repository.list(cycle.id) },
+        meta: { correlationId: context.get("correlationId") },
+      },
+      200,
+    );
   });
 
   app.post("/api/v1/orders", async (context) => {

@@ -26,21 +26,21 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                                |
-| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                   |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                            |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                            |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                            |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                            |
-| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                      |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete              |
-| 007   | Procurement, shortages, substitutions, and packing              | planned  | Depends on delivery cycles and paid-order projections                |
-| 008   | Dispatch, route planning, and driver assignments                | planned  | Depends on packages, windows, capacity, and provider-neutral routing |
-| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                  |
-| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies             |
-| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete  |
-| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                    |
+| Slice | Area                                                            | Status   | Commit / resume point                                               |
+| ----- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                  |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                           |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                           |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                           |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                           |
+| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                     |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete             |
+| 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests        |
+| 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                             |
+| 009   | Deliveryman PWA and offline event sync                          | planned  | Depends on dispatch assignments and delivery events                 |
+| 010   | Customer tracking, notifications, and delivery media            | planned  | Depends on delivery events, outbox jobs, and R2 policies            |
+| 011   | Jobs, workflows, retries, and operational projections           | planned  | Coordinate with slices 007-010 as their async needs become concrete |
+| 012   | Release hardening and production rehearsal                      | planned  | Depends on all launch-critical operational slices                   |
 
 ## Completed Slice: 004
 
@@ -320,6 +320,31 @@ server-assigned weekly cycle and reserve one through protected API routes. Migra
 delivery windows and one customer selection per cycle. Capacity and ownership remain server-owned,
 with an atomic guarded D1 write preventing full-window selection. Slice 006 is complete; the next
 slice is procurement, shortages, substitutions, and packing.
+
+### Slices 007-008: Procurement and dispatch operations
+
+Scope:
+
+- Aggregate locked order demand by weekly cycle and SKU, with admin purchase quantities.
+- Record shortages, approved/rejected substitutions, and packing manifests through permission-scoped
+  admin routes.
+- Add cycle-scoped dispatch assignments that reference delivery windows and deliveryman identities.
+- Keep operational state in D1 repositories with in-memory fixtures for deterministic tests.
+
+Acceptance checks:
+
+- Procurement and packing routes require the matching admin permission; customer sessions are denied.
+- Demand is derived from locked order lines and purchase quantities are server-owned.
+- Shortages require an actual quantity deficit; substitutions reference an existing cycle shortage.
+- Packing manifests are unique per order and remain explicitly pending, packed, or exceptional.
+- Dispatch assignments are cycle-scoped, idempotently replace an order assignment, and expose only
+  server-persisted status and timestamps.
+- Focused domain, repository, contract, API tests, `pnpm check`, and the production web build pass.
+
+Completion record: slices 007 and 008 are complete for the first operational increment. Migration
+`0017` adds procurement purchases, shortages, substitutions, packing manifests, and dispatch
+assignments. Admin APIs expose demand and exception handling with server-derived cycle scope, while
+dispatch assignments are persisted against the selected delivery window and deliveryman user.
 
 ### 006-010: Operational delivery
 

@@ -3,6 +3,8 @@ export * from "./catalog.js";
 export * from "./carts.js";
 export * from "./delivery.js";
 export * from "./delivery-windows.js";
+export * from "./procurement.js";
+export * from "./dispatch.js";
 export * from "./identity.js";
 export * from "./plans.js";
 export * from "./orders.js";

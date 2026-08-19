@@ -7,6 +7,7 @@ import {
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
   deliveryWindowsResponseSchema,
+  dispatchResponseSchema,
   healthResponseSchema,
   orderResponseSchema,
   paymentAttemptResponseSchema,
@@ -47,6 +48,8 @@ import {
   InMemoryCartRepository,
   InMemoryDeliveryAddressRepository,
   InMemoryDeliveryWindowRepository,
+  InMemoryDispatchRepository,
+  InMemoryProcurementRepository,
   InMemoryPlanReader,
   InMemorySubscriptionReader,
 } from "@carbon/db";
@@ -313,6 +316,64 @@ describe("API worker", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.status).toBe("paused");
+  });
+
+  it("protects procurement and dispatch operations with scoped admin permissions", async () => {
+    const cycleId = "cycle-2026-08-22";
+    const procurementRepository = new InMemoryProcurementRepository([
+      { cycleId, skuId: "sku-1", orderedQuantity: 3, purchasedQuantity: 0, status: "open" },
+    ]);
+    const dispatchRepository = new InMemoryDispatchRepository();
+    const operationsApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      procurementRepository,
+      dispatchRepository,
+      deliveryWindowRepository: new InMemoryDeliveryWindowRepository([
+        {
+          id: "window-1",
+          cycleId,
+          label: "Morning",
+          startsAt: "2026-08-22T00:00:00.000Z",
+          endsAt: "2026-08-22T04:00:00.000Z",
+          capacity: 10,
+          active: true,
+          createdAt: "2026-08-19T00:00:00.000Z",
+          updatedAt: "2026-08-19T00:00:00.000Z",
+        },
+      ]),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-ops",
+              userId: "admin-ops",
+              role: "admin",
+              adminPermissions: ["procurement", "packing", "dispatch"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const purchase = await operationsApp.request("/api/v1/admin/procurement/purchases", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ skuId: "sku-1", purchasedQuantity: 2 }),
+    });
+    expect(purchase.status).toBe(200);
+    const dispatch = await operationsApp.request("/api/v1/admin/dispatch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orderId: "order-1",
+        windowId: "window-1",
+        deliverymanUserId: "driver-1",
+      }),
+    });
+    expect(dispatch.status).toBe(200);
+    dispatchResponseSchema.parse(await dispatch.json());
   });
 
   it("returns the authenticated customer's current subscription", async () => {
