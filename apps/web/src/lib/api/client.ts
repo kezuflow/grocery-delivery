@@ -1,11 +1,15 @@
 import {
   apiErrorResponseSchema,
+  cartResponseSchema,
   catalogListResponseSchema,
   currentSessionResponseSchema,
   plansListResponseSchema,
+  subscriptionResponseSchema,
+  type CartResponse,
   type CatalogListResponse,
   type CurrentSessionResponse,
   type PlansListResponse,
+  type SubscriptionResponse,
 } from "@carbon/contracts";
 
 export type ApiTransport = Readonly<{
@@ -34,6 +38,12 @@ export function createApiClient(transport: ApiTransport) {
     },
     getCurrentSession(init?: RequestInit): Promise<CurrentSessionResponse> {
       return getJson(transport, "/api/v1/me", currentSessionResponseSchema, init);
+    },
+    getCurrentSubscription(init?: RequestInit): Promise<SubscriptionResponse> {
+      return getJson(transport, "/api/v1/subscription", subscriptionResponseSchema, init);
+    },
+    getCart(init?: RequestInit): Promise<CartResponse> {
+      return getJson(transport, "/api/v1/cart", cartResponseSchema, init);
     },
   };
 }

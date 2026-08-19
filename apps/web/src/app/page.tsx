@@ -42,6 +42,7 @@ export default async function HomePage() {
         <nav aria-label="Primary navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#plans">Plans</a>
+          {auth.session?.role === "customer" ? <a href="/account">Account</a> : null}
           <AuthControls signedIn={auth.session !== null} />
         </nav>
       </header>

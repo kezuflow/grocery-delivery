@@ -37,6 +37,138 @@ a {
   padding-right: 32px;
 }
 
+.account-page {
+  min-height: 100vh;
+}
+
+.account-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.account-intro,
+.account-grid,
+.account-state {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+.account-intro {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 46px;
+  padding-top: 74px;
+}
+
+.account-intro h1 {
+  color: var(--ink);
+  font-size: 4rem;
+  margin: 0;
+}
+
+.account-status,
+.account-panel-heading span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.account-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-bottom: 90px;
+}
+
+.account-panel,
+.account-state {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.account-panel-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.account-panel-heading .eyebrow {
+  margin-bottom: 0;
+}
+
+.account-panel h2,
+.account-state h2 {
+  font-size: 1.8rem;
+  margin: 42px 0 28px;
+}
+
+.account-details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.account-details div,
+.account-cart-lines li,
+.account-total {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 17px 0;
+}
+
+.account-details dt,
+.account-cart-lines span,
+.account-total span,
+.account-empty p,
+.account-state p {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.account-details dd {
+  font-weight: 700;
+  margin: 0;
+}
+
+.account-cart-lines {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+}
+
+.account-cart-lines div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.account-total {
+  border-bottom: 0;
+  padding-top: 23px;
+}
+
+.account-empty {
+  min-height: 260px;
+}
+
+.account-empty p {
+  line-height: 1.6;
+  max-width: 390px;
+}
+
+.account-empty .button {
+  margin-top: 15px;
+}
+
+.account-state {
+  padding-bottom: 90px;
+}
+
 .site-header {
   align-items: center;
   display: flex;
@@ -430,7 +562,10 @@ h3 {
 @media (max-width: 760px) {
   .site-header,
   .section,
-  .site-footer {
+  .site-footer,
+  .account-intro,
+  .account-grid,
+  .account-state {
     padding-left: 20px;
     padding-right: 20px;
   }
@@ -489,8 +624,21 @@ h3 {
   }
 
   .plan-grid,
-  .catalog-grid {
+  .catalog-grid,
+  .account-grid {
     grid-template-columns: 1fr;
+  }
+
+  .account-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 22px;
+    padding-bottom: 36px;
+    padding-top: 52px;
+  }
+
+  .account-intro h1 {
+    font-size: 3rem;
   }
 
   .highlight-grid {
