@@ -154,6 +154,8 @@ describe("Better Auth D1 integration", () => {
       BETTER_AUTH_SECRET: "production-secret-that-is-at-least-32-characters",
       BETTER_AUTH_URL: "https://api.example.test",
       CORS_ORIGINS: "https://app.example.test",
+      PAYMENT_PROVIDER: "paymongo",
+      PAYMONGO_SECRET_KEY: "sk_test_123",
       DB: database,
     } as const;
     const app = createConfiguredApi(bindings, {

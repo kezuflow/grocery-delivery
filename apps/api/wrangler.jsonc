@@ -43,7 +43,7 @@
         "BETTER_AUTH_URL": "https://api-staging.carbon-food-delivery.example",
         "CORS_ORIGINS": "https://staging.carbon-food-delivery.example",
         "DELIVERY_FEE_CENTAVOS": "0",
-        "PAYMENT_PROVIDER": "disabled",
+        "PAYMENT_PROVIDER": "paymongo",
       },
     },
     "production": {
@@ -64,7 +64,7 @@
         "BETTER_AUTH_URL": "https://api.carbon-food-delivery.example",
         "CORS_ORIGINS": "https://carbon-food-delivery.example",
         "DELIVERY_FEE_CENTAVOS": "0",
-        "PAYMENT_PROVIDER": "disabled",
+        "PAYMENT_PROVIDER": "paymongo",
       },
     },
   },

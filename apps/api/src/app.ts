@@ -178,6 +178,8 @@ export type ApiBindings = Readonly<{
   DELIVERY_SERVICE_POSTAL_CODES?: string;
   PLAN_CACHE_VERSION?: string;
   PAYMENT_PROVIDER?: string;
+  PAYMONGO_SECRET_KEY?: string;
+  PAYMONGO_API_URL?: string;
   VERSION?: string;
   MEDIA_BASE_URL?: string;
 }>;

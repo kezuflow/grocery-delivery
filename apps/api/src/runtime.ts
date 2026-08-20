@@ -1,5 +1,5 @@
 import type { BetterAuthApi } from "@carbon/auth";
-import { FakePaymentProvider } from "@carbon/billing";
+import { FakePaymentProvider, PayMongoPaymentProvider } from "@carbon/billing";
 import type { PaymentProvider } from "@carbon/billing";
 import {
   ConfigurationError,
@@ -115,6 +115,15 @@ function resolvePaymentProvider(
   }
   if (selectedProvider === "fake") {
     return new FakePaymentProvider();
+  }
+  if (selectedProvider === "paymongo") {
+    if (!configuration.paymongoSecretKey) {
+      throw new ConfigurationError("PAYMONGO_SECRET_KEY", "PayMongo secret key is required");
+    }
+    return new PayMongoPaymentProvider({
+      secretKey: configuration.paymongoSecretKey,
+      apiUrl: configuration.paymongoApiUrl,
+    });
   }
   if (!factories.createPaymentProvider) {
     throw new ConfigurationError(

@@ -6,7 +6,7 @@ import {
 } from "./runtime-environment.js";
 
 export const AUTH_MODES = ["persistent-session", "better-auth"] as const;
-export const PAYMENT_PROVIDERS = ["disabled", "fake"] as const;
+export const PAYMENT_PROVIDERS = ["disabled", "fake", "paymongo"] as const;
 
 export type AuthMode = (typeof AUTH_MODES)[number];
 export type PaymentProviderName = (typeof PAYMENT_PROVIDERS)[number];
@@ -19,6 +19,8 @@ export type ApiRuntimeConfiguration = Readonly<{
   betterAuthUrl: string | null;
   betterAuthTrustedOrigins: readonly string[];
   adminBootstrapEmails: readonly string[];
+  paymongoSecretKey: string | null;
+  paymongoApiUrl: string;
 }>;
 
 export function parseApiRuntimeConfiguration(bindings: {
@@ -29,6 +31,8 @@ export function parseApiRuntimeConfiguration(bindings: {
   CORS_ORIGINS?: string;
   PAYMENT_PROVIDER?: string;
   ADMIN_BOOTSTRAP_EMAILS?: string;
+  PAYMONGO_SECRET_KEY?: string;
+  PAYMONGO_API_URL?: string;
 }): ApiRuntimeConfiguration {
   const environment = parseRuntimeEnvironment(bindings.APP_ENV);
   const authMode = parseOption("AUTH_MODE", bindings.AUTH_MODE ?? "persistent-session", AUTH_MODES);
@@ -37,11 +41,19 @@ export function parseApiRuntimeConfiguration(bindings: {
     bindings.PAYMENT_PROVIDER ?? "disabled",
     PAYMENT_PROVIDERS,
   );
+  const paymongoSecretKey = bindings.PAYMONGO_SECRET_KEY?.trim() || null;
+  const paymongoApiUrl = normalizeApiUrl(bindings.PAYMONGO_API_URL, "https://api.paymongo.com");
 
   if (paymentProvider === "fake" && environment !== "development" && environment !== "test") {
     throw new ConfigurationError(
       "PAYMENT_PROVIDER",
       "the fake payment provider is limited to development and test environments",
+    );
+  }
+  if (paymentProvider === "paymongo" && !paymongoSecretKey) {
+    throw new ConfigurationError(
+      "PAYMONGO_SECRET_KEY",
+      "PAYMONGO_SECRET_KEY is required when PAYMENT_PROVIDER selects paymongo",
     );
   }
 
@@ -100,6 +112,12 @@ export function parseApiRuntimeConfiguration(bindings: {
       );
     }
   }
+  if (paymentProvider === "disabled" && environment !== "development" && environment !== "test") {
+    throw new ConfigurationError(
+      "PAYMENT_PROVIDER",
+      "disabled payment provider is limited to development and test environments",
+    );
+  }
 
   return Object.freeze({
     environment,
@@ -109,7 +127,23 @@ export function parseApiRuntimeConfiguration(bindings: {
     betterAuthUrl,
     betterAuthTrustedOrigins,
     adminBootstrapEmails,
+    paymongoSecretKey,
+    paymongoApiUrl,
   });
+}
+
+function normalizeApiUrl(value: string | undefined, fallback: string): string {
+  const candidate = value?.trim() || fallback;
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    throw new ConfigurationError("PAYMONGO_API_URL", "PAYMONGO_API_URL must be a valid URL");
+  }
+  if (url.protocol !== "https:" || url.pathname !== "/" || url.search || url.hash) {
+    throw new ConfigurationError("PAYMONGO_API_URL", "PAYMONGO_API_URL must be an HTTPS origin");
+  }
+  return url.origin;
 }
 
 function normalizeBetterAuthUrl(

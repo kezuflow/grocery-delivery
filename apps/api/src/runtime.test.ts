@@ -30,6 +30,8 @@ describe("API runtime composition", () => {
         BETTER_AUTH_SECRET: "x".repeat(32),
         BETTER_AUTH_URL: "https://api.example.test",
         CORS_ORIGINS: "https://app.example.test",
+        PAYMENT_PROVIDER: "paymongo",
+        PAYMONGO_SECRET_KEY: "sk_test_123",
       },
       createExecutionContext(),
     );
@@ -78,6 +80,8 @@ describe("API runtime composition", () => {
         BETTER_AUTH_SECRET: "x".repeat(32),
         BETTER_AUTH_URL: "https://api.example.test",
         CORS_ORIGINS: "https://app.example.test",
+        PAYMENT_PROVIDER: "paymongo",
+        PAYMONGO_SECRET_KEY: "sk_test_123",
         DB: {} as never,
       },
       createExecutionContext(),
