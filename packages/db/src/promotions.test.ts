@@ -67,7 +67,26 @@ describe("promotion repository", () => {
   });
 
   it("writes redemption persistence through one batch", async () => {
-    const database = new FakePromotionDatabase([]);
+    const database = new FakePromotionDatabase([
+      [],
+      [],
+      [
+        {
+          id: "redemption-1",
+          promotion_id: "promo-1",
+          customer_id: "customer-1",
+          idempotency_key: "coupon-1",
+          request_fingerprint: "fingerprint-1",
+          result_json: JSON.stringify({
+            promotionId: "promo-1",
+            discount: { centavos: 5000, currency: "PHP" },
+            deliveryFee: { centavos: 5000, currency: "PHP" },
+            reason: null,
+          }),
+          created_at: "2026-08-20T10:00:00.000Z",
+        },
+      ],
+    ]);
     const repository = new D1PromotionRepository(database);
 
     await repository.saveRedemptionAndUpdatePromotion({
@@ -86,7 +105,7 @@ describe("promotion repository", () => {
     });
 
     expect(database.batches).toHaveLength(1);
-    expect(database.batches[0]).toHaveLength(1);
+    expect(database.batches[0]).toHaveLength(2);
     expect(database.calls[0]?.sql).toContain("INSERT OR IGNORE INTO promotion_redemptions");
   });
 });

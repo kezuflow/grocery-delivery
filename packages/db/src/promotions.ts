@@ -85,7 +85,31 @@ export class D1PromotionRepository implements PromotionRepository {
   }
 
   async saveRedemptionAndUpdatePromotion(redemption: PromotionRedemptionRecord): Promise<void> {
-    await this.saveRedemption(redemption);
+    await this.database.batch([
+      redemptionStatement(this.database, redemption),
+      this.database
+        .prepare(
+          `UPDATE promotions
+           SET redeemed_amount_centavos = redeemed_amount_centavos + ?,
+               redemption_count = redemption_count + 1,
+               updated_at = ?
+           WHERE id = ?
+             AND EXISTS (SELECT 1 FROM promotion_redemptions WHERE id = ?)
+             AND (total_budget_centavos IS NULL OR redeemed_amount_centavos + ? <= total_budget_centavos)
+             AND (total_redemptions IS NULL OR redemption_count < total_redemptions)`,
+        )
+        .bind(
+          redemption.result.discount.centavos,
+          redemption.createdAt,
+          redemption.promotionId,
+          redemption.id,
+          redemption.result.discount.centavos,
+        ),
+    ]);
+    const saved = await this.findRedemption(redemption.customerId, redemption.idempotencyKey);
+    if (!saved) {
+      throw new Error("promotion redemption could not be persisted within campaign limits");
+    }
   }
 }
 
@@ -98,7 +122,18 @@ function redemptionStatement(
       `INSERT OR IGNORE INTO promotion_redemptions (
          id, promotion_id, customer_id, idempotency_key,
          request_fingerprint, result_json, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       )
+       SELECT ?, ?, ?, ?, ?, ?, ?
+       FROM promotions
+       WHERE id = ?
+         AND (total_budget_centavos IS NULL OR redeemed_amount_centavos + ? <= total_budget_centavos)
+         AND (total_redemptions IS NULL OR redemption_count < total_redemptions)
+         AND (
+           per_customer_redemptions IS NULL OR
+           (SELECT COUNT(*) FROM promotion_redemptions
+            WHERE promotion_id = ? AND customer_id = ? AND json_extract(result_json, '$.reason') IS NULL)
+           < per_customer_redemptions
+         )`,
     )
     .bind(
       redemption.id,
@@ -108,6 +143,10 @@ function redemptionStatement(
       redemption.requestFingerprint,
       JSON.stringify(redemption.result),
       redemption.createdAt,
+      redemption.promotionId,
+      redemption.result.discount.centavos,
+      redemption.promotionId,
+      redemption.customerId,
     );
 }
 
