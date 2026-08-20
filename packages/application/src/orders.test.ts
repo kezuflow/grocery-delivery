@@ -66,6 +66,48 @@ describe("cart locking", () => {
     expect(order.totals.totalDue.centavos).toBe(100_000);
   });
 
+  it("keeps fulfillment snapshots immutable after lock", async () => {
+    const service = new DefaultCartLockService(
+      new InMemoryOrderRepository(),
+      new InMemoryOutboxPublisher(),
+      () => "order-snapshot",
+    );
+    const address = {
+      customerId: "customer-1",
+      recipientName: "Customer",
+      phone: "+639171234567",
+      line1: "1 Main Street",
+      line2: null,
+      barangay: "Barangay One",
+      city: "Manila",
+      province: "Metro Manila",
+      postalCode: "1105",
+      instructions: null,
+      createdAt: "2026-08-18T00:00:00.000Z",
+      updatedAt: "2026-08-18T00:00:00.000Z",
+    } as const;
+    const window = {
+      id: "window-1",
+      cycleId: input.cycleId,
+      label: "Saturday morning",
+      startsAt: "2026-08-22T08:00:00.000Z",
+      endsAt: "2026-08-22T12:00:00.000Z",
+      capacity: 10,
+      active: true,
+      createdAt: "2026-08-18T00:00:00.000Z",
+      updatedAt: "2026-08-18T00:00:00.000Z",
+    } as const;
+    const order = await service.lock({
+      ...input,
+      deliveryAddress: address,
+      deliveryWindow: window,
+    });
+    expect(order.deliveryAddress).toEqual(address);
+    expect(order.deliveryWindow).toEqual(window);
+    expect(order.paymentState).toBe("unpaid");
+    expect(Object.isFrozen(order.deliveryAddress)).toBe(true);
+  });
+
   it("replays the same order without publishing another event", async () => {
     const outbox = new InMemoryOutboxPublisher();
     let sequence = 0;

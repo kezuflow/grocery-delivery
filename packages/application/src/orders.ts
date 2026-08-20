@@ -6,12 +6,19 @@ import {
   type LockedOrder,
   type Money,
   type Plan,
+  type DeliveryAddress,
+  type DeliveryWindow,
+  type PaymentState,
 } from "@carbon/domain";
 
 export type OrderRepository = Readonly<{
   findById(id: string): Promise<LockedOrder | null>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
+  updatePaymentState?(
+    orderId: string,
+    paymentState: NonNullable<LockedOrder["paymentState"]>,
+  ): Promise<void>;
 }>;
 
 export type AtomicOrderRepository = OrderRepository &
@@ -41,6 +48,9 @@ export type CartLockService = Readonly<{
     plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
     deliveryFee: Money;
     promotion?: AppliedPromotionSnapshot;
+    deliveryAddress?: DeliveryAddress | null;
+    deliveryWindow?: DeliveryWindow | null;
+    paymentState?: PaymentState;
     lockedAt: string;
   }): Promise<LockedOrder>;
 }>;
@@ -58,6 +68,16 @@ export class InMemoryOrderRepository implements OrderRepository {
 
   save(order: LockedOrder): Promise<void> {
     this.orders.set(`${order.customerId}:${order.idempotencyKey}`, order);
+    return Promise.resolve();
+  }
+
+  updatePaymentState(
+    orderId: string,
+    paymentState: NonNullable<LockedOrder["paymentState"]>,
+  ): Promise<void> {
+    for (const [key, order] of this.orders) {
+      if (order.id === orderId) this.orders.set(key, { ...order, paymentState });
+    }
     return Promise.resolve();
   }
 }
@@ -91,6 +111,9 @@ export class DefaultCartLockService implements CartLockService {
     plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
     deliveryFee: Money;
     promotion?: AppliedPromotionSnapshot;
+    deliveryAddress?: DeliveryAddress | null;
+    deliveryWindow?: DeliveryWindow | null;
+    paymentState?: PaymentState;
     lockedAt: string;
   }): Promise<LockedOrder> {
     const key = input.idempotencyKey.trim();
@@ -122,6 +145,9 @@ export class DefaultCartLockService implements CartLockService {
       plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
       deliveryFee: Money;
       promotion?: AppliedPromotionSnapshot;
+      deliveryAddress?: DeliveryAddress | null;
+      deliveryWindow?: DeliveryWindow | null;
+      paymentState?: PaymentState;
       lockedAt: string;
     },
     key: string,
@@ -138,6 +164,9 @@ export class DefaultCartLockService implements CartLockService {
       },
       deliveryFee: input.deliveryFee,
       promotion: input.promotion,
+      deliveryAddress: input.deliveryAddress,
+      deliveryWindow: input.deliveryWindow,
+      paymentState: input.paymentState,
     });
     const existing = await this.orders.findByIdempotencyKey(input.customerId, key);
     if (existing) {
@@ -172,6 +201,9 @@ export class DefaultCartLockService implements CartLockService {
       weeklyCredit: input.plan.weeklyCredit,
       totals,
       appliedPromotion: input.promotion ?? null,
+      deliveryAddress: input.deliveryAddress ?? null,
+      deliveryWindow: input.deliveryWindow ?? null,
+      paymentState: input.paymentState ?? "unpaid",
       status: "locked",
       lockedAt: input.lockedAt,
     });

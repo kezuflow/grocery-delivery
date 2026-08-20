@@ -23,6 +23,10 @@ export interface OrderRepository {
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
   saveAndPublish(order: LockedOrder, event: OrderOutboxEvent): Promise<void>;
+  updatePaymentState(
+    orderId: string,
+    paymentState: NonNullable<LockedOrder["paymentState"]>,
+  ): Promise<void>;
 }
 
 export interface OutboxPublisher {
@@ -38,7 +42,8 @@ export class D1OrderRepository implements OrderRepository {
         `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
                 discount_centavos, weekly_fee_centavos, included_credit_centavos, overage_centavos,
-                delivery_fee_centavos, total_due_centavos, applied_promotion_json, locked_at
+                delivery_fee_centavos, total_due_centavos, applied_promotion_json,
+                delivery_address_json, delivery_window_json, payment_state, locked_at
          FROM orders
          WHERE id = ? AND status = 'locked'
          LIMIT 1`,
@@ -70,7 +75,8 @@ export class D1OrderRepository implements OrderRepository {
         `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
                 discount_centavos, weekly_fee_centavos, included_credit_centavos, overage_centavos,
-                delivery_fee_centavos, total_due_centavos, applied_promotion_json, locked_at
+                delivery_fee_centavos, total_due_centavos, applied_promotion_json,
+                delivery_address_json, delivery_window_json, payment_state, locked_at
          FROM orders
          WHERE customer_id = ? AND idempotency_key = ? AND status = 'locked'
          LIMIT 1`,
@@ -108,6 +114,17 @@ export class D1OrderRepository implements OrderRepository {
       outboxStatement(this.database, event),
     ]);
   }
+
+  async updatePaymentState(
+    orderId: string,
+    paymentState: NonNullable<LockedOrder["paymentState"]>,
+  ): Promise<void> {
+    await this.database.batch([
+      this.database
+        .prepare(`UPDATE orders SET payment_state = ? WHERE id = ? AND status = 'locked'`)
+        .bind(paymentState, orderId),
+    ]);
+  }
 }
 
 export class D1OutboxPublisher implements OutboxPublisher {
@@ -128,9 +145,10 @@ function orderStatements(
          id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key, request_fingerprint,
          weekly_credit_centavos, subtotal_centavos, weekly_fee_centavos,
          discount_centavos, included_credit_centavos, overage_centavos, delivery_fee_centavos,
-         total_due_centavos, applied_promotion_json, status, locked_at, created_at
+         total_due_centavos, applied_promotion_json, delivery_address_json,
+         delivery_window_json, payment_state, status, locked_at, created_at
        )
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'locked', ?, ?
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'locked', ?, ?
        WHERE ? IS NULL OR EXISTS (
          SELECT 1 FROM promotion_redemptions WHERE id = ?
        )`,
@@ -152,6 +170,9 @@ function orderStatements(
       order.totals.deliveryFee.centavos,
       order.totals.totalDue.centavos,
       order.appliedPromotion ? JSON.stringify(order.appliedPromotion) : null,
+      order.deliveryAddress ? JSON.stringify(order.deliveryAddress) : null,
+      order.deliveryWindow ? JSON.stringify(order.deliveryWindow) : null,
+      order.paymentState ?? "unpaid",
       order.lockedAt,
       order.lockedAt,
       order.appliedPromotion?.id ?? null,
@@ -213,6 +234,9 @@ function mapOrder(order: OrderRow, lines: readonly OrderLineRow[]): LockedOrder 
     appliedPromotion: order.applied_promotion_json
       ? JSON.parse(order.applied_promotion_json)
       : null,
+    deliveryAddress: order.delivery_address_json ? JSON.parse(order.delivery_address_json) : null,
+    deliveryWindow: order.delivery_window_json ? JSON.parse(order.delivery_window_json) : null,
+    paymentState: order.payment_state ?? "unpaid",
     status: "locked",
     lockedAt: order.locked_at,
   });
@@ -235,6 +259,9 @@ type OrderRow = Record<string, unknown> & {
   delivery_fee_centavos: number;
   total_due_centavos: number;
   applied_promotion_json: string | null;
+  delivery_address_json: string | null;
+  delivery_window_json: string | null;
+  payment_state: LockedOrder["paymentState"];
   locked_at: string;
 };
 

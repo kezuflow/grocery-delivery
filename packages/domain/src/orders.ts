@@ -1,6 +1,7 @@
 import { DomainValidationError } from "./errors.js";
 import { createMoney, type Money } from "./money.js";
 import { createCart, type Cart, type CartTotals } from "./commerce.js";
+import type { DeliveryAddress, DeliveryWindow } from "./delivery.js";
 
 export const ORDER_STATUSES = ["locked", "canceled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -12,6 +13,8 @@ export type AppliedPromotionSnapshot = Readonly<{
   discount: Money;
   deliveryFee: Money;
 }>;
+
+export type PaymentState = "unpaid" | "pending" | "paid" | "failed";
 
 export type LockedOrder = Readonly<{
   id: string;
@@ -25,6 +28,9 @@ export type LockedOrder = Readonly<{
   weeklyCredit: Money;
   totals: CartTotals;
   appliedPromotion?: AppliedPromotionSnapshot | null;
+  deliveryAddress?: DeliveryAddress | null;
+  deliveryWindow?: DeliveryWindow | null;
+  paymentState?: PaymentState;
   status: "locked";
   lockedAt: string;
 }>;
@@ -62,6 +68,9 @@ export function createLockedOrder(input: LockedOrder): LockedOrder {
       );
     }
   }
+  if (input.paymentState && !["unpaid", "pending", "paid", "failed"].includes(input.paymentState)) {
+    throw new DomainValidationError("INVALID_PAYMENT_STATE", "order payment state is invalid");
+  }
 
   return Object.freeze({
     ...input,
@@ -74,6 +83,9 @@ export function createLockedOrder(input: LockedOrder): LockedOrder {
           deliveryFee: createMoney(input.appliedPromotion.deliveryFee.centavos),
         })
       : null,
+    deliveryAddress: input.deliveryAddress ? Object.freeze({ ...input.deliveryAddress }) : null,
+    deliveryWindow: input.deliveryWindow ? Object.freeze({ ...input.deliveryWindow }) : null,
+    paymentState: input.paymentState ?? "unpaid",
     totals: Object.freeze({
       ...input.totals,
       subtotal: createMoney(input.totals.subtotal.centavos),

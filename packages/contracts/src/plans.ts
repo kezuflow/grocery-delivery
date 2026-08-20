@@ -135,6 +135,31 @@ export const orderSchema = z.object({
     })
     .nullable()
     .default(null),
+  deliveryAddress: z
+    .object({
+      recipientName: z.string().min(1),
+      phone: z.string().min(1),
+      line1: z.string().min(1),
+      line2: z.string().nullable(),
+      barangay: z.string().min(1),
+      city: z.string().min(1),
+      province: z.string().min(1),
+      postalCode: z.string().min(1),
+      instructions: z.string().nullable(),
+    })
+    .nullable()
+    .default(null),
+  deliveryWindow: z
+    .object({
+      id: z.string().min(1),
+      cycleId: z.string().min(1),
+      label: z.string().min(1),
+      startsAt: z.string().datetime(),
+      endsAt: z.string().datetime(),
+    })
+    .nullable()
+    .default(null),
+  paymentState: z.enum(["unpaid", "pending", "paid", "failed"]).default("unpaid"),
   status: z.literal("locked"),
   lockedAt: z.string().datetime(),
 });

@@ -43,6 +43,7 @@ describe("D1 order lock integration", () => {
       "0024_order_cycle_snapshot.sql",
       "0025_promotions.sql",
       "0026_order_promotion_snapshot.sql",
+      "0027_order_fulfillment_snapshots.sql",
     ]) {
       const sql = await readFile(
         fileURLToPath(new NodeURL(`../../../packages/db/migrations/${migration}`, import.meta.url)),

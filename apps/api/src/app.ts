@@ -234,7 +234,7 @@ export type ApiOptions = Readonly<{
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
   promotionRepository?: PromotionRepository;
-  orderReader?: Pick<OrderRepository, "findById">;
+  orderReader?: Pick<OrderRepository, "findById" | "updatePaymentState">;
   paymentProvider?: PaymentProvider;
   paymentService?: PaymentService;
   deliveryFeeCentavos?: number;
@@ -1670,6 +1670,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const windowRepository =
       options.deliveryWindowRepository ??
       (bindings.DB ? new D1DeliveryWindowRepository(bindings.DB) : undefined);
+    const orderReader =
+      options.orderReader ?? (bindings.DB ? new D1OrderRepository(bindings.DB) : undefined);
     if (windowRepository) {
       const windows = await windowRepository.listForCycle(cycle.id);
       if (!windows.some((window) => window.id === input.data.windowId))
@@ -1681,6 +1683,45 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           ),
           400,
         );
+    }
+    if (orderReader) {
+      const order = await orderReader.findById(input.data.orderId);
+      if (!order) {
+        return context.json(
+          errorResponse("ORDER_NOT_FOUND", "order was not found", context.get("correlationId")),
+          404,
+        );
+      }
+      if (order.cycleId !== cycle.id) {
+        return context.json(
+          errorResponse(
+            "DISPATCH_CYCLE_MISMATCH",
+            "order belongs to a different delivery cycle",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      if (order.deliveryWindow && order.deliveryWindow.id !== input.data.windowId) {
+        return context.json(
+          errorResponse(
+            "DISPATCH_WINDOW_MISMATCH",
+            "assignment window does not match the order snapshot",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      if (order.paymentState !== "paid") {
+        return context.json(
+          errorResponse(
+            "ORDER_NOT_PAYABLE",
+            "a paid order is required for dispatch",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
     }
     const assignment = createDispatchAssignment({
       id: crypto.randomUUID(),
@@ -2204,6 +2245,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const deliveryAddressRepository =
       options.deliveryAddressRepository ??
       (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    const deliveryWindowRepository =
+      options.deliveryWindowRepository ??
+      (bindings.DB ? new D1DeliveryWindowRepository(bindings.DB) : undefined);
     const promotionRepository =
       options.promotionRepository ??
       (bindings.DB ? new D1PromotionRepository(bindings.DB) : undefined);
@@ -2289,8 +2333,10 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         409,
       );
     }
+    const deliveryAddress = deliveryAddressRepository
+      ? await deliveryAddressRepository.findByCustomerId(session.customerId)
+      : null;
     if (deliveryAddressRepository) {
-      const deliveryAddress = await deliveryAddressRepository.findByCustomerId(session.customerId);
       if (
         !deliveryAddress ||
         !resolveServiceability(deliveryAddress.postalCode, options, bindings)
@@ -2304,6 +2350,24 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           409,
         );
       }
+    }
+    const deliveryWindowSelection = deliveryWindowRepository
+      ? await deliveryWindowRepository.findSelection(session.customerId, cutoff.cycleId)
+      : null;
+    const deliveryWindow = deliveryWindowSelection
+      ? ((await deliveryWindowRepository!.listForCycle(cutoff.cycleId)).find(
+          (window) => window.id === deliveryWindowSelection.windowId,
+        ) ?? null)
+      : null;
+    if (deliveryWindowRepository && !deliveryWindow) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_WINDOW_REQUIRED",
+          "an active delivery window is required to place an order",
+          context.get("correlationId"),
+        ),
+        409,
+      );
     }
     const savedCart = input.data.lines
       ? null
@@ -2383,6 +2447,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         plan,
         deliveryFee: quote.promotion?.deliveryFee ?? createMoney(deliveryFeeCentavos),
         ...(quote.promotion ? { promotion: quote.promotion } : {}),
+        deliveryAddress,
+        deliveryWindow,
+        paymentState: "unpaid",
         lockedAt: checkoutTime.toISOString(),
       });
       if (!input.data.lines) {
@@ -2398,6 +2465,29 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           weeklyCredit: order.weeklyCredit,
           totals: order.totals,
           appliedPromotion: order.appliedPromotion ?? null,
+          deliveryAddress: order.deliveryAddress
+            ? {
+                recipientName: order.deliveryAddress.recipientName,
+                phone: order.deliveryAddress.phone,
+                line1: order.deliveryAddress.line1,
+                line2: order.deliveryAddress.line2,
+                barangay: order.deliveryAddress.barangay,
+                city: order.deliveryAddress.city,
+                province: order.deliveryAddress.province,
+                postalCode: order.deliveryAddress.postalCode,
+                instructions: order.deliveryAddress.instructions,
+              }
+            : null,
+          deliveryWindow: order.deliveryWindow
+            ? {
+                id: order.deliveryWindow.id,
+                cycleId: order.deliveryWindow.cycleId,
+                label: order.deliveryWindow.label,
+                startsAt: order.deliveryWindow.startsAt,
+                endsAt: order.deliveryWindow.endsAt,
+              }
+            : null,
+          paymentState: order.paymentState ?? "unpaid",
           status: order.status,
           lockedAt: order.lockedAt,
         },
@@ -2490,6 +2580,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         idempotencyKey,
         now: now().toISOString(),
       });
+      if (orderReader.updatePaymentState) {
+        await orderReader.updatePaymentState(
+          order.id,
+          attempt.status === "succeeded" ? "paid" : attempt.status,
+        );
+      }
       const body = paymentAttemptResponse(attempt, context.get("correlationId"));
       paymentAttemptResponseSchema.parse(body);
       return context.json(body, 200);
