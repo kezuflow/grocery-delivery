@@ -290,6 +290,15 @@ web tests plus the complete `pnpm check` pass.
 Next resume point: implement the server-owned promotion and coupon rule engine, including eligibility,
 budgets, redemption idempotency, and non-stacking before adding checkout coupon controls.
 
+Completion record: the domain now owns normalized promotion codes and deterministic evaluation for
+fixed, capped percentage, and free-delivery discounts, including schedules, status, minimum subtotal,
+plan/SKU/category eligibility, first-order/first-week rules, campaign budgets, total and per-customer
+limits, and explicit stacking policy. The application boundary adds idempotent customer redemption
+records and stable conflicting-key errors. Focused domain/application tests, lint, and typecheck pass.
+
+Next resume point: persist campaign/redemption records in D1 and expose customer coupon apply/remove
+controls that feed server-calculated checkout totals.
+
 ### Slice 016: Immutable order fulfillment and cutoff enforcement
 
 Scope:
