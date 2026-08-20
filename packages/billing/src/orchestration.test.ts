@@ -250,7 +250,59 @@ describe("payment orchestration", () => {
     expect(refund.status).toBe("succeeded");
     expect(repository.ledgerEntries).toHaveLength(2);
   });
+
+  it("rejects cumulative refunds above the successful charge before calling the provider", async () => {
+    const repository = new InMemoryPaymentRepository();
+    const provider = new CountingRefundProvider({ now: () => new Date(chargeInput.now) });
+    const service = new DefaultPaymentService(
+      repository,
+      provider,
+      (() => {
+        let sequence = 0;
+        return () => `refund-bound-${++sequence}`;
+      })(),
+    );
+    const attempt = await service.charge(chargeInput);
+
+    await service.refund({
+      customerId: "customer-1",
+      paymentAttemptId: attempt.id,
+      amount: createMoney(40_000),
+      reason: "partial refund one",
+      idempotencyKey: "refund-bound-1",
+      now: "2026-08-20T10:02:00.000Z",
+    });
+    await service.refund({
+      customerId: "customer-1",
+      paymentAttemptId: attempt.id,
+      amount: createMoney(29_900),
+      reason: "partial refund two",
+      idempotencyKey: "refund-bound-2",
+      now: "2026-08-20T10:03:00.000Z",
+    });
+
+    await expect(
+      service.refund({
+        customerId: "customer-1",
+        paymentAttemptId: attempt.id,
+        amount: createMoney(1),
+        reason: "over refund",
+        idempotencyKey: "refund-bound-3",
+        now: "2026-08-20T10:04:00.000Z",
+      }),
+    ).rejects.toMatchObject({ code: "REFUND_EXCEEDS_CHARGE" });
+    expect(provider.refundCalls).toBe(2);
+  });
 });
+
+class CountingRefundProvider extends FakePaymentProvider {
+  refundCalls = 0;
+
+  override refund(input: Parameters<FakePaymentProvider["refund"]>[0]) {
+    this.refundCalls += 1;
+    return super.refund(input);
+  }
+}
 
 class FailingRevocationProvider extends FakePaymentProvider {
   override revokePaymentMethod(): Promise<never> {

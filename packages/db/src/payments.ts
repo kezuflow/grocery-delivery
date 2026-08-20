@@ -306,6 +306,21 @@ export class D1PaymentRepository implements PaymentRepository {
     return row ? mapRefund(row) : null;
   }
 
+  async listRefundsForPaymentAttempt(paymentAttemptId: string): Promise<readonly Refund[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, payment_attempt_id, provider_name,
+                provider_reference, amount_centavos, status, reason,
+                idempotency_key, request_fingerprint, created_at, updated_at
+         FROM payment_refunds
+         WHERE payment_attempt_id = ?
+         ORDER BY created_at ASC, id ASC`,
+      )
+      .bind(paymentAttemptId)
+      .all<RefundRow>();
+    return rows.results.map(mapRefund);
+  }
+
   async saveRefund(refund: Refund): Promise<void> {
     await this.database.batch([refundStatement(this.database, refund)]);
   }

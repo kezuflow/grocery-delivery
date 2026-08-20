@@ -214,6 +214,16 @@ export class DefaultPaymentService implements PaymentService {
     if (attempt.status !== "succeeded" || !attempt.providerReference) {
       throw new PaymentProviderError("CHARGE_NOT_REFUNDABLE", "payment attempt is not refundable");
     }
+    const refunds = await this.repository.listRefundsForPaymentAttempt(attempt.id);
+    const refundedCentavos = refunds
+      .filter((refund) => refund.status === "succeeded")
+      .reduce((total, refund) => total + refund.amount.centavos, 0);
+    if (refundedCentavos + input.amount.centavos > attempt.amount.centavos) {
+      throw new PaymentProviderError(
+        "REFUND_EXCEEDS_CHARGE",
+        "refund exceeds the remaining charge amount",
+      );
+    }
 
     let result;
     try {

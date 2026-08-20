@@ -143,6 +143,7 @@ export interface PaymentRepository {
     providerName: string,
     providerReference: string,
   ): Promise<Refund | null>;
+  listRefundsForPaymentAttempt(paymentAttemptId: string): Promise<readonly Refund[]>;
   saveRefund(refund: Refund): Promise<void>;
   saveRefundAndLedger(refund: Refund, entry: PaymentLedgerEntry): Promise<void>;
   appendLedgerEntry(entry: PaymentLedgerEntry): Promise<void>;
@@ -309,6 +310,14 @@ export class InMemoryPaymentRepository implements PaymentRepository {
         (refund) =>
           refund.providerName === providerName && refund.providerReference === providerReference,
       ) ?? null,
+    );
+  }
+
+  listRefundsForPaymentAttempt(paymentAttemptId: string): Promise<readonly Refund[]> {
+    return Promise.resolve(
+      [...this.refunds.values()]
+        .filter((refund) => refund.paymentAttemptId === paymentAttemptId)
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
     );
   }
 

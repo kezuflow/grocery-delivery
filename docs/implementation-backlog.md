@@ -299,6 +299,14 @@ records and stable conflicting-key errors. Focused domain/application tests, lin
 Next resume point: persist campaign/redemption records in D1 and expose customer coupon apply/remove
 controls that feed server-calculated checkout totals.
 
+Completion record: refund orchestration now derives the remaining refundable balance from durable,
+attempt-scoped successful refunds and rejects cumulative over-refunds with stable
+`REFUND_EXCEEDS_CHARGE` errors before contacting the provider. Failed refunds do not consume the
+balance, and focused billing/repository coverage plus the complete `pnpm check` pass.
+
+Next resume point: persist campaign/redemption records in D1 and expose customer coupon apply/remove
+controls that feed server-calculated checkout totals.
+
 ### Slice 016: Immutable order fulfillment and cutoff enforcement
 
 Current increment: server-side order cutoff and immutable cycle snapshot
