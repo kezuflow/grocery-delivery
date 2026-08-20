@@ -35,7 +35,7 @@ export class D1OrderRepository implements OrderRepository {
   async findById(id: string): Promise<LockedOrder | null> {
     const orders = await this.database
       .prepare(
-        `SELECT id, customer_id, subscription_id, plan_id, idempotency_key,
+        `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
                 weekly_fee_centavos, included_credit_centavos, overage_centavos,
                 delivery_fee_centavos, total_due_centavos, locked_at
@@ -67,7 +67,7 @@ export class D1OrderRepository implements OrderRepository {
   ): Promise<LockedOrder | null> {
     const orders = await this.database
       .prepare(
-        `SELECT id, customer_id, subscription_id, plan_id, idempotency_key,
+        `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
                 weekly_fee_centavos, included_credit_centavos, overage_centavos,
                 delivery_fee_centavos, total_due_centavos, locked_at
@@ -121,17 +121,18 @@ function orderStatements(
   const orderStatement = database
     .prepare(
       `INSERT INTO orders (
-         id, customer_id, subscription_id, plan_id, idempotency_key, request_fingerprint,
+         id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key, request_fingerprint,
          weekly_credit_centavos, subtotal_centavos, weekly_fee_centavos,
          included_credit_centavos, overage_centavos, delivery_fee_centavos,
          total_due_centavos, status, locked_at, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'locked', ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'locked', ?, ?)`,
     )
     .bind(
       order.id,
       order.customerId,
       order.subscriptionId,
       order.planId,
+      order.cycleId,
       order.idempotencyKey,
       order.requestFingerprint,
       order.weeklyCredit.centavos,
@@ -175,6 +176,7 @@ function mapOrder(order: OrderRow, lines: readonly OrderLineRow[]): LockedOrder 
     customerId: order.customer_id,
     subscriptionId: order.subscription_id,
     planId: order.plan_id,
+    cycleId: order.cycle_id,
     idempotencyKey: order.idempotency_key,
     requestFingerprint: order.request_fingerprint,
     cart: createCart(
@@ -205,6 +207,7 @@ type OrderRow = Record<string, unknown> & {
   customer_id: string;
   subscription_id: string;
   plan_id: string;
+  cycle_id: string;
   idempotency_key: string;
   request_fingerprint: string;
   weekly_credit_centavos: number;

@@ -227,6 +227,7 @@ describe("web API client", () => {
             id: "order-1",
             subscriptionId: "subscription-1",
             planId: "plan-small",
+            cycleId: "cycle-2026-08-22",
             lines: [
               { skuId: "sku-1", quantity: 2, unitPrice: { centavos: 10000, currency: "PHP" } },
             ],

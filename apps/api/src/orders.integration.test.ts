@@ -40,6 +40,7 @@ describe("D1 order lock integration", () => {
       "0001_catalog.sql",
       "0002_plans_subscriptions.sql",
       "0003_orders_outbox.sql",
+      "0024_order_cycle_snapshot.sql",
     ]) {
       const sql = await readFile(
         fileURLToPath(new NodeURL(`../../../packages/db/migrations/${migration}`, import.meta.url)),
@@ -104,6 +105,7 @@ describe("D1 order lock integration", () => {
     const input = {
       customerId: "customer-1",
       subscriptionId: "subscription-1",
+      cycleId: "cycle-2026-08-22",
       idempotencyKey: "checkout-live-1",
       cart,
       plan,
@@ -147,6 +149,7 @@ describe("D1 order lock integration", () => {
     const replay = await service.lock({
       customerId: "customer-1",
       subscriptionId: "subscription-1",
+      cycleId: existing!.cycleId,
       idempotencyKey: "checkout-live-1",
       cart: existing!.cart,
       plan: {

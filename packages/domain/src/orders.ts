@@ -10,6 +10,7 @@ export type LockedOrder = Readonly<{
   customerId: string;
   subscriptionId: string;
   planId: string;
+  cycleId: string;
   idempotencyKey: string;
   requestFingerprint: string;
   cart: Cart;
@@ -24,6 +25,7 @@ export function createLockedOrder(input: LockedOrder): LockedOrder {
   assertText(input.customerId, "order customer id");
   assertText(input.subscriptionId, "order subscription id");
   assertText(input.planId, "order plan id");
+  assertText(input.cycleId, "order cycle id");
   assertText(input.idempotencyKey, "order idempotency key");
   assertText(input.requestFingerprint, "order request fingerprint");
   if (input.status !== "locked") {

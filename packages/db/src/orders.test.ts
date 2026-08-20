@@ -10,6 +10,7 @@ const order = createLockedOrder({
   customerId: "customer-1",
   subscriptionId: "subscription-1",
   planId: "plan-small",
+  cycleId: "cycle-2026-08-22",
   idempotencyKey: "checkout-1",
   requestFingerprint: "fingerprint-1",
   cart: createCart([
@@ -44,6 +45,7 @@ describe("order repositories", () => {
           customer_id: "customer-1",
           subscription_id: "subscription-1",
           plan_id: "plan-small",
+          cycle_id: "cycle-2026-08-22",
           idempotency_key: "checkout-1",
           request_fingerprint: "fingerprint-1",
           weekly_credit_centavos: 69_900,

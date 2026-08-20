@@ -86,6 +86,7 @@ describe("plan contracts", () => {
           id: "order-1",
           subscriptionId: "subscription-1",
           planId: "plan-small",
+          cycleId: "cycle-2026-08-22",
           lines: [
             { skuId: "sku-bananas", quantity: 2, unitPrice: { centavos: 12_500, currency: "PHP" } },
           ],

@@ -2083,7 +2083,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         401,
       );
     }
-    const cutoff = evaluateOrderCutoff(now());
+    const checkoutTime = now();
+    const cutoff = evaluateOrderCutoff(checkoutTime);
     if (!cutoff.allowed) {
       return context.json(
         errorResponse(
@@ -2221,11 +2222,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       const order = await orderLockService.lock({
         customerId: session.customerId,
         subscriptionId: subscription.id,
+        cycleId: cutoff.cycleId,
         idempotencyKey,
         cart: { lines: cartLines },
         plan,
         deliveryFee: { centavos: deliveryFeeCentavos, currency: "PHP" },
-        lockedAt: now().toISOString(),
+        lockedAt: checkoutTime.toISOString(),
       });
       if (!input.data.lines) {
         await cartRepository.clear(session.customerId);
@@ -2235,6 +2237,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           id: order.id,
           subscriptionId: order.subscriptionId,
           planId: order.planId,
+          cycleId: order.cycleId,
           lines: order.cart.lines,
           weeklyCredit: order.weeklyCredit,
           totals: order.totals,

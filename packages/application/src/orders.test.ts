@@ -11,6 +11,7 @@ describe("cart locking", () => {
   const input = {
     customerId: "customer-1",
     subscriptionId: "subscription-1",
+    cycleId: "cycle-2026-08-22",
     idempotencyKey: "checkout-1",
     cart: createCart([
       createCartLine({ skuId: "sku-a", quantity: 2, unitPrice: createMoney(50_000) }),
@@ -30,6 +31,7 @@ describe("cart locking", () => {
 
     const order = await service.lock(input);
 
+    expect(order.cycleId).toBe("cycle-2026-08-22");
     expect(order.totals).toMatchObject({
       subtotal: { centavos: 100_000 },
       overage: { centavos: 30_100 },

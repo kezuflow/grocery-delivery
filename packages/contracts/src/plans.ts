@@ -114,6 +114,7 @@ export const orderSchema = z.object({
   id: z.string().min(1),
   subscriptionId: z.string().min(1),
   planId: z.string().min(1),
+  cycleId: z.string().min(1),
   lines: z.array(orderLineSchema),
   weeklyCredit: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
   totals: orderTotalsSchema,

@@ -1237,6 +1237,7 @@ describe("API worker", () => {
     const body = orderResponseSchema.parse(await response.json());
 
     expect(response.status).toBe(201);
+    expect(body.data.cycleId).toBe("cycle-2026-08-22");
     expect(body.data.lines[0]?.unitPrice.centavos).toBe(12_500);
     expect(body.data.totals).toMatchObject({
       subtotal: { centavos: 25_000 },
@@ -1458,6 +1459,7 @@ describe("API worker", () => {
         customerId: "customer-1",
         subscriptionId: "subscription-1",
         planId: "plan-small",
+        cycleId: "cycle-2026-08-22",
         idempotencyKey: "checkout-payment-1",
         requestFingerprint: "order-fingerprint-1",
         cart: createCart([

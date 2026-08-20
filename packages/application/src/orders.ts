@@ -34,6 +34,7 @@ export type CartLockService = Readonly<{
   lock(input: {
     customerId: string;
     subscriptionId: string;
+    cycleId: string;
     idempotencyKey: string;
     cart: Cart;
     plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
@@ -82,6 +83,7 @@ export class DefaultCartLockService implements CartLockService {
   async lock(input: {
     customerId: string;
     subscriptionId: string;
+    cycleId: string;
     idempotencyKey: string;
     cart: Cart;
     plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
@@ -111,6 +113,7 @@ export class DefaultCartLockService implements CartLockService {
     input: {
       customerId: string;
       subscriptionId: string;
+      cycleId: string;
       idempotencyKey: string;
       cart: Cart;
       plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
@@ -122,6 +125,7 @@ export class DefaultCartLockService implements CartLockService {
     const fingerprint = JSON.stringify({
       customerId: input.customerId,
       subscriptionId: input.subscriptionId,
+      cycleId: input.cycleId,
       cart: input.cart,
       plan: {
         id: input.plan.id,
@@ -155,6 +159,7 @@ export class DefaultCartLockService implements CartLockService {
       customerId: input.customerId,
       subscriptionId: input.subscriptionId,
       planId: input.plan.id,
+      cycleId: input.cycleId,
       idempotencyKey: key,
       requestFingerprint: fingerprint,
       cart: input.cart,
