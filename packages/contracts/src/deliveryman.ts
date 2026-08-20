@@ -17,6 +17,20 @@ export const deliverymanAssignmentSchema = z.object({
   status: z.enum(["assigned", "out_for_delivery", "delivered", "failed"]),
   assignedAt: z.string().datetime(),
   lastEventType: deliveryEventTypeSchema.nullable(),
+  routeSequence: z.number().int().positive(),
+  recipientName: z.string().min(1).nullable(),
+  recipientPhone: z.string().min(1).nullable(),
+  deliveryAddress: z
+    .object({
+      line1: z.string().min(1),
+      line2: z.string().nullable(),
+      barangay: z.string().min(1),
+      city: z.string().min(1),
+      province: z.string().min(1),
+      postalCode: z.string().min(1),
+      instructions: z.string().nullable(),
+    })
+    .nullable(),
 });
 export const deliveryEventSchema = z.object({
   id: z.string().min(1),

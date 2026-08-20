@@ -113,8 +113,22 @@ export function DeliverymanConsole({
           assignments.map((assignment) => (
             <article className="deliveryman-card" key={assignment.id}>
               <div>
-                <p className="eyebrow">Order {assignment.orderId}</p>
+                <p className="eyebrow">
+                  Stop {assignment.routeSequence} · Order {assignment.orderId}
+                </p>
                 <h2>{assignment.windowId}</h2>
+                {assignment.recipientName ? <p>{assignment.recipientName}</p> : null}
+                {assignment.recipientPhone ? <p>{assignment.recipientPhone}</p> : null}
+                {assignment.deliveryAddress ? (
+                  <p className="subscription-note">
+                    {assignment.deliveryAddress.line1}, {assignment.deliveryAddress.barangay},{" "}
+                    {assignment.deliveryAddress.city}, {assignment.deliveryAddress.province}{" "}
+                    {assignment.deliveryAddress.postalCode}
+                    {assignment.deliveryAddress.instructions
+                      ? ` · ${assignment.deliveryAddress.instructions}`
+                      : ""}
+                  </p>
+                ) : null}
                 <p className="subscription-note">{assignment.lastEventType ?? assignment.status}</p>
               </div>
               <div className="deliveryman-actions">

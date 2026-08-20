@@ -2292,7 +2292,15 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const body = {
       data: {
         cycleId: cycle.id,
-        assignments: await repository.listAssignments(session.userId, cycle.id),
+        assignments: (await repository.listAssignments(session.userId, cycle.id)).map(
+          (assignment) => ({
+            ...assignment,
+            routeSequence: assignment.routeSequence ?? 1,
+            recipientName: assignment.recipientName ?? null,
+            recipientPhone: assignment.recipientPhone ?? null,
+            deliveryAddress: assignment.deliveryAddress ?? null,
+          }),
+        ),
       },
       meta: { correlationId: context.get("correlationId") },
     };

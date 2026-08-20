@@ -10,6 +10,18 @@ export type DeliverymanAssignment = Readonly<{
   status: "assigned" | "out_for_delivery" | "delivered" | "failed";
   assignedAt: string;
   lastEventType: DeliveryEventType | null;
+  routeSequence?: number;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  deliveryAddress: Readonly<{
+    line1: string;
+    line2: string | null;
+    barangay: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    instructions: string | null;
+  }> | null;
 }>;
 
 export interface DeliveryEventRepository {
@@ -86,9 +98,14 @@ export class D1DeliveryEventRepository implements DeliveryEventRepository {
       .prepare(
         `SELECT a.id, a.cycle_id, a.order_id, a.window_id, a.deliveryman_user_id,
                 a.status, a.assigned_at,
+                ROW_NUMBER() OVER (ORDER BY a.assigned_at, a.id) AS route_sequence,
+                json_extract(o.delivery_address_json, '$.recipientName') AS recipient_name,
+                json_extract(o.delivery_address_json, '$.phone') AS recipient_phone,
+                o.delivery_address_json,
                 (SELECT e.type FROM delivery_events e
                  WHERE e.assignment_id = a.id ORDER BY e.occurred_at DESC LIMIT 1) AS last_event_type
          FROM dispatch_assignments a
+         INNER JOIN orders o ON o.id = a.order_id
          WHERE a.deliveryman_user_id = ? AND a.cycle_id = ?
          ORDER BY a.assigned_at`,
       )
@@ -181,6 +198,10 @@ type AssignmentRow = {
   status: DeliverymanAssignment["status"];
   assigned_at: string;
   last_event_type: DeliveryEventType | null;
+  route_sequence: number;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  delivery_address_json: string | null;
 };
 type EventRow = {
   id: string;
@@ -203,6 +224,12 @@ const mapAssignment = (row: AssignmentRow): DeliverymanAssignment => ({
   status: row.status,
   assignedAt: row.assigned_at,
   lastEventType: row.last_event_type,
+  routeSequence: Number(row.route_sequence),
+  recipientName: row.recipient_name,
+  recipientPhone: row.recipient_phone,
+  deliveryAddress: row.delivery_address_json
+    ? parseDeliveryAddress(row.delivery_address_json)
+    : null,
 });
 const mapEvent = (row: EventRow): DeliveryEvent =>
   createDeliveryEvent({
@@ -237,6 +264,31 @@ function validateSequence(events: readonly DeliveryEvent[], next: DeliveryEvent)
   };
   if (!allowed[latest.type].includes(next.type)) {
     throw new Error(`delivery event ${next.type} must follow ${latest.type}`);
+  }
+}
+
+function parseDeliveryAddress(value: string): DeliverymanAssignment["deliveryAddress"] {
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    if (
+      typeof parsed.line1 !== "string" ||
+      typeof parsed.barangay !== "string" ||
+      typeof parsed.city !== "string" ||
+      typeof parsed.province !== "string" ||
+      typeof parsed.postalCode !== "string"
+    )
+      return null;
+    return {
+      line1: parsed.line1,
+      line2: typeof parsed.line2 === "string" ? parsed.line2 : null,
+      barangay: parsed.barangay,
+      city: parsed.city,
+      province: parsed.province,
+      postalCode: parsed.postalCode,
+      instructions: typeof parsed.instructions === "string" ? parsed.instructions : null,
+    };
+  } catch {
+    return null;
   }
 }
 

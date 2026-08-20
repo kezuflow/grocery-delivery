@@ -489,6 +489,16 @@ write actor, target, correlation, timestamp, and status metadata through the exi
 when identity persistence is available. The account and support-admin workflows therefore retain
 the same reporting history as other sensitive operations.
 
+Current increment: deliveryman minimum-data route projection
+
+Completion record: deliveryman assignment reads now join only the locked order's immutable delivery
+snapshot and expose a deterministic route sequence, recipient name and phone, delivery address, and
+instructions for the assigned driver and active cycle. The delivery console renders this server-owned
+route data without exposing commerce totals, payment references, or unrelated customer records.
+
+Next resume point: implement real R2 media access and retention cleanup, then provider-backed job
+handlers and launch compliance evidence.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

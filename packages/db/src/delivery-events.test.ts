@@ -13,6 +13,10 @@ describe("delivery event repository", () => {
         status: "assigned",
         assignedAt: "2026-08-19T00:00:00.000Z",
         lastEventType: null,
+        routeSequence: 1,
+        recipientName: null,
+        recipientPhone: null,
+        deliveryAddress: null,
       },
     ]);
     const event = {

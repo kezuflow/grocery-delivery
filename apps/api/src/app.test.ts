@@ -874,6 +874,10 @@ describe("API worker", () => {
         status: "assigned",
         assignedAt: "2026-08-19T00:00:00.000Z",
         lastEventType: null,
+        routeSequence: 1,
+        recipientName: null,
+        recipientPhone: null,
+        deliveryAddress: null,
       },
     ]);
     const deliverymanApp = createApi({
@@ -974,6 +978,10 @@ describe("API worker", () => {
         status: "assigned",
         assignedAt: "2026-08-19T00:00:00.000Z",
         lastEventType: null,
+        routeSequence: 1,
+        recipientName: null,
+        recipientPhone: null,
+        deliveryAddress: null,
       },
     ]);
     const mediaRepository = new InMemoryDeliveryMediaRepository();
