@@ -13,6 +13,7 @@ describe("identity repository", () => {
           role: "admin",
           customer_id: null,
           admin_permissions_json: '["catalog","finance"]',
+          mfa_required: 0,
         },
       ],
     ]);
@@ -22,6 +23,7 @@ describe("identity repository", () => {
         role: "admin",
         customerId: null,
         adminPermissions: ["catalog", "finance"],
+        mfaRequired: false,
       },
     );
     expect(database.calls[0]?.values).toEqual(["admin-1"]);

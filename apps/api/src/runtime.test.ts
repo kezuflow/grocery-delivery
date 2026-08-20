@@ -63,6 +63,30 @@ describe("API runtime composition", () => {
     expect(response.status).toBe(202);
     await expect(response.text()).resolves.toBe("auth-ok");
   });
+
+  it("requires deployed Better Auth to provide identity email delivery", async () => {
+    const worker = createApiWorker({
+      createBetterAuthApi: () => ({ getSession: () => Promise.resolve(null) }),
+    });
+    const response = await worker.fetch?.(
+      new Request("https://api.example.test/api/v1/health", {
+        headers: { "x-correlation-id": "email-config" },
+      }),
+      {
+        APP_ENV: "production",
+        AUTH_MODE: "better-auth",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        BETTER_AUTH_URL: "https://api.example.test",
+        CORS_ORIGINS: "https://app.example.test",
+        DB: {} as never,
+      },
+      createExecutionContext(),
+    );
+    const body = apiErrorResponseSchema.parse(await response?.json());
+
+    expect(response?.status).toBe(503);
+    expect(body.error.message).toContain("identity email sender");
+  });
 });
 
 function createExecutionContext(): ExecutionContext {

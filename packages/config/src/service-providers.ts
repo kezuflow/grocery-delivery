@@ -18,6 +18,7 @@ export type ApiRuntimeConfiguration = Readonly<{
   betterAuthSecret: string | null;
   betterAuthUrl: string | null;
   betterAuthTrustedOrigins: readonly string[];
+  adminBootstrapEmails: readonly string[];
 }>;
 
 export function parseApiRuntimeConfiguration(bindings: {
@@ -27,6 +28,7 @@ export function parseApiRuntimeConfiguration(bindings: {
   BETTER_AUTH_URL?: string;
   CORS_ORIGINS?: string;
   PAYMENT_PROVIDER?: string;
+  ADMIN_BOOTSTRAP_EMAILS?: string;
 }): ApiRuntimeConfiguration {
   const environment = parseRuntimeEnvironment(bindings.APP_ENV);
   const authMode = parseOption("AUTH_MODE", bindings.AUTH_MODE ?? "persistent-session", AUTH_MODES);
@@ -48,6 +50,12 @@ export function parseApiRuntimeConfiguration(bindings: {
   const betterAuthTrustedOrigins = Object.freeze([
     ...parseAllowedOrigins(bindings.CORS_ORIGINS, environment),
   ]);
+  const adminBootstrapEmails = Object.freeze(
+    (bindings.ADMIN_BOOTSTRAP_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
   if (
     authMode === "persistent-session" &&
     environment !== "development" &&
@@ -100,6 +108,7 @@ export function parseApiRuntimeConfiguration(bindings: {
     betterAuthSecret,
     betterAuthUrl,
     betterAuthTrustedOrigins,
+    adminBootstrapEmails,
   });
 }
 

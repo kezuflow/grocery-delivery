@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryNotificationSender } from "./index.js";
+import { InMemoryIdentityEmailSender } from "./index.js";
 
 describe("notification sender", () => {
   it("deduplicates retries by idempotency key", async () => {
@@ -16,5 +17,23 @@ describe("notification sender", () => {
     await sender.send(notification);
     await sender.send(notification);
     expect(sender.notifications).toHaveLength(1);
+  });
+});
+
+describe("identity email delivery", () => {
+  it("deduplicates retried verification and reset messages", async () => {
+    const sender = new InMemoryIdentityEmailSender();
+    const message = {
+      idempotencyKey: "verification-1",
+      recipient: "customer@example.com",
+      type: "email_verification" as const,
+      actionUrl: "https://api.example.test/api/auth/verify-email?token=opaque",
+    };
+    await sender.send(message);
+    await sender.send(message);
+    await sender.send({ ...message, idempotencyKey: "reset-1", type: "password_reset" });
+
+    expect(sender.messages).toHaveLength(2);
+    expect(sender.messages[0]?.actionUrl).toContain("token=opaque");
   });
 });

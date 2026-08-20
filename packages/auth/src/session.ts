@@ -27,6 +27,8 @@ export type BetterAuthSessionResult = Readonly<{
     role?: Role;
     adminPermissions?: readonly AdminPermission[];
     customerId?: string | null;
+    mfaRequired?: boolean;
+    mfaVerified?: boolean;
   }>;
 }>;
 
@@ -90,6 +92,8 @@ export function createBetterAuthSessionResolver(api: BetterAuthApi): SessionReso
         role,
         adminPermissions: role === "admin" ? (result.user.adminPermissions ?? []) : [],
         customerId: role === "customer" ? (result.user.customerId ?? result.user.id) : null,
+        mfaRequired: result.user.mfaRequired ?? false,
+        mfaVerified: result.user.mfaVerified ?? false,
         expiresAt:
           result.session.expiresAt instanceof Date
             ? result.session.expiresAt.toISOString()

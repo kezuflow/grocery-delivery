@@ -9,6 +9,8 @@ export type Session = Readonly<{
   customerId: string | null;
   expiresAt: string;
   revokedAt: string | null;
+  mfaRequired?: boolean;
+  mfaVerified?: boolean;
 }>;
 
 export type RoleAssignment = Readonly<{

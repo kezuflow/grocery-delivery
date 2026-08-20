@@ -57,4 +57,16 @@ describe("API runtime provider configuration", () => {
       betterAuthTrustedOrigins: ["https://app.example.com"],
     });
   });
+
+  it("normalizes server-owned administrator bootstrap emails", () => {
+    expect(
+      parseApiRuntimeConfiguration({
+        APP_ENV: "test",
+        AUTH_MODE: "better-auth",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        BETTER_AUTH_URL: "https://api.example.com",
+        ADMIN_BOOTSTRAP_EMAILS: " Admin@Example.com,ops@example.com ",
+      }).adminBootstrapEmails,
+    ).toEqual(["admin@example.com", "ops@example.com"]);
+  });
 });

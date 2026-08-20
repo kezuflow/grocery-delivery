@@ -97,7 +97,34 @@ export const sessionRevokeRequestSchema = z.object({
   sessionId: z.string().trim().min(1).max(128),
 });
 
+export const adminRoleAssignmentRequestSchema = z
+  .object({
+    userId: z.string().trim().min(1).max(128),
+    role: roleSchema,
+    adminPermissions: z.array(adminPermissionSchema).max(10).default([]),
+  })
+  .superRefine((value, context) => {
+    if (value.role !== "admin" && value.adminPermissions.length > 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["adminPermissions"],
+        message: "only administrators may receive administrator permissions",
+      });
+    }
+  });
+
+export const adminRoleAssignmentResponseSchema = z.object({
+  data: z.object({
+    userId: z.string().min(1),
+    role: roleSchema,
+    adminPermissions: z.array(adminPermissionSchema),
+    mfaRequired: z.boolean(),
+  }),
+  meta: responseMetaSchema,
+});
+
 export type CurrentSessionResponse = z.infer<typeof currentSessionResponseSchema>;
 export type AccountExportResponse = z.infer<typeof accountExportResponseSchema>;
 export type AccountProfileUpdateRequest = z.infer<typeof accountProfileUpdateRequestSchema>;
 export type AccountConsentRequest = z.infer<typeof accountConsentRequestSchema>;
+export type AdminRoleAssignmentRequest = z.infer<typeof adminRoleAssignmentRequestSchema>;

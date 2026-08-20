@@ -80,6 +80,8 @@ import {
   accountProfileUpdateRequestSchema,
   accountDeletionEligibilityResponseSchema,
   sessionRevokeRequestSchema,
+  adminRoleAssignmentRequestSchema,
+  adminRoleAssignmentResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -164,6 +166,7 @@ export type ApiBindings = Readonly<{
   AUTH_MODE?: string;
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
+  ADMIN_BOOTSTRAP_EMAILS?: string;
   CATALOG_CACHE_VERSION?: string;
   CORS_ORIGINS?: string;
   API_PUBLIC_ORIGIN?: string;
@@ -435,6 +438,25 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     await next();
   });
 
+  app.use("/api/v1/*", async (context, next) => {
+    if (!requiresMfa(context.req.method, context.req.path)) {
+      await next();
+      return;
+    }
+    const session = context.get("session");
+    if (session && session.mfaVerified === false) {
+      return context.json(
+        errorResponse(
+          "MFA_REQUIRED",
+          "multi-factor authentication is required for this action",
+          context.get("correlationId"),
+        ),
+        403,
+      );
+    }
+    await next();
+  });
+
   const healthHandler = (context: ApiContext) => {
     const bindings: ApiBindings = context.env ?? {};
     const environment = parseRuntimeEnvironment(bindings.APP_ENV);
@@ -484,6 +506,79 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     if (context.req.header("if-none-match") === etag) {
       return context.body(null, 304);
     }
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/admin/identity/roles", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "superadmin")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "superadmin permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const input = adminRoleAssignmentRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_ROLE_ASSIGNMENT",
+          "role assignment is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const assignedAt = now().toISOString();
+    const mfaRequired = input.data.role === "admin";
+    const customerId = input.data.role === "customer" ? input.data.userId : null;
+    await repository.saveRoleAssignment(
+      {
+        userId: input.data.userId,
+        role: input.data.role,
+        adminPermissions: input.data.adminPermissions,
+        assignedAt,
+      },
+      customerId,
+      mfaRequired,
+    );
+    await repository.saveAuditEvent({
+      id: await stableIdentityRecordId("role-assignment", input.data.userId, assignedAt),
+      actorUserId: session.userId,
+      action: "identity.role-assigned",
+      targetType: "user",
+      targetId: input.data.userId,
+      occurredAt: assignedAt,
+      metadata: { role: input.data.role, mfaRequired: String(mfaRequired) },
+    });
+    const body = {
+      data: {
+        userId: input.data.userId,
+        role: input.data.role,
+        adminPermissions: [...input.data.adminPermissions],
+        mfaRequired,
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    adminRoleAssignmentResponseSchema.parse(body);
     return context.json(body, 200);
   });
 
@@ -2990,6 +3085,16 @@ function requiresTrustedOrigin(method: string, path: string): boolean {
     return false;
   }
   return !path.startsWith("/api/v1/payments/webhooks/");
+}
+
+function requiresMfa(method: string, path: string): boolean {
+  if (path.startsWith("/api/v1/admin/")) return true;
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) return false;
+  return (
+    path === "/api/v1/payments/charge" ||
+    path.startsWith("/api/v1/payments/methods") ||
+    path === "/api/v1/admin/payments/refunds"
+  );
 }
 
 function toDeliveryAddressData(

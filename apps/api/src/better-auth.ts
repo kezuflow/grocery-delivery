@@ -2,11 +2,14 @@ import { betterAuth } from "better-auth";
 import type { BetterAuthApi } from "@carbon/auth";
 import { ConfigurationError, type ApiRuntimeConfiguration } from "@carbon/config";
 import { D1IdentityRepository } from "@carbon/db";
+import { twoFactor } from "better-auth/plugins";
+import type { IdentityEmailSender } from "@carbon/notifications";
 import type { ApiBindings } from "./app.js";
 
 export function createConfiguredBetterAuthApi(
   bindings: ApiBindings,
   configuration: ApiRuntimeConfiguration,
+  identityEmailSender?: IdentityEmailSender,
 ): BetterAuthApi {
   if (!bindings.DB) {
     throw new ConfigurationError("DB", "Better Auth requires a DB binding");
@@ -23,7 +26,47 @@ export function createConfiguredBetterAuthApi(
     baseURL: configuration.betterAuthUrl,
     basePath: "/api/auth",
     trustedOrigins: [...configuration.betterAuthTrustedOrigins],
-    emailAndPassword: { enabled: true },
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification:
+        configuration.environment === "staging" || configuration.environment === "production",
+      ...(identityEmailSender
+        ? {
+            sendResetPassword: async ({ user, url, token }) => {
+              await identityEmailSender.send({
+                idempotencyKey: `password-reset:${user.id}:${token}`,
+                recipient: user.email,
+                type: "password_reset",
+                actionUrl: url,
+              });
+            },
+          }
+        : {}),
+    },
+    ...(identityEmailSender
+      ? {
+          emailVerification: {
+            sendOnSignUp: true,
+            sendVerificationEmail: async ({ user, url, token }) => {
+              await identityEmailSender.send({
+                idempotencyKey: `email-verification:${user.id}:${token}`,
+                recipient: user.email,
+                type: "email_verification",
+                actionUrl: url,
+              });
+            },
+          },
+        }
+      : {}),
+    plugins: [
+      twoFactor({
+        issuer: "Carbon Food Delivery",
+        twoFactorTable: "better_auth_two_factor",
+        schema: {
+          user: { fields: { twoFactorEnabled: "two_factor_enabled" } },
+        },
+      }),
+    ],
     user: {
       modelName: "better_auth_user",
       fields: {
@@ -93,16 +136,43 @@ export function createConfiguredBetterAuthApi(
               createdAt,
               updatedAt: toIsoTimestamp(user.updatedAt),
             });
+            const isBootstrapAdmin = configuration.adminBootstrapEmails.includes(
+              user.email.trim().toLowerCase(),
+            );
             await identity.saveRoleAssignment(
               {
                 userId: user.id,
-                role: "customer",
-                adminPermissions: [],
+                role: isBootstrapAdmin ? "admin" : "customer",
+                adminPermissions: isBootstrapAdmin ? ["superadmin"] : [],
                 assignedAt: createdAt,
               },
-              user.id,
-              false,
+              isBootstrapAdmin ? null : user.id,
+              isBootstrapAdmin,
             );
+            if (isBootstrapAdmin) {
+              await identity.saveAuditEvent({
+                id: `audit-bootstrap-${user.id}`,
+                actorUserId: null,
+                action: "identity.admin-bootstrapped",
+                targetType: "user",
+                targetId: user.id,
+                occurredAt: createdAt,
+                metadata: { email: user.email.toLowerCase() },
+              });
+            }
+          },
+        },
+        update: {
+          after: async (user) => {
+            await identity.saveUser({
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              emailVerified: user.emailVerified,
+              imageUrl: user.image ?? null,
+              createdAt: toIsoTimestamp(user.createdAt),
+              updatedAt: toIsoTimestamp(user.updatedAt),
+            });
           },
         },
       },
@@ -129,6 +199,10 @@ export function createConfiguredBetterAuthApi(
           role: assignment?.role ?? "customer",
           adminPermissions: assignment?.adminPermissions ?? [],
           customerId: assignment.role === "customer" ? assignment.customerId : null,
+          mfaRequired: assignment.mfaRequired,
+          mfaVerified:
+            !assignment.mfaRequired ||
+            Boolean((result.user as { twoFactorEnabled?: boolean }).twoFactorEnabled),
         },
       };
     },

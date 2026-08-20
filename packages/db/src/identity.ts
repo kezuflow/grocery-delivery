@@ -49,6 +49,12 @@ export interface AccountIdentityRepository {
     idempotencyKey: string,
   ): Promise<IdentityCommandResult | null>;
   saveCommandResult(result: IdentityCommandResult): Promise<void>;
+  findRoleAssignment(userId: string): Promise<IdentityRoleAssignment | null>;
+  saveRoleAssignment(
+    assignment: RoleAssignment,
+    customerId: string | null,
+    mfaRequired: boolean,
+  ): Promise<void>;
 }
 
 export type IdentityCommandResult = Readonly<{
@@ -65,6 +71,7 @@ export type IdentityRoleAssignment = Readonly<{
   role: "customer" | "deliveryman" | "admin";
   customerId: string | null;
   adminPermissions: readonly AdminPermission[];
+  mfaRequired: boolean;
 }>;
 
 export class D1IdentityRepository {
@@ -73,13 +80,14 @@ export class D1IdentityRepository {
   async findRoleAssignment(userId: string): Promise<IdentityRoleAssignment | null> {
     const rows = await this.database
       .prepare(
-        `SELECT role, customer_id, admin_permissions_json FROM identity_role_assignments WHERE user_id = ? LIMIT 1`,
+        `SELECT role, customer_id, admin_permissions_json, mfa_required FROM identity_role_assignments WHERE user_id = ? LIMIT 1`,
       )
       .bind(userId)
       .all<{
         role: IdentityRoleAssignment["role"];
         customer_id: string | null;
         admin_permissions_json: string;
+        mfa_required: number;
       }>();
     const row = rows.results[0];
     return row
@@ -87,6 +95,7 @@ export class D1IdentityRepository {
           role: row.role,
           customerId: row.customer_id,
           adminPermissions: parseAdminPermissions(row.admin_permissions_json),
+          mfaRequired: row.mfa_required === 1,
         }
       : null;
   }
@@ -513,6 +522,7 @@ type SessionRow = Record<string, unknown> & {
   role: "customer" | "deliveryman" | "admin";
   customer_id: string | null;
   admin_permissions_json: string;
+  mfa_required: number;
 };
 
 type IdentityUserRow = Record<string, unknown> & {

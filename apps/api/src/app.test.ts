@@ -114,6 +114,8 @@ describe("API worker", () => {
       findDeletionBlockingReasons: () => Promise.resolve(["ACTIVE_SUBSCRIPTION"]),
       findCommandResult: () => Promise.resolve(null),
       saveCommandResult: () => Promise.resolve(),
+      findRoleAssignment: () => Promise.resolve(null),
+      saveRoleAssignment: () => Promise.resolve(),
     };
     const accountApp = createApi({
       generateCorrelationId: () => "account-request",
@@ -1724,5 +1726,89 @@ describe("API worker", () => {
     expect(authenticated.status).toBe(200);
     const authenticatedBody = currentSessionResponseSchema.parse(await authenticated.json());
     expect(authenticatedBody.data.customerId).toBe("customer-1");
+  });
+
+  it("requires server-resolved MFA for administrator routes", async () => {
+    const mfaApp = createApi({
+      sink: () => undefined,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-admin-mfa",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["reporting"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+              mfaRequired: true,
+              mfaVerified: false,
+            }),
+          ),
+      },
+    });
+    const response = await mfaApp.request("/api/v1/admin/operations/projection");
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("MFA_REQUIRED");
+  });
+
+  it("allows an MFA-verified superadmin to assign audited server-owned roles", async () => {
+    const calls: string[] = [];
+    const repository = {
+      findUser: () => Promise.resolve(null),
+      updateUserName: () => Promise.resolve(),
+      listSessions: () => Promise.resolve([]),
+      revokeSession: () => Promise.resolve(),
+      revokeAllSessions: () => Promise.resolve(),
+      listConsents: () => Promise.resolve([]),
+      saveConsent: () => Promise.resolve(),
+      saveAuditEvent: (event: { action: string }) => {
+        calls.push(event.action);
+        return Promise.resolve();
+      },
+      findDeletionBlockingReasons: () => Promise.resolve([]),
+      findCommandResult: () => Promise.resolve(null),
+      saveCommandResult: () => Promise.resolve(),
+      findRoleAssignment: () => Promise.resolve(null),
+      saveRoleAssignment: (
+        _assignment: unknown,
+        _customerId: string | null,
+        mfaRequired: boolean,
+      ) => {
+        calls.push(`mfa:${mfaRequired}`);
+        return Promise.resolve();
+      },
+    };
+    const adminApp = createApi({
+      identityRepository: repository,
+      sink: () => undefined,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-superadmin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["superadmin"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+              mfaRequired: true,
+              mfaVerified: true,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request("/api/v1/admin/identity/roles", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId: "admin-2", role: "admin", adminPermissions: ["finance"] }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(calls).toEqual(["mfa:true", "identity.role-assigned"]);
   });
 });

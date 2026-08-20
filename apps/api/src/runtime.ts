@@ -7,6 +7,8 @@ import {
   type ApiRuntimeConfiguration,
 } from "@carbon/config";
 import { resolveCorrelationId } from "@carbon/observability";
+import type { IdentityEmailSender } from "@carbon/notifications";
+import { InMemoryIdentityEmailSender } from "@carbon/notifications";
 
 import { createApi, type ApiApp, type ApiBindings } from "./app.js";
 import { createConfiguredBetterAuthApi } from "./better-auth.js";
@@ -20,6 +22,7 @@ export type ApiRuntimeFactories = Readonly<{
     bindings: ApiBindings,
     configuration: ApiRuntimeConfiguration,
   ) => PaymentProvider;
+  createIdentityEmailSender?: () => IdentityEmailSender;
 }>;
 
 export type ApiWorker = ExportedHandler<ApiBindings>;
@@ -82,9 +85,23 @@ function resolveBetterAuthApi(
   if (configuration.authMode === "persistent-session") {
     return undefined;
   }
+  if (
+    (configuration.environment === "staging" || configuration.environment === "production") &&
+    bindings.DB &&
+    !factories.createIdentityEmailSender
+  ) {
+    throw new ConfigurationError(
+      "IDENTITY_EMAIL_SENDER",
+      "deployed Better Auth requires an identity email sender",
+    );
+  }
   return factories.createBetterAuthApi
     ? factories.createBetterAuthApi(bindings, configuration)
-    : createConfiguredBetterAuthApi(bindings, configuration);
+    : createConfiguredBetterAuthApi(
+        bindings,
+        configuration,
+        factories.createIdentityEmailSender?.() ?? new InMemoryIdentityEmailSender(),
+      );
 }
 
 function resolvePaymentProvider(

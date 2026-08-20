@@ -22,3 +22,26 @@ export class InMemoryNotificationSender implements NotificationSender {
     return Promise.resolve();
   }
 }
+
+export type IdentityEmail = Readonly<{
+  idempotencyKey: string;
+  recipient: string;
+  type: "email_verification" | "password_reset";
+  actionUrl: string;
+}>;
+
+export interface IdentityEmailSender {
+  send(message: IdentityEmail): Promise<void>;
+}
+
+/** Deterministic adapter for local development and tests. */
+export class InMemoryIdentityEmailSender implements IdentityEmailSender {
+  readonly messages: IdentityEmail[] = [];
+
+  send(message: IdentityEmail): Promise<void> {
+    if (!this.messages.some((item) => item.idempotencyKey === message.idempotencyKey)) {
+      this.messages.push(Object.freeze({ ...message }));
+    }
+    return Promise.resolve();
+  }
+}
