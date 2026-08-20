@@ -40,3 +40,9 @@ export class WeeklyOperationsWorkflow extends WorkflowEntrypoint<
     return definition;
   }
 }
+
+export default {
+  fetch() {
+    return new Response("Not found", { status: 404 });
+  },
+} satisfies ExportedHandler<WorkflowEnvironment>;

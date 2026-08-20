@@ -512,6 +512,23 @@ rejects fake or disabled payment providers, zero delivery pricing, and missing s
 postal-code configuration. Staging and production now carry explicit non-zero delivery pricing and
 postal-code values for launch rehearsal.
 
+Completion record: deployed API identity email now uses the Cloudflare Email Service `send_email`
+binding with `EMAIL_FROM=no-reply@getscenepass.com`. Jobs and workflow Wrangler environments now have
+staging and production names, D1 bindings, environment-specific outbox queues, API service bindings,
+and deploy scripts. The remaining launch work is Cloudflare account setup, domain verification, queue
+creation, secret provisioning, migrations, and the staging rehearsal.
+
+Configuration update: API and web custom domains now use `getscenepass.com` subdomains. The fake
+notification endpoints were removed from deployed environments; `NOTIFICATION_ENDPOINT` must only be
+set when a real outbound notification provider is available.
+
+Configuration update: the approved bootstrap administrator email is `no-reply@getscenepass.com` in
+staging and production.
+
+Tooling update: the double-clickable Worker-secret launcher now uses the compatible disposable
+`RandomNumberGenerator.Create().GetBytes()` API for Windows PowerShell and was verified by uploading
+the staging Better Auth and event-processor secrets to the API and jobs Workers.
+
 Next resume point: add named launch owners and measured restore/rollback evidence, then complete
 provider-backed event handlers and customer fulfillment workflows.
 
@@ -668,6 +685,10 @@ idempotent receipt persistence.
 
 Next resume point: deploy staging and run the queue rehearsal with measured evidence, then validate
 provider receipt reconciliation and complete remaining customer fulfillment history gaps.
+
+Completion record: added a staging-only Ubuntu/WSL deployment script that installs the pinned Node
+and pnpm toolchain when needed, builds OpenNext in a temporary Linux filesystem, verifies the Worker
+bundle, authenticates Wrangler if required, and deploys only `app-staging.getscenepass.com`.
 
 ### Slice 019: Customer fulfillment, support, and payment history
 

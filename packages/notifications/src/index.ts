@@ -95,6 +95,43 @@ export interface IdentityEmailSender {
   send(message: IdentityEmail): Promise<void>;
 }
 
+export type EmailServiceBinding = Readonly<{
+  send(
+    message: Readonly<{
+      to: string;
+      from: string;
+      subject: string;
+      text: string;
+      html: string;
+    }>,
+  ): Promise<Readonly<{ messageId: string }>>;
+}>;
+
+/** Identity email sender backed by the Cloudflare Email Service Worker binding. */
+export class CloudflareIdentityEmailSender implements IdentityEmailSender {
+  constructor(
+    private readonly binding: EmailServiceBinding,
+    private readonly from: string,
+  ) {}
+
+  async send(message: IdentityEmail): Promise<void> {
+    const subject =
+      message.type === "email_verification"
+        ? "Verify your Carbon Food Delivery email"
+        : "Reset your Carbon Food Delivery password";
+    const action =
+      message.type === "email_verification" ? "verify your email address" : "reset your password";
+    const safeUrl = escapeHtml(message.actionUrl);
+    await this.binding.send({
+      to: message.recipient,
+      from: this.from,
+      subject,
+      text: `Use this link to ${action}: ${message.actionUrl}`,
+      html: `<p>Use this link to ${action}:</p><p><a href="${safeUrl}">${safeUrl}</a></p>`,
+    });
+  }
+}
+
 /** Deterministic adapter for local development and tests. */
 export class InMemoryIdentityEmailSender implements IdentityEmailSender {
   readonly messages: IdentityEmail[] = [];
@@ -109,4 +146,17 @@ export class InMemoryIdentityEmailSender implements IdentityEmailSender {
 
 function isLocalEndpoint(url: URL): boolean {
   return url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entities[character] ?? character;
+  });
 }

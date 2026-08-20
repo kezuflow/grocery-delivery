@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpNotificationTransport, InMemoryNotificationSender } from "./index.js";
-import { InMemoryIdentityEmailSender } from "./index.js";
+import { CloudflareIdentityEmailSender, InMemoryIdentityEmailSender } from "./index.js";
 
 describe("notification sender", () => {
   it("deduplicates retries by idempotency key", async () => {
@@ -35,6 +35,35 @@ describe("identity email delivery", () => {
 
     expect(sender.messages).toHaveLength(2);
     expect(sender.messages[0]?.actionUrl).toContain("token=opaque");
+  });
+
+  it("sends identity messages through Cloudflare Email Service", async () => {
+    const messages: Array<{
+      to: string;
+      from: string;
+      subject: string;
+      text: string;
+      html: string;
+    }> = [];
+    const sender = new CloudflareIdentityEmailSender(
+      {
+        send: (message) => {
+          messages.push(message);
+          return Promise.resolve({ messageId: "message-1" });
+        },
+      },
+      "no-reply@example.com",
+    );
+    await sender.send({
+      idempotencyKey: "verification-1",
+      recipient: "customer@example.com",
+      type: "email_verification",
+      actionUrl: "https://example.com/verify?token=a&b",
+    });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.to).toBe("customer@example.com");
+    expect(messages[0]?.from).toBe("no-reply@example.com");
+    expect(messages[0]?.html).toContain("&amp;b");
   });
 });
 

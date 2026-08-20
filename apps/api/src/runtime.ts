@@ -13,7 +13,11 @@ import {
 } from "@carbon/config";
 import { resolveCorrelationId } from "@carbon/observability";
 import type { IdentityEmailSender } from "@carbon/notifications";
-import { HttpNotificationTransport, InMemoryIdentityEmailSender } from "@carbon/notifications";
+import {
+  CloudflareIdentityEmailSender,
+  HttpNotificationTransport,
+  InMemoryIdentityEmailSender,
+} from "@carbon/notifications";
 import {
   D1DeliveryMediaRepository,
   D1NotificationDeliveryReceiptRepository,
@@ -157,7 +161,8 @@ function resolveBetterAuthApi(
   if (
     (configuration.environment === "staging" || configuration.environment === "production") &&
     bindings.DB &&
-    !factories.createIdentityEmailSender
+    !factories.createIdentityEmailSender &&
+    (!bindings.EMAIL || !bindings.EMAIL_FROM?.trim())
   ) {
     throw new ConfigurationError(
       "IDENTITY_EMAIL_SENDER",
@@ -169,7 +174,10 @@ function resolveBetterAuthApi(
     : createConfiguredBetterAuthApi(
         bindings,
         configuration,
-        factories.createIdentityEmailSender?.() ?? new InMemoryIdentityEmailSender(),
+        factories.createIdentityEmailSender?.() ??
+          (bindings.EMAIL && bindings.EMAIL_FROM?.trim()
+            ? new CloudflareIdentityEmailSender(bindings.EMAIL, bindings.EMAIL_FROM.trim())
+            : new InMemoryIdentityEmailSender()),
       );
 }
 

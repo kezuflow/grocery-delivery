@@ -94,9 +94,54 @@ pnpm deploy:web:staging
 pnpm deploy:web:production
 ```
 
+For a single-command, staging-only web build and deployment from Ubuntu WSL, run this from the
+repository root. It keeps Linux dependencies in a temporary Ubuntu directory and does not deploy
+production:
+
+```bash
+bash scripts/deploy-web-staging-wsl.sh
+```
+
 The API Worker uses the same environment names:
 
 ```powershell
 pnpm deploy:api:staging
 pnpm deploy:api:production
 ```
+
+Deploy the asynchronous workers after the API is live. Create the environment-specific queues
+declared in `apps/jobs/wrangler.jsonc` first, then deploy jobs and workflows:
+
+```powershell
+pnpm deploy:jobs:staging
+pnpm deploy:workflows:staging
+pnpm deploy:jobs:production
+pnpm deploy:workflows:production
+```
+
+Better Auth verification and password-reset email uses Cloudflare Email Service. Onboard and
+verify the sending domain in Cloudflare Email Service, then use the `EMAIL` `send_email` binding
+and `EMAIL_FROM` address declared in `apps/api/wrangler.jsonc`; no SMTP/API email secret is needed.
+
+`NOTIFICATION_ENDPOINT` is intentionally not configured for staging or production yet. It is an
+outbound provider API for delivery-event notifications, not the public application URL. Do not set
+it to the web or API domain. The API can still process payment and retention lanes; delivery-event
+notifications remain disabled until a real notification provider is selected.
+
+The current deployment domains are `api-staging.getscenepass.com`, `app-staging.getscenepass.com`,
+`api.getscenepass.com`, and `app.getscenepass.com`. Wrangler's `--domains` deployment option
+provisions the custom Worker domains in the Cloudflare zone.
+
+Production secrets are per-Worker secrets managed with `wrangler secret`, not account-level
+Secrets Store values. List names (never secret values) with:
+
+```powershell
+pnpm --filter @carbon/api exec wrangler secret list --env production
+pnpm --filter @carbon/jobs exec wrangler secret list --env production
+```
+
+For a double-clickable setup, use `scripts/set-worker-secrets-staging.cmd`. It generates and
+uploads the Better Auth and event-processor secrets, shares the event token with the jobs Worker,
+and removes its temporary local files. `scripts/set-worker-secrets-production.cmd` does the same for
+production but asks for confirmation first. Neither launcher creates or changes Cloudflare Account
+Secrets Store values.

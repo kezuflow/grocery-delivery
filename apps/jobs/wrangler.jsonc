@@ -19,4 +19,58 @@
   },
   "services": [{ "binding": "EVENT_PROCESSOR", "service": "carbon-food-delivery-api" }],
   "triggers": { "crons": ["*/5 * * * *"] },
+  "env": {
+    "staging": {
+      "name": "carbon-food-delivery-jobs-staging",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "carbon-food-delivery-staging",
+          "database_id": "05a1e958-5e7d-451b-9cc3-dfab99778900",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "OUTBOX_QUEUE", "queue": "carbon-food-delivery-outbox-staging" },
+        ],
+        "consumers": [
+          {
+            "queue": "carbon-food-delivery-outbox-staging",
+            "max_batch_size": 25,
+            "max_retries": 5,
+          },
+        ],
+      },
+      "services": [{ "binding": "EVENT_PROCESSOR", "service": "carbon-food-delivery-api-staging" }],
+      "triggers": { "crons": ["*/5 * * * *"] },
+    },
+    "production": {
+      "name": "carbon-food-delivery-jobs-production",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "carbon-food-delivery-production",
+          "database_id": "8472f405-c722-46e0-ba96-cfec387f283e",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "OUTBOX_QUEUE", "queue": "carbon-food-delivery-outbox-production" },
+        ],
+        "consumers": [
+          {
+            "queue": "carbon-food-delivery-outbox-production",
+            "max_batch_size": 25,
+            "max_retries": 5,
+          },
+        ],
+      },
+      "services": [
+        { "binding": "EVENT_PROCESSOR", "service": "carbon-food-delivery-api-production" },
+      ],
+      "triggers": { "crons": ["*/5 * * * *"] },
+    },
+  },
 }

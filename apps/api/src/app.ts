@@ -235,6 +235,18 @@ export type ApiBindings = Readonly<{
   EVENT_PROCESSOR_TOKEN?: string;
   NOTIFICATION_ENDPOINT?: string;
   NOTIFICATION_TOKEN?: string;
+  EMAIL_FROM?: string;
+  EMAIL?: {
+    send(
+      message: Readonly<{
+        to: string;
+        from: string;
+        subject: string;
+        text: string;
+        html: string;
+      }>,
+    ): Promise<Readonly<{ messageId: string }>>;
+  };
   DELIVERY_MEDIA_RETENTION_DAYS?: string;
   MEDIA_BUCKET?: R2Bucket;
   MEDIA_BASE_URL?: string;
