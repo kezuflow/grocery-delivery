@@ -44,7 +44,7 @@ conversation history or temporary handoff files.
 | 012   | Release hardening and production rehearsal                      | complete    | OpenAPI, origin checks, and rehearsal foundations complete                             |
 | 013   | Production identity and account lifecycle                       | complete    | Verified auth, admin role controls, and MFA enforcement complete                       |
 | 014   | Subscription onboarding and plan selection                      | complete    | Onboarding, effective-cycle lifecycle, and confirmation UX complete                    |
-| 015   | Real payments and customer checkout                             | in progress | Provider adapter, recurring billing, and promotions increment                          |
+| 015   | Real payments and customer checkout                             | complete    | `a5469f2` checkout pricing; campaign administration complete                           |
 | 016   | Immutable order fulfillment and cutoff enforcement              | in progress | Cutoff/cycle and fulfillment snapshots implemented; dispatch guards remain to complete |
 | 017   | Admin operations console                                        | planned     | Depends on operational APIs and order fulfillment invariants                           |
 | 018   | Deployable jobs, queues, workflows, and notifications           | planned     | Depends on outbox and operational workflows                                            |
@@ -309,6 +309,18 @@ web tests pass.
 
 Next resume point: add marketing campaign creation and finance approval, then continue Slice 016
 with immutable delivery-address, delivery-window, and payment-state snapshots.
+
+Final completion record: Slice 015 is complete. PayMongo charging, recurring billing coordination,
+payment history, refunds with cumulative bounds, server-owned promotion evaluation and persistence,
+customer coupon apply/remove, server-calculated checkout totals, promotion revalidation during order
+locking, immutable applied-promotion snapshots, and permission-scoped campaign administration are
+implemented. Marketing administrators can create and list draft campaigns, finance administrators
+alone can activate price-affecting campaigns, and authorized marketing users can pause, expire, or
+archive campaigns. Focused contract, API, application, repository, integration, and web checks plus
+the complete `pnpm check` pass.
+
+Next resume point: finish Slice 016 with packed-state validation and immutable customer order history,
+then continue the admin operations and deployable workflow slices.
 
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an

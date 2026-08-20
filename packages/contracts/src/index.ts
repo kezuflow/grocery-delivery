@@ -1,5 +1,6 @@
 export * from "./catalog";
 export * from "./checkout";
+export * from "./promotion-admin";
 export * from "./delivery";
 export * from "./delivery-windows";
 export * from "./operations";

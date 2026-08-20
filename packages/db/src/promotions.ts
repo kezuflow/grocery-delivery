@@ -19,6 +19,7 @@ export type PromotionRedemptionRecord = Readonly<{
 }>;
 
 export interface PromotionRepository {
+  list(): Promise<readonly Promotion[]>;
   findActiveByCode(code: string): Promise<Promotion | null>;
   findRedemption(
     customerId: string,
@@ -27,6 +28,8 @@ export interface PromotionRepository {
   countCustomerRedemptions(promotionId: string, customerId: string): Promise<number>;
   saveRedemption(redemption: PromotionRedemptionRecord): Promise<void>;
   saveRedemptionAndUpdatePromotion(redemption: PromotionRedemptionRecord): Promise<void>;
+  savePromotion(promotion: Promotion): Promise<void>;
+  updatePromotionStatus(id: string, status: Promotion["status"], updatedAt: string): Promise<void>;
 }
 
 export class D1PromotionRepository implements PromotionRepository {
@@ -48,6 +51,83 @@ export class D1PromotionRepository implements PromotionRepository {
       .all<PromotionRow>();
     const row = rows.results[0];
     return row ? mapPromotion(row) : null;
+  }
+
+  async list(): Promise<readonly Promotion[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, code, version, status, starts_at, ends_at, discount_json,
+                minimum_subtotal_centavos, plan_ids_json, sku_ids_json, category_ids_json,
+                first_order_only, first_week_only, total_budget_centavos,
+                total_redemptions, per_customer_redemptions, redeemed_amount_centavos,
+                redemption_count, allows_stacking
+         FROM promotions ORDER BY created_at DESC`,
+      )
+      .bind()
+      .all<PromotionRow>();
+    return rows.results.map(mapPromotion);
+  }
+
+  async savePromotion(promotion: Promotion): Promise<void> {
+    await this.database.batch([
+      this.database
+        .prepare(
+          `INSERT INTO promotions (
+             id, code, version, status, starts_at, ends_at, discount_json,
+             minimum_subtotal_centavos, plan_ids_json, sku_ids_json, category_ids_json,
+             first_order_only, first_week_only, total_budget_centavos, total_redemptions,
+             per_customer_redemptions, redeemed_amount_centavos, redemption_count,
+             allows_stacking, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             code = excluded.code, version = excluded.version, status = excluded.status,
+             starts_at = excluded.starts_at, ends_at = excluded.ends_at,
+             discount_json = excluded.discount_json,
+             minimum_subtotal_centavos = excluded.minimum_subtotal_centavos,
+             plan_ids_json = excluded.plan_ids_json, sku_ids_json = excluded.sku_ids_json,
+             category_ids_json = excluded.category_ids_json,
+             first_order_only = excluded.first_order_only, first_week_only = excluded.first_week_only,
+             total_budget_centavos = excluded.total_budget_centavos,
+             total_redemptions = excluded.total_redemptions,
+             per_customer_redemptions = excluded.per_customer_redemptions,
+             allows_stacking = excluded.allows_stacking, updated_at = excluded.updated_at`,
+        )
+        .bind(
+          promotion.id,
+          promotion.code,
+          promotion.version,
+          promotion.status,
+          promotion.startsAt,
+          promotion.endsAt,
+          JSON.stringify(promotion.discount),
+          promotion.minimumSubtotal?.centavos ?? null,
+          JSON.stringify(promotion.planIds),
+          JSON.stringify(promotion.skuIds),
+          JSON.stringify(promotion.categoryIds),
+          promotion.firstOrderOnly ? 1 : 0,
+          promotion.firstWeekOnly ? 1 : 0,
+          promotion.totalBudget?.centavos ?? null,
+          promotion.totalRedemptions,
+          promotion.perCustomerRedemptions,
+          promotion.redeemedAmount.centavos,
+          promotion.redemptionCount,
+          promotion.allowsStacking ? 1 : 0,
+          promotion.startsAt,
+          promotion.startsAt,
+        ),
+    ]);
+  }
+
+  async updatePromotionStatus(
+    id: string,
+    status: Promotion["status"],
+    updatedAt: string,
+  ): Promise<void> {
+    await this.database.batch([
+      this.database
+        .prepare(`UPDATE promotions SET status = ?, updated_at = ? WHERE id = ?`)
+        .bind(status, updatedAt, id),
+    ]);
   }
 
   async findRedemption(

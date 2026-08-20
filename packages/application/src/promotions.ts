@@ -17,11 +17,14 @@ export type PromotionRedemption = Readonly<{
 }>;
 
 export interface PromotionRepository {
+  list?(): Promise<readonly Promotion[]>;
   findActiveByCode(code: string): Promise<Promotion | null>;
   findRedemption(customerId: string, idempotencyKey: string): Promise<PromotionRedemption | null>;
   countCustomerRedemptions(promotionId: string, customerId: string): Promise<number>;
   saveRedemption(redemption: PromotionRedemption): Promise<void>;
   saveRedemptionAndUpdatePromotion?(redemption: PromotionRedemption): Promise<void>;
+  savePromotion?(promotion: Promotion): Promise<void>;
+  updatePromotionStatus?(id: string, status: Promotion["status"], updatedAt: string): Promise<void>;
 }
 
 export class InMemoryPromotionRepository implements PromotionRepository {
@@ -33,6 +36,9 @@ export class InMemoryPromotionRepository implements PromotionRepository {
   }
   findActiveByCode(code: string): Promise<Promotion | null> {
     return Promise.resolve(this.promotions.find((promotion) => promotion.code === code) ?? null);
+  }
+  list(): Promise<readonly Promotion[]> {
+    return Promise.resolve(this.promotions);
   }
   findRedemption(customerId: string, idempotencyKey: string): Promise<PromotionRedemption | null> {
     return Promise.resolve(this.redemptions.get(`${customerId}:${idempotencyKey}`) ?? null);

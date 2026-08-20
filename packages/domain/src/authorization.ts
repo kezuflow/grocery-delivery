@@ -5,6 +5,7 @@ export type Role = (typeof ROLES)[number];
 export const ADMIN_PERMISSIONS = [
   "catalog",
   "pricing",
+  "marketing",
   "finance",
   "procurement",
   "packing",

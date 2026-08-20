@@ -91,6 +91,10 @@ import {
   sessionRevokeRequestSchema,
   adminRoleAssignmentRequestSchema,
   adminRoleAssignmentResponseSchema,
+  promotionAdminUpsertRequestSchema,
+  promotionStatusRequestSchema,
+  promotionAdminResponseSchema,
+  promotionAdminListResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -121,6 +125,7 @@ import {
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
   D1PromotionRepository,
+  type PromotionRepository as DbPromotionRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -156,6 +161,8 @@ import {
   createPlan,
   hasAdminPermission,
   multiplyMoney,
+  normalizePromotionCode,
+  type Promotion,
   type Session,
 } from "@carbon/domain";
 import {
@@ -2219,6 +2226,152 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   });
 
   app.delete("/api/v1/checkout/coupon", (context) => quoteSavedCart(context));
+
+  app.get("/api/v1/admin/promotions", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.promotionRepository ??
+      (bindings.DB ? new D1PromotionRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "marketing"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "marketing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository?.list)
+      return context.json(
+        errorResponse(
+          "PROMOTION_UNAVAILABLE",
+          "promotion administration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const body = {
+      data: { promotions: await repository.list() },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    promotionAdminListResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/admin/promotions", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.promotionRepository ??
+      (bindings.DB ? new D1PromotionRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "marketing"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "marketing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository?.savePromotion)
+      return context.json(
+        errorResponse(
+          "PROMOTION_UNAVAILABLE",
+          "promotion administration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = promotionAdminUpsertRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_PROMOTION",
+          "promotion campaign input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const nowIso = now().toISOString();
+    const promotion: Promotion = {
+      id: crypto.randomUUID(),
+      code: normalizePromotionCode(input.data.code),
+      version: 1,
+      status: "draft",
+      startsAt: input.data.startsAt,
+      endsAt: input.data.endsAt,
+      discount: input.data.discount,
+      minimumSubtotal: input.data.minimumSubtotal,
+      planIds: input.data.planIds,
+      skuIds: input.data.skuIds,
+      categoryIds: input.data.categoryIds,
+      firstOrderOnly: input.data.firstOrderOnly,
+      firstWeekOnly: input.data.firstWeekOnly,
+      totalBudget: input.data.totalBudget,
+      totalRedemptions: input.data.totalRedemptions,
+      perCustomerRedemptions: input.data.perCustomerRedemptions,
+      redeemedAmount: createMoney(0),
+      redemptionCount: 0,
+      allowsStacking: input.data.allowsStacking,
+    };
+    await repository.savePromotion(promotion);
+    const body = { data: promotion, meta: { correlationId: context.get("correlationId") } };
+    promotionAdminResponseSchema.parse(body);
+    return context.json(body, 201);
+  });
+
+  app.patch("/api/v1/admin/promotions/:id/status", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.promotionRepository ??
+      (bindings.DB ? new D1PromotionRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    const requested = promotionStatusRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!requested.success)
+      return context.json(
+        errorResponse(
+          "INVALID_PROMOTION_STATUS",
+          "promotion status is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const permission = requested.data.status === "active" ? "finance" : "marketing";
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, permission))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          `${permission} administrator permission is required`,
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    if (!repository?.updatePromotionStatus)
+      return context.json(
+        errorResponse(
+          "PROMOTION_UNAVAILABLE",
+          "promotion administration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    await repository.updatePromotionStatus(
+      context.req.param("id"),
+      requested.data.status,
+      now().toISOString(),
+    );
+    const body = {
+      data: { id: context.req.param("id"), status: requested.data.status },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    promotionAdminResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
 
   app.post("/api/v1/orders", async (context) => {
     const bindings: ApiBindings = context.env ?? {};

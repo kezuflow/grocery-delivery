@@ -6,6 +6,7 @@ export const roleSchema = z.enum(["customer", "deliveryman", "admin"]);
 export const adminPermissionSchema = z.enum([
   "catalog",
   "pricing",
+  "marketing",
   "finance",
   "procurement",
   "packing",
