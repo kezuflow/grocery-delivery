@@ -42,7 +42,7 @@ conversation history or temporary handoff files.
 | 010   | Customer tracking, notifications, and delivery media            | complete    | Customer tracking, idempotent notification adapter, and media URLs |
 | 011   | Jobs, workflows, retries, and operational projections           | complete    | Durable outbox, workflow retries, and operational projections      |
 | 012   | Release hardening and production rehearsal                      | complete    | OpenAPI, origin checks, and rehearsal foundations complete         |
-| 013   | Production identity and account lifecycle                       | planned     | Depends on Slice 012 security boundaries                           |
+| 013   | Production identity and account lifecycle                       | in progress | Production auth and account lifecycle increment underway           |
 | 014   | Subscription onboarding and plan selection                      | planned     | Depends on production identity and server-side plan validation     |
 | 015   | Real payments and customer checkout                             | planned     | Depends on subscription onboarding and provider sandbox            |
 | 016   | Immutable order fulfillment and cutoff enforcement              | planned     | Depends on checkout, address, window, and payment state            |
@@ -54,6 +54,29 @@ conversation history or temporary handoff files.
 | 022   | Staging launch rehearsal and go/no-go gate                      | planned     | Depends on all launch-critical slices                              |
 
 ### Current Slice: 013 production identity and account lifecycle
+
+Current increment: production auth mode and server-owned account lifecycle
+
+- Require Better Auth in staging and production while retaining persistent sessions only for local
+  development and deterministic tests.
+- Add customer-scoped session listing/revocation, sign-out-all-devices, account export, consent
+  recording, profile correction, and deletion-eligibility reads.
+- Keep lifecycle writes idempotent and auditable through repository boundaries.
+- Add focused configuration, repository, contract, and API tests before continuing email delivery,
+  password recovery, administrator bootstrap, and MFA enforcement.
+
+Completion record: all acceptance checks for this increment passed. Staging and production now
+require Better Auth configuration, secure trusted origins, and runtime secrets; persistent sessions
+are limited to development and test. Protected account APIs expose profile correction, account
+export, consent recording, session inventory, per-session revocation, sign-out-all-devices, and
+server-derived deletion eligibility. D1 handles both legacy and Better Auth sessions, records audit
+events, and stores idempotent profile/consent command results in migration `0021`. The generated
+OpenAPI document includes the lifecycle routes, and the complete `pnpm check` passes all 55 tasks.
+
+Next resume point: continue Slice 013 with Better Auth email verification and password reset delivery,
+then add audited administrator bootstrap/role assignment and MFA enforcement for admin and sensitive
+payment actions. Replace the example deployed origins and set `BETTER_AUTH_SECRET` through Wrangler
+secrets before staging deployment.
 
 Slice 012 completion record: all acceptance checks passed. The API now serves a reproducibly
 generated OpenAPI document from server-owned contract metadata, exposes explicit origin protection

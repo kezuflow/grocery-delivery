@@ -29,6 +29,7 @@ describe("API runtime composition", () => {
         AUTH_MODE: "better-auth",
         BETTER_AUTH_SECRET: "x".repeat(32),
         BETTER_AUTH_URL: "https://api.example.test",
+        CORS_ORIGINS: "https://app.example.test",
       },
       createExecutionContext(),
     );
@@ -47,6 +48,7 @@ describe("API runtime composition", () => {
         AUTH_MODE: "better-auth",
         BETTER_AUTH_SECRET: "x".repeat(32),
         BETTER_AUTH_URL: "https://api.example.test",
+        CORS_ORIGINS: "https://app.example.test",
       },
       {
         createBetterAuthApi: () => ({

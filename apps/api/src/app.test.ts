@@ -68,6 +68,111 @@ import { createApi } from "./app.js";
 import { createInMemoryMetricsSink } from "@carbon/observability";
 
 describe("API worker", () => {
+  it("keeps account lifecycle operations scoped to the active user", async () => {
+    const calls: string[] = [];
+    const identityRepository = {
+      findUser: () =>
+        Promise.resolve({
+          id: "customer-1",
+          email: "customer@example.com",
+          name: "Customer One",
+          emailVerified: true,
+          imageUrl: null,
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z",
+        }),
+      updateUserName: (userId: string, name: string) => {
+        calls.push(`profile:${userId}:${name}`);
+        return Promise.resolve();
+      },
+      listSessions: () =>
+        Promise.resolve([
+          {
+            id: "session-customer",
+            createdAt: "2026-08-18T00:00:00.000Z",
+            expiresAt: "2026-09-18T00:00:00.000Z",
+            revokedAt: null,
+          },
+        ]),
+      revokeSession: (sessionId: string) => {
+        calls.push(`revoke:${sessionId}`);
+        return Promise.resolve();
+      },
+      revokeAllSessions: (userId: string) => {
+        calls.push(`revoke-all:${userId}`);
+        return Promise.resolve();
+      },
+      listConsents: () => Promise.resolve([]),
+      saveConsent: (consent: { userId: string; purpose: string }) => {
+        calls.push(`consent:${consent.userId}:${consent.purpose}`);
+        return Promise.resolve();
+      },
+      saveAuditEvent: (event: { action: string }) => {
+        calls.push(`audit:${event.action}`);
+        return Promise.resolve();
+      },
+      findDeletionBlockingReasons: () => Promise.resolve(["ACTIVE_SUBSCRIPTION"]),
+      findCommandResult: () => Promise.resolve(null),
+      saveCommandResult: () => Promise.resolve(),
+    };
+    const accountApp = createApi({
+      generateCorrelationId: () => "account-request",
+      identityRepository,
+      now: () => new Date("2026-08-20T00:00:00.000Z"),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-customer",
+              userId: "customer-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-09-20T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+      sink: () => undefined,
+    });
+
+    const exported = await accountApp.request("/api/v1/account/export");
+    const profile = await accountApp.request("/api/v1/account/profile", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Corrected Name" }),
+    });
+    const consent = await accountApp.request("/api/v1/account/consents", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ purpose: "marketing", granted: false, policyVersion: "2026-08" }),
+    });
+    const foreignSession = await accountApp.request("/api/v1/account/sessions/revoke", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "another-users-session" }),
+    });
+    const eligibility = await accountApp.request("/api/v1/account/deletion-eligibility");
+
+    expect(exported.status).toBe(200);
+    expect(profile.status).toBe(200);
+    expect(consent.status).toBe(201);
+    expect(foreignSession.status).toBe(404);
+    expect(eligibility.status).toBe(200);
+    await expect(eligibility.json()).resolves.toMatchObject({
+      data: { eligible: false, reasons: ["ACTIVE_SUBSCRIPTION"] },
+    });
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        "profile:customer-1:Corrected Name",
+        "consent:customer-1:marketing",
+        "audit:identity.profile-corrected",
+        "audit:identity.consent-recorded",
+      ]),
+    );
+    expect(calls.some((call) => call.includes("another-users-session"))).toBe(false);
+  });
+
   it("rate-limits sensitive writes and emits correlation-aware metrics", async () => {
     const metrics = createInMemoryMetricsSink();
     const app = createApi({

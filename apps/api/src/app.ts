@@ -75,6 +75,11 @@ import {
   type PlansListResponse,
   type HealthResponse,
   openApiDocument,
+  accountConsentRequestSchema,
+  accountExportResponseSchema,
+  accountProfileUpdateRequestSchema,
+  accountDeletionEligibilityResponseSchema,
+  sessionRevokeRequestSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -123,6 +128,8 @@ import {
   type DispatchRepository,
   type ProcurementRepository,
   type OperationalProjectionRepository,
+  type AccountIdentityRepository,
+  type IdentityUser,
 } from "@carbon/db";
 import {
   addMoney,
@@ -202,6 +209,7 @@ export type ApiOptions = Readonly<{
   procurementRepository?: ProcurementRepository;
   dispatchRepository?: DispatchRepository;
   operationalProjectionRepository?: OperationalProjectionRepository;
+  identityRepository?: AccountIdentityRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
   deliveryMediaRepository?: DeliveryMediaRepository;
@@ -379,6 +387,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   app.use("/api/v1/*", async (context, next) => {
     const protectedPath =
       context.req.path === "/api/v1/me" ||
+      context.req.path.startsWith("/api/v1/account") ||
       context.req.path === "/api/v1/subscription" ||
       context.req.path === "/api/v1/subscription/actions" ||
       context.req.path === "/api/v1/cart" ||
@@ -2526,6 +2535,351 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
+  app.get("/api/v1/account/export", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const profile = await repository.findUser(session.userId);
+    if (!profile)
+      return context.json(
+        errorResponse("ACCOUNT_NOT_FOUND", "account was not found", context.get("correlationId")),
+        404,
+      );
+    const sessions = await repository.listSessions(session.userId);
+    const body = {
+      data: {
+        profile: toAccountProfile(profile),
+        consents: await repository.listConsents(session.userId),
+        sessions: sessions.map((item) => ({ ...item, current: item.id === session.id })),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    accountExportResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.put("/api/v1/account/profile", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const input = accountProfileUpdateRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_ACCOUNT_PROFILE",
+          "account profile is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const idempotencyKey =
+      context.req.header("idempotency-key")?.trim() || `profile:${input.data.name}`;
+    const profileFingerprint = JSON.stringify(input.data);
+    const previous = await repository.findCommandResult(session.userId, "profile", idempotencyKey);
+    if (previous) {
+      if (previous.requestFingerprint !== profileFingerprint)
+        return context.json(
+          errorResponse(
+            "IDEMPOTENCY_CONFLICT",
+            "idempotency key was reused with different account data",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      return context.json(
+        { data: previous.result, meta: { correlationId: context.get("correlationId") } },
+        previous.responseStatus as 200,
+      );
+    }
+    const updatedAt = now().toISOString();
+    await repository.updateUserName(session.userId, input.data.name, updatedAt);
+    await repository.saveAuditEvent({
+      id: await stableIdentityRecordId("profile", session.userId, input.data.name),
+      actorUserId: session.userId,
+      action: "identity.profile-corrected",
+      targetType: "user",
+      targetId: session.userId,
+      occurredAt: updatedAt,
+      metadata: { field: "name" },
+    });
+    await repository.saveCommandResult({
+      userId: session.userId,
+      command: "profile",
+      idempotencyKey,
+      requestFingerprint: profileFingerprint,
+      responseStatus: 200,
+      result: { name: input.data.name },
+      createdAt: updatedAt,
+    });
+    return context.json(
+      { data: { name: input.data.name }, meta: { correlationId: context.get("correlationId") } },
+      200,
+    );
+  });
+
+  app.post("/api/v1/account/consents", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const input = accountConsentRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success)
+      return context.json(
+        errorResponse("INVALID_CONSENT", "consent is invalid", context.get("correlationId")),
+        400,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const idempotencyKey =
+      context.req.header("idempotency-key")?.trim() ||
+      `consent:${input.data.purpose}:${input.data.policyVersion}:${input.data.granted}`;
+    const consentFingerprint = JSON.stringify(input.data);
+    const previous = await repository.findCommandResult(session.userId, "consent", idempotencyKey);
+    if (previous) {
+      if (previous.requestFingerprint !== consentFingerprint)
+        return context.json(
+          errorResponse(
+            "IDEMPOTENCY_CONFLICT",
+            "idempotency key was reused with different consent data",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      return context.json(
+        { data: previous.result, meta: { correlationId: context.get("correlationId") } },
+        previous.responseStatus as 201,
+      );
+    }
+    const recordedAt = now().toISOString();
+    const consentId = await stableIdentityRecordId(
+      "consent",
+      session.userId,
+      input.data.purpose,
+      input.data.policyVersion,
+      String(input.data.granted),
+    );
+    await repository.saveConsent({
+      id: consentId,
+      userId: session.userId,
+      ...input.data,
+      recordedAt,
+    });
+    await repository.saveAuditEvent({
+      id: `audit-${consentId}`,
+      actorUserId: session.userId,
+      action: "identity.consent-recorded",
+      targetType: "consent",
+      targetId: consentId,
+      occurredAt: recordedAt,
+      metadata: { purpose: input.data.purpose, granted: String(input.data.granted) },
+    });
+    await repository.saveCommandResult({
+      userId: session.userId,
+      command: "consent",
+      idempotencyKey,
+      requestFingerprint: consentFingerprint,
+      responseStatus: 201,
+      result: input.data,
+      createdAt: recordedAt,
+    });
+    return context.json(
+      { data: input.data, meta: { correlationId: context.get("correlationId") } },
+      201,
+    );
+  });
+
+  app.post("/api/v1/account/sessions/revoke", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const input = sessionRevokeRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_SESSION",
+          "session revocation is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const sessions = await repository.listSessions(session.userId);
+    if (!sessions.some((item) => item.id === input.data.sessionId))
+      return context.json(
+        errorResponse("SESSION_NOT_FOUND", "session was not found", context.get("correlationId")),
+        404,
+      );
+    const revokedAt = now().toISOString();
+    await repository.revokeSession(input.data.sessionId, revokedAt);
+    await repository.saveAuditEvent({
+      id: await stableIdentityRecordId("session-revoked", session.userId, input.data.sessionId),
+      actorUserId: session.userId,
+      action: "identity.session-revoked",
+      targetType: "session",
+      targetId: input.data.sessionId,
+      occurredAt: revokedAt,
+      metadata: {},
+    });
+    return context.json(
+      { data: { revoked: true }, meta: { correlationId: context.get("correlationId") } },
+      200,
+    );
+  });
+
+  app.post("/api/v1/account/sessions/revoke-all", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const revokedAt = now().toISOString();
+    await repository.revokeAllSessions(session.userId, revokedAt);
+    await repository.saveAuditEvent({
+      id: await stableIdentityRecordId("sessions-revoked", session.userId, session.id),
+      actorUserId: session.userId,
+      action: "identity.sessions-revoked",
+      targetType: "user",
+      targetId: session.userId,
+      occurredAt: revokedAt,
+      metadata: { initiatingSessionId: session.id },
+    });
+    return context.json(
+      { data: { revoked: true }, meta: { correlationId: context.get("correlationId") } },
+      200,
+    );
+  });
+
+  app.get("/api/v1/account/deletion-eligibility", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const reasons = session.customerId
+      ? await repository.findDeletionBlockingReasons(session.customerId)
+      : ["ROLE_REQUIRES_ADMIN_REVIEW"];
+    const body = {
+      data: { eligible: reasons.length === 0, reasons: [...reasons] },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    accountDeletionEligibilityResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
   app.notFound((context) =>
     context.json(errorResponse("NOT_FOUND", "route not found", context.get("correlationId")), 404),
   );
@@ -2609,6 +2963,26 @@ function paymentAttemptResponse(
     },
     meta: { correlationId },
   };
+}
+
+function toAccountProfile(profile: IdentityUser) {
+  return {
+    userId: profile.id,
+    email: profile.email,
+    name: profile.name,
+    emailVerified: profile.emailVerified,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  };
+}
+
+async function stableIdentityRecordId(prefix: string, ...parts: string[]): Promise<string> {
+  const input = new TextEncoder().encode(parts.join("\u0000"));
+  const digest = await crypto.subtle.digest("SHA-256", input);
+  const hash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${prefix}-${hash}`;
 }
 
 function requiresTrustedOrigin(method: string, path: string): boolean {

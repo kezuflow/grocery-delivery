@@ -5,31 +5,14 @@
     "version": "0.0.0",
     "description": "Server-owned contracts for the Carbon Food Delivery API."
   },
-  "servers": [
-    {
-      "url": "/",
-      "description": "Current API origin"
-    }
-  ],
+  "servers": [{ "url": "/", "description": "Current API origin" }],
   "tags": [
-    {
-      "name": "system"
-    },
-    {
-      "name": "catalog"
-    },
-    {
-      "name": "customer"
-    },
-    {
-      "name": "operations"
-    },
-    {
-      "name": "delivery"
-    },
-    {
-      "name": "payments"
-    }
+    { "name": "system" },
+    { "name": "catalog" },
+    { "name": "customer" },
+    { "name": "operations" },
+    { "name": "delivery" },
+    { "name": "payments" }
   ],
   "paths": {
     "/health": {
@@ -41,9 +24,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -59,9 +40,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -77,9 +56,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -95,9 +72,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -105,9 +80,7 @@
             "description": "Invalid pagination",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -117,19 +90,13 @@
     "/api/v1/me": {
       "get": {
         "summary": "Read the current session",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -137,9 +104,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -147,9 +112,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -157,9 +120,247 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/export": {
+      "get": {
+        "summary": "Export the current account",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/profile": {
+      "put": {
+        "summary": "Correct the account profile",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/consents": {
+      "post": {
+        "summary": "Record an account consent",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/sessions/revoke": {
+      "post": {
+        "summary": "Revoke one account session",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/sessions/revoke-all": {
+      "post": {
+        "summary": "Revoke every account session",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/deletion-eligibility": {
+      "get": {
+        "summary": "Read deletion eligibility",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -169,19 +370,13 @@
     "/api/v1/subscription": {
       "get": {
         "summary": "Read the current subscription",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -189,9 +384,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -199,9 +392,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -209,9 +400,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -221,19 +410,13 @@
     "/api/v1/subscription/actions": {
       "post": {
         "summary": "Apply a subscription action",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -241,9 +424,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -251,9 +432,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -261,9 +440,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -273,19 +450,13 @@
     "/api/v1/cart": {
       "get": {
         "summary": "Read the saved cart",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -293,9 +464,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -303,9 +472,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -313,9 +480,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -323,19 +488,13 @@
       },
       "put": {
         "summary": "Replace the saved cart",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -343,9 +502,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -353,9 +510,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -363,9 +518,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -375,19 +528,13 @@
     "/api/v1/delivery-address": {
       "get": {
         "summary": "Read the delivery address",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -395,9 +542,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -405,9 +550,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -415,9 +558,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -425,19 +566,13 @@
       },
       "put": {
         "summary": "Save the delivery address",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -445,9 +580,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -455,9 +588,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -465,9 +596,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -477,19 +606,13 @@
     "/api/v1/delivery-windows": {
       "get": {
         "summary": "Read delivery windows",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -497,9 +620,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -507,9 +628,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -517,9 +636,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -527,19 +644,13 @@
       },
       "put": {
         "summary": "Select a delivery window",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -547,9 +658,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -557,9 +666,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -567,9 +674,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -579,19 +684,13 @@
     "/api/v1/orders": {
       "post": {
         "summary": "Lock an order from the saved cart",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -599,9 +698,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -609,9 +706,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -619,9 +714,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -631,19 +724,13 @@
     "/api/v1/orders/{id}/tracking": {
       "get": {
         "summary": "Read order tracking",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -651,9 +738,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -661,9 +746,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -671,9 +754,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -683,19 +764,13 @@
     "/api/v1/orders/{id}/media": {
       "get": {
         "summary": "Read proof-of-delivery media",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -703,9 +778,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -713,9 +786,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -723,9 +794,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -735,19 +804,13 @@
     "/api/v1/deliveryman/assignments": {
       "get": {
         "summary": "Read deliveryman assignments",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -755,9 +818,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -765,9 +826,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -775,9 +834,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -787,19 +844,13 @@
     "/api/v1/deliveryman/events": {
       "post": {
         "summary": "Record a delivery event",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -807,9 +858,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -817,9 +866,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -827,9 +874,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -839,19 +884,13 @@
     "/api/v1/deliveryman/media": {
       "post": {
         "summary": "Request a proof-of-delivery upload",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -859,9 +898,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -869,9 +906,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -879,9 +914,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -891,19 +924,13 @@
     "/api/v1/payments/methods": {
       "get": {
         "summary": "List payment methods",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -911,9 +938,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -921,9 +946,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -931,9 +954,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -941,19 +962,13 @@
       },
       "post": {
         "summary": "Add a payment method",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -961,9 +976,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -971,9 +984,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -981,9 +992,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -993,19 +1002,13 @@
     "/api/v1/payments/methods/{id}": {
       "delete": {
         "summary": "Revoke a payment method",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1013,9 +1016,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1023,9 +1024,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1033,9 +1032,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1045,19 +1042,13 @@
     "/api/v1/payments/charge": {
       "post": {
         "summary": "Charge an order",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1065,9 +1056,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1075,9 +1064,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1085,9 +1072,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1103,9 +1088,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1113,9 +1096,7 @@
             "description": "Invalid webhook",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1125,19 +1106,13 @@
     "/api/v1/admin/plans/{id}": {
       "put": {
         "summary": "Propose a plan change",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1145,9 +1120,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1155,9 +1128,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1165,9 +1136,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1177,19 +1146,13 @@
     "/api/v1/admin/plan-change-requests/{id}/decision": {
       "post": {
         "summary": "Approve or reject a plan change",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1197,9 +1160,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1207,9 +1168,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1217,9 +1176,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1229,19 +1186,13 @@
     "/api/v1/admin/procurement": {
       "get": {
         "summary": "Read procurement demand",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1249,9 +1200,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1259,9 +1208,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1269,9 +1216,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1281,19 +1226,13 @@
     "/api/v1/admin/procurement/purchases": {
       "put": {
         "summary": "Record procurement purchases",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1301,9 +1240,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1311,9 +1248,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1321,9 +1256,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1333,19 +1266,13 @@
     "/api/v1/admin/procurement/shortages": {
       "post": {
         "summary": "Record a shortage",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1353,9 +1280,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1363,9 +1288,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1373,9 +1296,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1385,19 +1306,13 @@
     "/api/v1/admin/procurement/substitutions": {
       "post": {
         "summary": "Record a substitution",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1405,9 +1320,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1415,9 +1328,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1425,9 +1336,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1437,19 +1346,13 @@
     "/api/v1/admin/packing/manifests": {
       "post": {
         "summary": "Update a packing manifest",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1457,9 +1360,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1467,9 +1368,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1477,9 +1376,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1489,19 +1386,13 @@
     "/api/v1/admin/dispatch": {
       "get": {
         "summary": "Read dispatch assignments",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1509,9 +1400,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1519,9 +1408,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1529,9 +1416,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1539,19 +1424,13 @@
       },
       "post": {
         "summary": "Assign an order",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1559,9 +1438,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1569,9 +1446,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1579,9 +1454,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1591,19 +1464,13 @@
     "/api/v1/admin/operations/projection": {
       "get": {
         "summary": "Read operational projections",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1611,9 +1478,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1621,9 +1486,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1631,9 +1494,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1643,19 +1504,13 @@
     "/api/v1/admin/payments/refunds": {
       "post": {
         "summary": "Refund a payment",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
+        "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1663,9 +1518,7 @@
             "description": "Authentication is required",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1673,9 +1526,7 @@
             "description": "The active session lacks permission",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1683,9 +1534,7 @@
             "description": "The request rate limit was exceeded",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1701,9 +1550,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           },
@@ -1711,9 +1558,7 @@
             "description": "Validated JSON response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
               }
             }
           }
@@ -1737,14 +1582,10 @@
             "required": ["data", "meta"],
             "properties": {
               "data": {},
-              "meta": {
-                "$ref": "#/components/schemas/ResponseMeta"
-              }
+              "meta": { "$ref": "#/components/schemas/ResponseMeta" }
             }
           },
-          {
-            "$ref": "#/components/schemas/ApiErrorResponse"
-          }
+          { "$ref": "#/components/schemas/ApiErrorResponse" }
         ]
       },
       "ResponseMeta": {
@@ -1766,17 +1607,11 @@
             "type": "object",
             "required": ["code", "message"],
             "properties": {
-              "code": {
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              }
+              "code": { "type": "string" },
+              "message": { "type": "string" }
             }
           },
-          "meta": {
-            "$ref": "#/components/schemas/ResponseMeta"
-          }
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
         }
       }
     }

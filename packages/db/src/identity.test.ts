@@ -82,7 +82,7 @@ describe("identity repository", () => {
     expect(database.batches[1]).toHaveLength(2);
     expect(database.calls[0]?.sql).toContain("identity_users");
     expect(database.calls.some((call) => call.sql.includes("identity_sessions"))).toBe(true);
-    expect(database.calls.at(-1)?.sql).toContain("revoked_at");
+    expect(database.calls.some((call) => call.sql.includes("SET revoked_at"))).toBe(true);
   });
 
   it("persists consents, audit events, and MFA hooks", async () => {
@@ -127,6 +127,61 @@ describe("identity repository", () => {
         expect.stringContaining("identity_mfa_challenges"),
       ]),
     );
+  });
+
+  it("lists and revokes both legacy and Better Auth sessions", async () => {
+    const database = new FakeIdentityDatabase([
+      [
+        {
+          id: "legacy-session",
+          created_at: "2026-08-18T00:00:00.000Z",
+          expires_at: "2026-09-18T00:00:00.000Z",
+          revoked_at: null,
+        },
+      ],
+      [
+        {
+          id: "better-auth-session",
+          created_at: Date.parse("2026-08-19T00:00:00.000Z"),
+          expires_at: Date.parse("2026-09-19T00:00:00.000Z"),
+        },
+      ],
+    ]);
+    const repository = new D1IdentityRepository(database);
+
+    await expect(repository.listSessions("user-1")).resolves.toEqual([
+      {
+        id: "better-auth-session",
+        createdAt: "2026-08-19T00:00:00.000Z",
+        expiresAt: "2026-09-19T00:00:00.000Z",
+        revokedAt: null,
+      },
+      {
+        id: "legacy-session",
+        createdAt: "2026-08-18T00:00:00.000Z",
+        expiresAt: "2026-09-18T00:00:00.000Z",
+        revokedAt: null,
+      },
+    ]);
+    await repository.revokeSession("better-auth-session", "2026-08-20T00:00:00.000Z");
+    await repository.revokeAllSessions("user-1", "2026-08-20T00:01:00.000Z");
+
+    expect(
+      database.calls.some((call) => call.sql.includes("DELETE FROM better_auth_session WHERE id")),
+    ).toBe(true);
+    expect(
+      database.calls.some((call) =>
+        call.sql.includes("DELETE FROM better_auth_session WHERE user_id"),
+      ),
+    ).toBe(true);
+  });
+
+  it("derives account deletion blockers from subscriptions and retained orders", async () => {
+    const database = new FakeIdentityDatabase([[{ id: "subscription-1" }], [{ id: "order-1" }]]);
+
+    await expect(
+      new D1IdentityRepository(database).findDeletionBlockingReasons("customer-1"),
+    ).resolves.toEqual(["ACTIVE_SUBSCRIPTION", "ORDER_RETENTION_REQUIRED"]);
   });
 });
 

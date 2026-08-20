@@ -48,6 +48,16 @@ export function parseApiRuntimeConfiguration(bindings: {
   const betterAuthTrustedOrigins = Object.freeze([
     ...parseAllowedOrigins(bindings.CORS_ORIGINS, environment),
   ]);
+  if (
+    authMode === "persistent-session" &&
+    environment !== "development" &&
+    environment !== "test"
+  ) {
+    throw new ConfigurationError(
+      "AUTH_MODE",
+      "persistent-session authentication is limited to development and test environments",
+    );
+  }
   if (authMode === "better-auth") {
     if (!betterAuthSecret || betterAuthSecret.length < 32) {
       throw new ConfigurationError(
@@ -69,6 +79,16 @@ export function parseApiRuntimeConfiguration(bindings: {
       throw new ConfigurationError(
         "BETTER_AUTH_URL",
         "BETTER_AUTH_URL must use HTTPS outside development and test environments",
+      );
+    }
+    if (
+      environment !== "development" &&
+      environment !== "test" &&
+      betterAuthTrustedOrigins.length === 0
+    ) {
+      throw new ConfigurationError(
+        "CORS_ORIGINS",
+        "at least one trusted HTTPS origin is required for Better Auth deployments",
       );
     }
   }

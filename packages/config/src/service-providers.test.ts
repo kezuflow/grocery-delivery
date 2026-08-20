@@ -4,15 +4,14 @@ import { ConfigurationError } from "./runtime-environment.js";
 import { parseApiRuntimeConfiguration } from "./service-providers.js";
 
 describe("API runtime provider configuration", () => {
-  it("uses conservative defaults", () => {
-    expect(parseApiRuntimeConfiguration({ APP_ENV: "production" })).toEqual({
-      environment: "production",
+  it("keeps persistent sessions limited to local environments", () => {
+    expect(parseApiRuntimeConfiguration({ APP_ENV: "development" })).toMatchObject({
       authMode: "persistent-session",
       paymentProvider: "disabled",
-      betterAuthSecret: null,
-      betterAuthUrl: null,
-      betterAuthTrustedOrigins: [],
     });
+    expect(() => parseApiRuntimeConfiguration({ APP_ENV: "production" })).toThrow(
+      "persistent-session authentication is limited",
+    );
   });
 
   it("allows the fake payment provider only outside deployed environments", () => {

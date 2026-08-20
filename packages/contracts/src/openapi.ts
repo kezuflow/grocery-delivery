@@ -60,6 +60,15 @@ export const openApiDocument: OpenApiDocument = {
       },
     },
     "/api/v1/me": protectedOperation("Read the current session", "get"),
+    "/api/v1/account/export": protectedOperation("Export the current account", "get"),
+    "/api/v1/account/profile": protectedOperation("Correct the account profile", "put"),
+    "/api/v1/account/consents": protectedOperation("Record an account consent", "post"),
+    "/api/v1/account/sessions/revoke": protectedOperation("Revoke one account session", "post"),
+    "/api/v1/account/sessions/revoke-all": protectedOperation(
+      "Revoke every account session",
+      "post",
+    ),
+    "/api/v1/account/deletion-eligibility": protectedOperation("Read deletion eligibility", "get"),
     "/api/v1/subscription": protectedOperation("Read the current subscription", "get"),
     "/api/v1/subscription/actions": protectedOperation("Apply a subscription action", "post"),
     "/api/v1/cart": {
