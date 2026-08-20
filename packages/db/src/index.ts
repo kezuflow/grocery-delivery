@@ -10,6 +10,7 @@ export * from "./delivery-tracking.js";
 export * from "./delivery-media.js";
 export * from "./identity.js";
 export * from "./plans.js";
+export * from "./promotions.js";
 export * from "./orders.js";
 export * from "./outbox.js";
 export * from "./operations.js";

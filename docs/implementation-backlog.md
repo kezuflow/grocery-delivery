@@ -299,6 +299,14 @@ records and stable conflicting-key errors. Focused domain/application tests, lin
 Next resume point: persist campaign/redemption records in D1 and expose customer coupon apply/remove
 controls that feed server-calculated checkout totals.
 
+Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
+rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
+atomic redemption budget/count update path. Focused repository/application coverage and the complete
+`pnpm check` pass.
+
+Next resume point: expose customer coupon apply/remove controls and feed promotion results into
+server-calculated checkout totals with revalidation during order locking.
+
 Completion record: refund orchestration now derives the remaining refundable balance from durable,
 attempt-scoped successful refunds and rejects cumulative over-refunds with stable
 `REFUND_EXCEEDS_CHARGE` errors before contacting the provider. Failed refunds do not consume the

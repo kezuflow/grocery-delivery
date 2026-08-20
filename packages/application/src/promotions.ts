@@ -21,6 +21,7 @@ export interface PromotionRepository {
   findRedemption(customerId: string, idempotencyKey: string): Promise<PromotionRedemption | null>;
   countCustomerRedemptions(promotionId: string, customerId: string): Promise<number>;
   saveRedemption(redemption: PromotionRedemption): Promise<void>;
+  saveRedemptionAndUpdatePromotion?(redemption: PromotionRedemption): Promise<void>;
 }
 
 export class InMemoryPromotionRepository implements PromotionRepository {
@@ -98,7 +99,11 @@ export class PromotionRedemptionService {
       result,
       createdAt: input.context.now,
     };
-    await this.repository.saveRedemption(redemption);
+    if (this.repository.saveRedemptionAndUpdatePromotion) {
+      await this.repository.saveRedemptionAndUpdatePromotion(redemption);
+    } else {
+      await this.repository.saveRedemption(redemption);
+    }
     return redemption;
   }
 }
