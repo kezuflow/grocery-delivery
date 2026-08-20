@@ -507,6 +507,14 @@ scheduled retention lane; signed R2 upload/download URL integration remains the 
 Next resume point: wire the R2 bucket and signed URL implementation into the API and jobs runtime,
 then add concrete provider-backed notification/payment/retention event handlers.
 
+Completion record: the rehearsal gate now inspects staging and production API configuration and
+rejects fake or disabled payment providers, zero delivery pricing, and missing serviceability
+postal-code configuration. Staging and production now carry explicit non-zero delivery pricing and
+postal-code values for launch rehearsal.
+
+Next resume point: add named launch owners and measured restore/rollback evidence, then complete
+provider-backed event handlers and customer fulfillment workflows.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete
