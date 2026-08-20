@@ -4,3 +4,4 @@ export * from "./payments.js";
 export * from "./reconciliation.js";
 export * from "./provider.js";
 export * from "./paymongo-provider.js";
+export * from "./recurring.js";

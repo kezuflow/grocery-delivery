@@ -270,6 +270,17 @@ through Wrangler secrets before deployment.
 Next resume point: add durable recurring-charge attempts/retries and customer payment history, then
 implement the server-owned promotion and coupon rule engine before wiring checkout UI.
 
+Current increment: recurring billing coordination and bounded retries
+
+Completion record: `@carbon/billing` now coordinates weekly charge outcomes with the existing
+subscription billing transition boundary. Successful charges restore `current`; failed and pending
+charges set `past_due`, preserve provider errors for the job layer, and derive retryability without
+duplicating subscription rules. Idempotent status keys are derived from the charge key, and bounded
+exponential retry delays are covered by focused tests. Billing tests, lint, and typecheck pass.
+
+Next resume point: add durable payment-attempt history reads and customer payment UI, then implement
+the server-owned promotion and coupon rule engine before wiring checkout totals.
+
 ### Slice 016: Immutable order fulfillment and cutoff enforcement
 
 Scope:
