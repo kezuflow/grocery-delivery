@@ -20,8 +20,17 @@ export type NotificationEvent = Readonly<{
   correlationId: string;
 }>;
 
+export type NotificationDeliveryReceipt = Readonly<{
+  idempotencyKey: string;
+  eventType: string;
+  aggregateId: string;
+  correlationId: string;
+  providerReference: string | null;
+  acceptedAt: string;
+}>;
+
 export interface NotificationTransport {
-  send(event: NotificationEvent): Promise<void>;
+  send(event: NotificationEvent): Promise<NotificationDeliveryReceipt>;
 }
 
 /** Provider-neutral HTTP notification transport with retry-stable idempotency headers. */
@@ -39,7 +48,7 @@ export class HttpNotificationTransport implements NotificationTransport {
     }
   }
 
-  async send(event: NotificationEvent): Promise<void> {
+  async send(event: NotificationEvent): Promise<NotificationDeliveryReceipt> {
     const headers = new Headers({
       "content-type": "application/json",
       "idempotency-key": event.idempotencyKey,
@@ -53,6 +62,14 @@ export class HttpNotificationTransport implements NotificationTransport {
     });
     if (!response.ok)
       throw new Error(`notification provider failed with status ${response.status}`);
+    return {
+      idempotencyKey: event.idempotencyKey,
+      eventType: event.eventType,
+      aggregateId: event.aggregateId,
+      correlationId: event.correlationId,
+      providerReference: response.headers.get("x-delivery-receipt"),
+      acceptedAt: new Date().toISOString(),
+    };
   }
 }
 

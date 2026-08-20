@@ -21,3 +21,4 @@ export * from "./promotion-banners.js";
 export * from "./promotion-banner-analytics.js";
 export * from "./support.js";
 export * from "./notification-preferences.js";
+export * from "./notification-delivery-receipts.js";

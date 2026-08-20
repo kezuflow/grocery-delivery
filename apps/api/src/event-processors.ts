@@ -4,12 +4,18 @@ import {
   createDeliveryMediaRetentionHandler,
   type DeliveryMediaObjectStore,
 } from "@carbon/storage";
-import type { DeliveryMediaRepository } from "@carbon/db";
+import type {
+  DeliveryMediaRepository,
+  NotificationDeliveryReceiptRepository,
+  NotificationPreferencesRepository,
+} from "@carbon/db";
 import type { NotificationTransport } from "@carbon/notifications";
 
 export function createEventProcessorHandlers(
   input: Readonly<{
     notificationTransport?: NotificationTransport;
+    notificationPreferences?: NotificationPreferencesRepository;
+    notificationReceipts?: NotificationDeliveryReceiptRepository;
     paymentReconciliation?: PaymentReconciliationService;
     retention?: () => Promise<unknown>;
   }>,
@@ -20,13 +26,19 @@ export function createEventProcessorHandlers(
   return async (kind, message) => {
     if (kind === "notification") {
       if (!input.notificationTransport) throw new Error("notification transport is unavailable");
-      await input.notificationTransport.send({
+      const notification = notificationPayload(message);
+      if (input.notificationPreferences) {
+        const preferences = await input.notificationPreferences.get(notification.customerId);
+        if (preferences && !preferences.deliveryUpdates) return;
+      }
+      const receipt = await input.notificationTransport.send({
         idempotencyKey: `outbox:${message.outboxEventId}`,
         eventType: message.eventType,
         aggregateId: message.aggregateId,
-        payloadJson: notificationPayload(message),
+        payloadJson: notification.payloadJson,
         correlationId: message.correlationId,
       });
+      await input.notificationReceipts?.save(receipt);
       return;
     }
     if (kind === "payment") {
@@ -39,7 +51,10 @@ export function createEventProcessorHandlers(
   };
 }
 
-function notificationPayload(message: OutboxProcessingMessage): string {
+function notificationPayload(message: OutboxProcessingMessage): {
+  customerId: string;
+  payloadJson: string;
+} {
   let payload: unknown;
   try {
     payload = JSON.parse(message.payloadJson);
@@ -58,14 +73,14 @@ function notificationPayload(message: OutboxProcessingMessage): string {
     if (!customerId || !orderId || !cycleId || !lockedAt) {
       throw new Error("order notification payload is invalid");
     }
-    return JSON.stringify({ customerId, orderId, cycleId, lockedAt });
+    return { customerId, payloadJson: JSON.stringify({ customerId, orderId, cycleId, lockedAt }) };
   }
   if (message.eventType.startsWith("delivery.")) {
     const customerId = boundedText(value.customerId, 256);
     const orderId = boundedText(value.orderId, 256) ?? message.aggregateId;
     const occurredAt = boundedIso(value.occurredAt) ?? message.occurredAt;
     if (!customerId || !orderId) throw new Error("delivery notification payload is invalid");
-    return JSON.stringify({ customerId, orderId, occurredAt });
+    return { customerId, payloadJson: JSON.stringify({ customerId, orderId, occurredAt }) };
   }
   throw new Error(`unsupported notification event type: ${message.eventType}`);
 }

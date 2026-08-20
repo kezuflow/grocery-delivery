@@ -44,18 +44,22 @@ describe("HTTP notification transport", () => {
     const transport = new HttpNotificationTransport("https://notify.example.test/events", {
       fetch: (input, init) => {
         requests.push(new Request(input, init));
-        return Promise.resolve(new Response(null, { status: 202 }));
+        return Promise.resolve(
+          new Response(null, { status: 202, headers: { "x-delivery-receipt": "provider-1" } }),
+        );
       },
       token: "provider-token",
     });
 
-    await transport.send({
-      idempotencyKey: "outbox:event-1",
-      eventType: "order.locked",
-      aggregateId: "order-1",
-      payloadJson: "{}",
-      correlationId: "correlation-1",
-    });
+    await expect(
+      transport.send({
+        idempotencyKey: "outbox:event-1",
+        eventType: "order.locked",
+        aggregateId: "order-1",
+        payloadJson: "{}",
+        correlationId: "correlation-1",
+      }),
+    ).resolves.toMatchObject({ providerReference: "provider-1" });
 
     expect(requests[0]?.headers.get("idempotency-key")).toBe("outbox:event-1");
     expect(requests[0]?.headers.get("x-correlation-id")).toBe("correlation-1");

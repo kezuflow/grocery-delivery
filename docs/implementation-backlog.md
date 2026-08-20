@@ -660,6 +660,15 @@ staging Worker and queue are deployed.
 Next resume point: deploy staging and run the queue retry/dead-letter rehearsal with measured
 evidence, then add provider delivery receipts and notification preference enforcement.
 
+Completion record: notification processors now treat persisted delivery-update preferences as a
+server-owned gate, defaulting to delivery when no preference row exists. Accepted provider responses
+return a receipt reference and timestamp, and D1 stores the first receipt per outbox idempotency key
+through migration `0033`. Focused API, notification, and DB coverage protects suppression and
+idempotent receipt persistence.
+
+Next resume point: deploy staging and run the queue rehearsal with measured evidence, then validate
+provider receipt reconciliation and complete remaining customer fulfillment history gaps.
+
 ### Slice 019: Customer fulfillment, support, and payment history
 
 Scope:

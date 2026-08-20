@@ -14,7 +14,12 @@ import {
 import { resolveCorrelationId } from "@carbon/observability";
 import type { IdentityEmailSender } from "@carbon/notifications";
 import { HttpNotificationTransport, InMemoryIdentityEmailSender } from "@carbon/notifications";
-import { D1DeliveryMediaRepository, D1PaymentRepository } from "@carbon/db";
+import {
+  D1DeliveryMediaRepository,
+  D1NotificationDeliveryReceiptRepository,
+  D1NotificationPreferencesRepository,
+  D1PaymentRepository,
+} from "@carbon/db";
 import { R2DeliveryMediaObjectStore } from "@carbon/storage";
 
 import { createApi, type ApiApp, type ApiBindings } from "./app.js";
@@ -119,6 +124,12 @@ function createConfiguredEventProcessor(
       : undefined;
   return createEventProcessorHandlers({
     ...(notificationTransport ? { notificationTransport } : {}),
+    ...(bindings.DB && notificationTransport
+      ? {
+          notificationPreferences: new D1NotificationPreferencesRepository(bindings.DB),
+          notificationReceipts: new D1NotificationDeliveryReceiptRepository(bindings.DB),
+        }
+      : {}),
     ...(paymentReconciliation ? { paymentReconciliation } : {}),
     ...(retention ? { retention } : {}),
   });
