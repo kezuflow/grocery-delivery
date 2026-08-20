@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "carbon-food-delivery-jobs",
-  "main": "dist/worker.js",
+  "main": "src/runtime.ts",
   "compatibility_date": "2026-08-18",
   "d1_databases": [
     {
@@ -17,5 +17,6 @@
       { "queue": "carbon-food-delivery-outbox", "max_batch_size": 25, "max_retries": 5 },
     ],
   },
+  "services": [{ "binding": "EVENT_PROCESSOR", "service": "carbon-food-delivery-api" }],
   "triggers": { "crons": ["*/5 * * * *"] },
 }

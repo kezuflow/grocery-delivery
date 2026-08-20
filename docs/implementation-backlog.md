@@ -417,6 +417,16 @@ Focused jobs tests and the complete monorepo check pass.
 Next resume point: wire real D1/Queue factories and notification/payment processors in deployed
 environments, then add customer support cases and alert projections.
 
+Current increment: concrete D1, Queue, service-binding, and 429-aware job runtime
+
+Completion record: the jobs runtime now composes D1 outbox claims, Cloudflare Queue scheduled and
+batch handlers, and an internal event-processor service binding. Event processing retries one 429
+response after five seconds before handing failure back to the outbox retry/dead-letter adapter.
+Cloudflare worker types, runtime composition tests, and the jobs package checks pass.
+
+Next resume point: add notification/payment/retention processors and operational alert projections,
+then continue customer fulfillment and support history.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete
