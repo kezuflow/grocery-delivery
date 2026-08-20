@@ -515,6 +515,13 @@ postal-code values for launch rehearsal.
 Next resume point: add named launch owners and measured restore/rollback evidence, then complete
 provider-backed event handlers and customer fulfillment workflows.
 
+Completion record: dispatch assignment creation and finance refund mutations now write optional
+audit records with actor, target, correlation, timestamp, and operation metadata. API coverage
+asserts both sensitive paths retain their audit trail when identity persistence is configured.
+
+Next resume point: finish remaining account export/deletion and consent evidence, then wire the
+provider-backed event handlers and customer fulfillment gaps.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

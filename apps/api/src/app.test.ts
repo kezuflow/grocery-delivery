@@ -665,11 +665,18 @@ describe("API worker", () => {
       { cycleId, skuId: "sku-1", orderedQuantity: 3, purchasedQuantity: 0, status: "open" },
     ]);
     const dispatchRepository = new InMemoryDispatchRepository();
+    const auditEvents: unknown[] = [];
     const operationsApp = createApi({
       now: () => new Date("2026-08-20T10:00:00.000Z"),
       sink: () => undefined,
       procurementRepository,
       dispatchRepository,
+      identityRepository: {
+        saveAuditEvent: (event: unknown) => {
+          auditEvents.push(event);
+          return Promise.resolve();
+        },
+      } as never,
       operationalProjectionRepository: new InMemoryOperationalProjectionRepository({
         outbox: {
           pendingCount: 1,
@@ -723,6 +730,9 @@ describe("API worker", () => {
       }),
     });
     expect(dispatch.status).toBe(200);
+    expect(auditEvents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ action: "dispatch.assignment-created" })]),
+    );
     dispatchResponseSchema.parse(await dispatch.json());
     const projection = await operationsApp.request("/api/v1/admin/operations/projection");
     expect(projection.status).toBe(200);
@@ -1774,6 +1784,7 @@ describe("API worker", () => {
       paymentProvider,
       () => "attempt-refund-api-1",
     );
+    const auditEvents: unknown[] = [];
     const attempt = await paymentService.charge({
       customerId: "customer-1",
       orderId: "order-refund-1",
@@ -1788,6 +1799,12 @@ describe("API worker", () => {
       sink: () => undefined,
       paymentService,
       paymentProvider,
+      identityRepository: {
+        saveAuditEvent: (event: unknown) => {
+          auditEvents.push(event);
+          return Promise.resolve();
+        },
+      } as never,
       sessionResolver: {
         resolve: () =>
           Promise.resolve(
@@ -1829,6 +1846,9 @@ describe("API worker", () => {
       "charge",
       "refund",
     ]);
+    expect(auditEvents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ action: "payment.refunded" })]),
+    );
 
     const replay = await adminApp.request("/api/v1/admin/payments/refunds", {
       method: "POST",

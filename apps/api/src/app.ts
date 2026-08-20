@@ -2255,6 +2255,19 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       assignedAt: now().toISOString(),
     });
     await repository.save(assignment);
+    await saveOptionalAudit(options.identityRepository, bindings, {
+      actorUserId: session.userId,
+      action: "dispatch.assignment-created",
+      targetType: "dispatch_assignment",
+      targetId: assignment.id,
+      occurredAt: assignment.assignedAt,
+      metadata: {
+        orderId: assignment.orderId,
+        deliverymanUserId: assignment.deliverymanUserId,
+        cycleId: assignment.cycleId,
+        correlationId: context.get("correlationId"),
+      },
+    });
     return context.json(
       {
         data: { cycleId: cycle.id, assignments: await repository.list(cycle.id) },
@@ -3880,6 +3893,20 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         reason: input.data.reason,
         idempotencyKey,
         now: now().toISOString(),
+      });
+      await saveOptionalAudit(options.identityRepository, bindings, {
+        actorUserId: session.userId,
+        action: "payment.refunded",
+        targetType: "refund",
+        targetId: refund.id,
+        occurredAt: refund.updatedAt,
+        metadata: {
+          paymentAttemptId: refund.paymentAttemptId,
+          customerId: refund.customerId,
+          amountCentavos: String(refund.amount.centavos),
+          reason: refund.reason,
+          correlationId: context.get("correlationId"),
+        },
       });
       const body = {
         data: {
