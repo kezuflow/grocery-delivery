@@ -37,8 +37,8 @@ export class D1OrderRepository implements OrderRepository {
       .prepare(
         `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
-                weekly_fee_centavos, included_credit_centavos, overage_centavos,
-                delivery_fee_centavos, total_due_centavos, locked_at
+                discount_centavos, weekly_fee_centavos, included_credit_centavos, overage_centavos,
+                delivery_fee_centavos, total_due_centavos, applied_promotion_json, locked_at
          FROM orders
          WHERE id = ? AND status = 'locked'
          LIMIT 1`,
@@ -69,8 +69,8 @@ export class D1OrderRepository implements OrderRepository {
       .prepare(
         `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
-                weekly_fee_centavos, included_credit_centavos, overage_centavos,
-                delivery_fee_centavos, total_due_centavos, locked_at
+                discount_centavos, weekly_fee_centavos, included_credit_centavos, overage_centavos,
+                delivery_fee_centavos, total_due_centavos, applied_promotion_json, locked_at
          FROM orders
          WHERE customer_id = ? AND idempotency_key = ? AND status = 'locked'
          LIMIT 1`,
@@ -95,11 +95,15 @@ export class D1OrderRepository implements OrderRepository {
   }
 
   async save(order: LockedOrder): Promise<void> {
-    await this.database.batch(orderStatements(this.database, order));
+    await this.database.batch([
+      ...promotionStatements(this.database, order),
+      ...orderStatements(this.database, order),
+    ]);
   }
 
   async saveAndPublish(order: LockedOrder, event: OrderOutboxEvent): Promise<void> {
     await this.database.batch([
+      ...promotionStatements(this.database, order),
       ...orderStatements(this.database, order),
       outboxStatement(this.database, event),
     ]);
@@ -123,9 +127,13 @@ function orderStatements(
       `INSERT INTO orders (
          id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key, request_fingerprint,
          weekly_credit_centavos, subtotal_centavos, weekly_fee_centavos,
-         included_credit_centavos, overage_centavos, delivery_fee_centavos,
-         total_due_centavos, status, locked_at, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'locked', ?, ?)`,
+         discount_centavos, included_credit_centavos, overage_centavos, delivery_fee_centavos,
+         total_due_centavos, applied_promotion_json, status, locked_at, created_at
+       )
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'locked', ?, ?
+       WHERE ? IS NULL OR EXISTS (
+         SELECT 1 FROM promotion_redemptions WHERE id = ?
+       )`,
     )
     .bind(
       order.id,
@@ -138,12 +146,16 @@ function orderStatements(
       order.weeklyCredit.centavos,
       order.totals.subtotal.centavos,
       order.totals.weeklyFee.centavos,
+      order.totals.discount?.centavos ?? 0,
       order.totals.includedCredit.centavos,
       order.totals.overage.centavos,
       order.totals.deliveryFee.centavos,
       order.totals.totalDue.centavos,
+      order.appliedPromotion ? JSON.stringify(order.appliedPromotion) : null,
       order.lockedAt,
       order.lockedAt,
+      order.appliedPromotion?.id ?? null,
+      order.appliedPromotion ? `redemption:${order.id}` : null,
     );
   const lineStatements = order.cart.lines.map((line, index) =>
     database
@@ -191,12 +203,16 @@ function mapOrder(order: OrderRow, lines: readonly OrderLineRow[]): LockedOrder 
     weeklyCredit: createMoney(order.weekly_credit_centavos),
     totals: {
       subtotal: createMoney(order.subtotal_centavos),
+      discount: createMoney(order.discount_centavos ?? 0),
       weeklyFee: createMoney(order.weekly_fee_centavos),
       includedCredit: createMoney(order.included_credit_centavos),
       overage: createMoney(order.overage_centavos),
       deliveryFee: createMoney(order.delivery_fee_centavos),
       totalDue: createMoney(order.total_due_centavos),
     },
+    appliedPromotion: order.applied_promotion_json
+      ? JSON.parse(order.applied_promotion_json)
+      : null,
     status: "locked",
     lockedAt: order.locked_at,
   });
@@ -212,13 +228,86 @@ type OrderRow = Record<string, unknown> & {
   request_fingerprint: string;
   weekly_credit_centavos: number;
   subtotal_centavos: number;
+  discount_centavos: number;
   weekly_fee_centavos: number;
   included_credit_centavos: number;
   overage_centavos: number;
   delivery_fee_centavos: number;
   total_due_centavos: number;
+  applied_promotion_json: string | null;
   locked_at: string;
 };
+
+function promotionStatements(
+  database: OrderDatabase,
+  order: LockedOrder,
+): readonly CatalogPreparedStatement[] {
+  const promotion = order.appliedPromotion;
+  if (!promotion) return [];
+  const result = JSON.stringify({
+    promotionId: promotion.id,
+    discount: promotion.discount,
+    deliveryFee: promotion.deliveryFee,
+    reason: null,
+  });
+  return [
+    database
+      .prepare(
+        `INSERT INTO promotion_redemptions (
+           id, promotion_id, customer_id, idempotency_key,
+           request_fingerprint, result_json, created_at
+         )
+         SELECT ?, ?, ?, ?, ?, ?, ?
+         FROM promotions
+         WHERE id = ? AND code = ? AND version = ? AND status = 'active'
+           AND starts_at <= ? AND ends_at > ?
+           AND (total_budget_centavos IS NULL OR redeemed_amount_centavos + ? <= total_budget_centavos)
+           AND (total_redemptions IS NULL OR redemption_count < total_redemptions)
+           AND (
+             per_customer_redemptions IS NULL OR
+             (SELECT COUNT(*) FROM promotion_redemptions
+              WHERE promotion_id = ? AND customer_id = ? AND json_extract(result_json, '$.reason') IS NULL)
+             < per_customer_redemptions
+           )
+         ON CONFLICT(customer_id, idempotency_key) DO NOTHING`,
+      )
+      .bind(
+        `redemption:${order.id}`,
+        promotion.id,
+        order.customerId,
+        order.idempotencyKey,
+        order.requestFingerprint,
+        result,
+        order.lockedAt,
+        promotion.id,
+        promotion.code,
+        promotion.version,
+        order.lockedAt,
+        order.lockedAt,
+        promotion.discount.centavos,
+        promotion.id,
+        order.customerId,
+      ),
+    database
+      .prepare(
+        `UPDATE promotions
+         SET redeemed_amount_centavos = redeemed_amount_centavos + ?,
+             redemption_count = redemption_count + 1,
+             updated_at = ?
+         WHERE id = ?
+           AND EXISTS (SELECT 1 FROM promotion_redemptions WHERE id = ?)
+           AND (total_budget_centavos IS NULL OR redeemed_amount_centavos + ? <= total_budget_centavos)
+           AND (total_redemptions IS NULL OR redemption_count < total_redemptions)`,
+      )
+      .bind(
+        promotion.discount.centavos,
+        order.lockedAt,
+        promotion.id,
+        `redemption:${order.id}`,
+        promotion.discount.centavos,
+      ),
+  ];
+}
 
 type OrderLineRow = Record<string, unknown> & {
   sku_id: string;

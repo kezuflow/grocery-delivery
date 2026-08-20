@@ -69,6 +69,7 @@ export const orderLineRequestSchema = z.object({
 
 export const orderCreateRequestSchema = z.object({
   lines: z.array(orderLineRequestSchema).max(100).optional(),
+  promotionCode: z.string().trim().min(2).max(32).optional(),
 });
 
 export const cartLineRequestSchema = orderLineRequestSchema;
@@ -100,6 +101,9 @@ export const orderLineSchema = z.object({
 
 export const orderTotalsSchema = z.object({
   subtotal: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  discount: z
+    .object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") })
+    .default({ centavos: 0, currency: "PHP" }),
   weeklyFee: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
   includedCredit: z.object({
     centavos: z.number().int().nonnegative(),
@@ -118,6 +122,19 @@ export const orderSchema = z.object({
   lines: z.array(orderLineSchema),
   weeklyCredit: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
   totals: orderTotalsSchema,
+  appliedPromotion: z
+    .object({
+      id: z.string().min(1),
+      code: z.string().min(2),
+      version: z.number().int().positive(),
+      discount: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+      deliveryFee: z.object({
+        centavos: z.number().int().nonnegative(),
+        currency: z.literal("PHP"),
+      }),
+    })
+    .nullable()
+    .default(null),
   status: z.literal("locked"),
   lockedAt: z.string().datetime(),
 });

@@ -15,6 +15,7 @@ export type Cart = Readonly<{
 
 export type CartTotals = Readonly<{
   subtotal: Money;
+  discount?: Money;
   weeklyFee: Money;
   includedCredit: Money;
   overage: Money;
@@ -57,6 +58,7 @@ export function calculateCartTotals(input: {
   cart: Cart;
   plan: Pick<Plan, "weeklyFee" | "weeklyCredit">;
   deliveryFee: Money;
+  discount?: Money;
 }): CartTotals {
   assertMoney(input.deliveryFee, "delivery fee");
   assertMoney(input.plan.weeklyFee, "weekly fee");
@@ -67,12 +69,21 @@ export function calculateCartTotals(input: {
     subtotal = addMoney(subtotal, multiplyMoney(line.unitPrice, line.quantity));
   }
 
-  const includedCredit = createMoney(Math.min(subtotal.centavos, input.plan.weeklyCredit.centavos));
-  const overage = createMoney(subtotal.centavos - includedCredit.centavos);
+  const discount = input.discount ?? createMoney(0);
+  assertMoney(discount, "discount");
+  if (discount.centavos > subtotal.centavos) {
+    throw new DomainValidationError("INVALID_COMMERCE_DISCOUNT", "discount cannot exceed subtotal");
+  }
+  const discountedSubtotal = createMoney(subtotal.centavos - discount.centavos);
+  const includedCredit = createMoney(
+    Math.min(discountedSubtotal.centavos, input.plan.weeklyCredit.centavos),
+  );
+  const overage = createMoney(discountedSubtotal.centavos - includedCredit.centavos);
   const totalDue = addMoney(addMoney(input.plan.weeklyFee, overage), input.deliveryFee);
 
   return Object.freeze({
     subtotal,
+    discount,
     weeklyFee: Object.freeze({ ...input.plan.weeklyFee }),
     includedCredit,
     overage,

@@ -2,6 +2,7 @@ import {
   calculateCartTotals,
   createLockedOrder,
   type Cart,
+  type AppliedPromotionSnapshot,
   type LockedOrder,
   type Money,
   type Plan,
@@ -39,6 +40,7 @@ export type CartLockService = Readonly<{
     cart: Cart;
     plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
     deliveryFee: Money;
+    promotion?: AppliedPromotionSnapshot;
     lockedAt: string;
   }): Promise<LockedOrder>;
 }>;
@@ -88,6 +90,7 @@ export class DefaultCartLockService implements CartLockService {
     cart: Cart;
     plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
     deliveryFee: Money;
+    promotion?: AppliedPromotionSnapshot;
     lockedAt: string;
   }): Promise<LockedOrder> {
     const key = input.idempotencyKey.trim();
@@ -118,6 +121,7 @@ export class DefaultCartLockService implements CartLockService {
       cart: Cart;
       plan: Pick<Plan, "id" | "weeklyFee" | "weeklyCredit">;
       deliveryFee: Money;
+      promotion?: AppliedPromotionSnapshot;
       lockedAt: string;
     },
     key: string,
@@ -133,6 +137,7 @@ export class DefaultCartLockService implements CartLockService {
         weeklyCredit: input.plan.weeklyCredit,
       },
       deliveryFee: input.deliveryFee,
+      promotion: input.promotion,
     });
     const existing = await this.orders.findByIdempotencyKey(input.customerId, key);
     if (existing) {
@@ -153,6 +158,7 @@ export class DefaultCartLockService implements CartLockService {
       cart: input.cart,
       plan: input.plan,
       deliveryFee: input.deliveryFee,
+      ...(input.promotion ? { discount: input.promotion.discount } : {}),
     });
     const order = createLockedOrder({
       id: this.generateOrderId(),
@@ -165,6 +171,7 @@ export class DefaultCartLockService implements CartLockService {
       cart: input.cart,
       weeklyCredit: input.plan.weeklyCredit,
       totals,
+      appliedPromotion: input.promotion ?? null,
       status: "locked",
       lockedAt: input.lockedAt,
     });

@@ -8,6 +8,7 @@ import {
 } from "@carbon/auth";
 import {
   DefaultCartLockService,
+  CheckoutPricingService,
   evaluateOrderCutoff,
   DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
@@ -19,6 +20,7 @@ import {
   type RequestRateLimiter,
   type SubscriptionCommandService,
   type SubscriptionCreationService,
+  type PromotionRepository,
 } from "@carbon/application";
 import {
   parseAllowedOrigins,
@@ -63,6 +65,8 @@ import {
   plansListResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
+  couponRequestSchema,
+  checkoutQuoteResponseSchema,
   paymentAttemptResponseSchema,
   paymentChargeRequestSchema,
   paymentMethodRequestSchema,
@@ -116,6 +120,7 @@ import {
   D1PlanRepository,
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
+  D1PromotionRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -228,6 +233,7 @@ export type ApiOptions = Readonly<{
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
+  promotionRepository?: PromotionRepository;
   orderReader?: Pick<OrderRepository, "findById">;
   paymentProvider?: PaymentProvider;
   paymentService?: PaymentService;
@@ -2036,6 +2042,143 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
+  async function quoteSavedCart(context: ApiContext, promotionCode?: string) {
+    const bindings: ApiBindings = context.env ?? {};
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const subscriptionReader =
+      options.subscriptionReader ??
+      (bindings.DB ? new D1SubscriptionRepository(bindings.DB) : undefined);
+    const planLookup =
+      options.planLookup ??
+      (bindings.DB ? new D1PlanReader(bindings.DB) : createDefaultPlanReader());
+    const cartRepository =
+      options.cartRepository ??
+      (bindings.DB ? new D1CartRepository(bindings.DB) : fallbackCartRepository);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    const promotionRepository =
+      options.promotionRepository ??
+      (bindings.DB ? new D1PromotionRepository(bindings.DB) : undefined);
+    if (!subscriptionReader || !planLookup) {
+      return context.json(
+        errorResponse(
+          "CHECKOUT_UNAVAILABLE",
+          "checkout is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const subscription = await subscriptionReader.findByCustomerId(session.customerId);
+    if (
+      !subscription ||
+      subscription.status !== "active" ||
+      subscription.billingStatus !== "current"
+    ) {
+      return context.json(
+        errorResponse(
+          "SUBSCRIPTION_NOT_ELIGIBLE",
+          "an active subscription is required to calculate checkout",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const plan = await planLookup.findActiveById(subscription.planId);
+    const savedCart = await cartRepository.findByCustomerId(session.customerId);
+    if (!plan || !savedCart?.lines.length) {
+      return context.json(
+        errorResponse(
+          plan ? "CART_EMPTY" : "PLAN_NOT_FOUND",
+          plan
+            ? "the cart must contain at least one available SKU"
+            : "the subscription plan is unavailable",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const catalogItems = await catalogReader.findActiveByIds(
+      savedCart.lines.map((line) => line.skuId),
+    );
+    if (catalogItems.length !== savedCart.lines.length) {
+      return context.json(
+        errorResponse(
+          "SKU_NOT_AVAILABLE",
+          "one or more SKUs are unavailable",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
+    const deliveryFeeCentavos = resolveDeliveryFeeCentavos(options.deliveryFeeCentavos, bindings);
+    if (deliveryFeeCentavos === null) {
+      return context.json(
+        errorResponse(
+          "CHECKOUT_CONFIGURATION_INVALID",
+          "delivery fee configuration is invalid",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    try {
+      const quote = await new CheckoutPricingService(promotionRepository).quote({
+        customerId: session.customerId,
+        ...(promotionCode ? { code: promotionCode } : {}),
+        cart: {
+          lines: savedCart.lines.map((line) => {
+            const item = catalogById.get(line.skuId);
+            if (!item) throw new Error("SKU_NOT_AVAILABLE");
+            return { skuId: item.id, quantity: line.quantity, unitPrice: item.price };
+          }),
+        },
+        plan,
+        deliveryFee: createMoney(deliveryFeeCentavos),
+        now: now().toISOString(),
+        categoryIds: new Map(catalogItems.map((item) => [item.id, item.categoryId])),
+      });
+      const body = checkoutQuoteBody(quote, context.get("correlationId"));
+      checkoutQuoteResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "promotion could not be applied";
+      return context.json(
+        errorResponse(promotionErrorCode(message), message, context.get("correlationId")),
+        409,
+      );
+    }
+  }
+
+  app.post("/api/v1/checkout/coupon", async (context) => {
+    const input = couponRequestSchema.safeParse(await context.req.json().catch(() => ({})));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PROMOTION_CODE",
+          "promotion code is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    return quoteSavedCart(context, input.data.code);
+  });
+
+  app.delete("/api/v1/checkout/coupon", (context) => quoteSavedCart(context));
+
   app.post("/api/v1/orders", async (context) => {
     const bindings: ApiBindings = context.env ?? {};
     const orderLockService =
@@ -2061,6 +2204,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const deliveryAddressRepository =
       options.deliveryAddressRepository ??
       (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    const promotionRepository =
+      options.promotionRepository ??
+      (bindings.DB ? new D1PromotionRepository(bindings.DB) : undefined);
 
     if (!orderLockService || !subscriptionReader || !planLookup) {
       return context.json(
@@ -2219,6 +2365,15 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     }
     try {
+      const quote = await new CheckoutPricingService(promotionRepository).quote({
+        customerId: session.customerId,
+        ...(input.data.promotionCode ? { code: input.data.promotionCode } : {}),
+        cart: { lines: cartLines },
+        plan,
+        deliveryFee: createMoney(deliveryFeeCentavos),
+        now: checkoutTime.toISOString(),
+        categoryIds: new Map(catalogItems.map((item) => [item.id, item.categoryId])),
+      });
       const order = await orderLockService.lock({
         customerId: session.customerId,
         subscriptionId: subscription.id,
@@ -2226,7 +2381,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         idempotencyKey,
         cart: { lines: cartLines },
         plan,
-        deliveryFee: { centavos: deliveryFeeCentavos, currency: "PHP" },
+        deliveryFee: quote.promotion?.deliveryFee ?? createMoney(deliveryFeeCentavos),
+        ...(quote.promotion ? { promotion: quote.promotion } : {}),
         lockedAt: checkoutTime.toISOString(),
       });
       if (!input.data.lines) {
@@ -2241,6 +2397,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           lines: order.cart.lines,
           weeklyCredit: order.weeklyCredit,
           totals: order.totals,
+          appliedPromotion: order.appliedPromotion ?? null,
           status: order.status,
           lockedAt: order.lockedAt,
         },
@@ -2250,11 +2407,16 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       return context.json(body, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : "order creation failed";
-      const code = message.includes("idempotency")
-        ? "IDEMPOTENCY_KEY_REUSED"
-        : message.includes("SKU")
-          ? "SKU_NOT_AVAILABLE"
-          : "INVALID_ORDER_REQUEST";
+      const code =
+        message.includes("promotion") ||
+        message.includes("subtotal") ||
+        message.includes("redemption")
+          ? promotionErrorCode(message)
+          : message.includes("idempotency")
+            ? "IDEMPOTENCY_KEY_REUSED"
+            : message.includes("SKU")
+              ? "SKU_NOT_AVAILABLE"
+              : "INVALID_ORDER_REQUEST";
       return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
   });
@@ -3373,6 +3535,41 @@ function resolveDeliveryFeeCentavos(
   const value =
     configured ?? (bindings.DELIVERY_FEE_CENTAVOS ? Number(bindings.DELIVERY_FEE_CENTAVOS) : 0);
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function checkoutQuoteBody(
+  quote: Awaited<ReturnType<CheckoutPricingService["quote"]>>,
+  correlationId: string,
+) {
+  return {
+    data: {
+      originalSubtotal: quote.originalSubtotal,
+      discount: quote.discount,
+      deliveryFee: quote.totals.deliveryFee,
+      weeklyFee: quote.totals.weeklyFee,
+      includedCredit: quote.totals.includedCredit,
+      overage: quote.totals.overage,
+      totalDue: quote.totals.totalDue,
+      promotionCode: quote.promotionCode,
+    },
+    meta: { correlationId },
+  };
+}
+
+function promotionErrorCode(message: string): string {
+  if (message.includes("not found")) return "PROMOTION_NOT_FOUND";
+  if (message.includes("not active")) return "PROMOTION_NOT_ACTIVE";
+  if (message.includes("minimum subtotal")) return "PROMOTION_MINIMUM_NOT_MET";
+  if (message.includes("plan") || message.includes("products") || message.includes("categories"))
+    return "PROMOTION_NOT_ELIGIBLE";
+  if (message.includes("first order") || message.includes("first week"))
+    return "PROMOTION_NOT_ELIGIBLE";
+  if (message.includes("customer redemption")) return "PROMOTION_CUSTOMER_LIMIT_REACHED";
+  if (message.includes("redemption limit")) return "PROMOTION_LIMIT_REACHED";
+  if (message.includes("budget") || message.includes("campaign limits"))
+    return "PROMOTION_EXHAUSTED";
+  if (message.includes("invalid")) return "INVALID_PROMOTION_CODE";
+  return "PROMOTION_REJECTED";
 }
 
 const defaultRateLimitPolicies: readonly ApiRateLimitPolicy[] = [

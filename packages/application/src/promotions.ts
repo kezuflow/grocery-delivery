@@ -59,6 +59,25 @@ export class PromotionRedemptionService {
     private readonly generateId: () => string = () => crypto.randomUUID(),
   ) {}
 
+  async preview(
+    input: Readonly<{
+      customerId: string;
+      code: string;
+      context: Omit<PromotionContext, "customerRedemptions">;
+    }>,
+  ): Promise<{ promotion: Promotion; result: PromotionResult }> {
+    const code = normalizePromotionCode(input.code);
+    const promotion = await this.repository.findActiveByCode(code);
+    if (!promotion) throw new Error("promotion was not found");
+    const customerRedemptions = await this.repository.countCustomerRedemptions(
+      promotion.id,
+      input.customerId,
+    );
+    const result = evaluatePromotion(promotion, { ...input.context, customerRedemptions });
+    if (result.reason) throw new Error(result.reason);
+    return { promotion, result };
+  }
+
   async apply(
     input: Readonly<{
       customerId: string;
@@ -82,14 +101,7 @@ export class PromotionRedemptionService {
         throw new Error("idempotency key was already used for a different promotion request");
       return existing;
     }
-    const promotion = await this.repository.findActiveByCode(code);
-    if (!promotion) throw new Error("promotion was not found");
-    const customerRedemptions = await this.repository.countCustomerRedemptions(
-      promotion.id,
-      input.customerId,
-    );
-    const result = evaluatePromotion(promotion, { ...input.context, customerRedemptions });
-    if (result.reason) throw new Error(result.reason);
+    const { promotion, result } = await this.preview(input);
     const redemption = {
       id: this.generateId(),
       promotionId: promotion.id,

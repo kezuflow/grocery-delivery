@@ -5,6 +5,14 @@ import { createCart, type Cart, type CartTotals } from "./commerce.js";
 export const ORDER_STATUSES = ["locked", "canceled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export type AppliedPromotionSnapshot = Readonly<{
+  id: string;
+  code: string;
+  version: number;
+  discount: Money;
+  deliveryFee: Money;
+}>;
+
 export type LockedOrder = Readonly<{
   id: string;
   customerId: string;
@@ -16,6 +24,7 @@ export type LockedOrder = Readonly<{
   cart: Cart;
   weeklyCredit: Money;
   totals: CartTotals;
+  appliedPromotion?: AppliedPromotionSnapshot | null;
   status: "locked";
   lockedAt: string;
 }>;
@@ -40,14 +49,35 @@ export function createLockedOrder(input: LockedOrder): LockedOrder {
   if (input.weeklyCredit.currency !== "PHP" || input.weeklyCredit.centavos < 0) {
     throw new DomainValidationError("INVALID_ORDER_MONEY", "order weekly credit must be PHP");
   }
+  if (input.appliedPromotion) {
+    assertText(input.appliedPromotion.id, "promotion id");
+    assertText(input.appliedPromotion.code, "promotion code");
+    if (
+      !Number.isSafeInteger(input.appliedPromotion.version) ||
+      input.appliedPromotion.version < 1
+    ) {
+      throw new DomainValidationError(
+        "INVALID_PROMOTION_VERSION",
+        "promotion version must be positive",
+      );
+    }
+  }
 
   return Object.freeze({
     ...input,
     cart: createCart(input.cart.lines),
     weeklyCredit: createMoney(input.weeklyCredit.centavos),
+    appliedPromotion: input.appliedPromotion
+      ? Object.freeze({
+          ...input.appliedPromotion,
+          discount: createMoney(input.appliedPromotion.discount.centavos),
+          deliveryFee: createMoney(input.appliedPromotion.deliveryFee.centavos),
+        })
+      : null,
     totals: Object.freeze({
       ...input.totals,
       subtotal: createMoney(input.totals.subtotal.centavos),
+      discount: createMoney(input.totals.discount?.centavos ?? 0),
       weeklyFee: createMoney(input.totals.weeklyFee.centavos),
       includedCredit: createMoney(input.totals.includedCredit.centavos),
       overage: createMoney(input.totals.overage.centavos),

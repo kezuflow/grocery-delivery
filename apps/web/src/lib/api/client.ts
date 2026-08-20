@@ -16,6 +16,8 @@ import {
   deliveryMediaListResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
+  couponRequestSchema,
+  checkoutQuoteResponseSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
@@ -35,6 +37,7 @@ import {
   type DeliveryMediaListResponse,
   type OrderCreateRequest,
   type OrderResponse,
+  type CheckoutQuoteResponse,
   type PlansListResponse,
   type PaymentHistoryResponse,
   type SubscriptionActionRequest,
@@ -225,6 +228,23 @@ export function createApiClient(transport: ApiTransport) {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
+      });
+    },
+    previewCoupon(code: string, init?: RequestInit): Promise<CheckoutQuoteResponse> {
+      const payload = couponRequestSchema.parse({ code });
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return getJson(transport, "/api/v1/checkout/coupon", checkoutQuoteResponseSchema, {
+        ...init,
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    },
+    removeCoupon(init?: RequestInit): Promise<CheckoutQuoteResponse> {
+      return getJson(transport, "/api/v1/checkout/coupon", checkoutQuoteResponseSchema, {
+        ...init,
+        method: "DELETE",
       });
     },
   };

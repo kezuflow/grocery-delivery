@@ -296,8 +296,19 @@ plan/SKU/category eligibility, first-order/first-week rules, campaign budgets, t
 limits, and explicit stacking policy. The application boundary adds idempotent customer redemption
 records and stable conflicting-key errors. Focused domain/application tests, lint, and typecheck pass.
 
-Next resume point: persist campaign/redemption records in D1 and expose customer coupon apply/remove
-controls that feed server-calculated checkout totals.
+Current increment: customer coupon controls and server-calculated checkout
+
+Completion record: customer coupon preview/apply and removal now use authenticated API routes and
+submit only a normalized code. Checkout pricing resolves catalog prices, plan values, delivery fees,
+promotion eligibility, savings, and final totals on the server. Order locking re-runs the same
+promotion evaluation and persists the applied campaign ID, normalized code, rule version, discount,
+and delivery-fee result in an immutable order snapshot. D1 writes the redemption, campaign counters,
+locked order, order lines, and outbox event atomically; a failed or exhausted revalidation cannot
+create a discounted order. Focused domain, application, repository, API integration, contract, and
+web tests pass.
+
+Next resume point: add marketing campaign creation and finance approval, then continue Slice 016
+with immutable delivery-address, delivery-window, and payment-state snapshots.
 
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an

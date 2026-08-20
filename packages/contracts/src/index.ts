@@ -1,4 +1,5 @@
 export * from "./catalog";
+export * from "./checkout";
 export * from "./delivery";
 export * from "./delivery-windows";
 export * from "./operations";

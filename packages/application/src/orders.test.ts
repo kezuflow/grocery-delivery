@@ -43,6 +43,29 @@ describe("cart locking", () => {
     expect(outbox.events[0]).toMatchObject({ type: "order.locked", aggregateId: "order-1" });
   });
 
+  it("locks the validated promotion snapshot and discounted totals", async () => {
+    const service = new DefaultCartLockService(
+      new InMemoryOrderRepository(),
+      new InMemoryOutboxPublisher(),
+      () => "order-promoted",
+    );
+
+    const order = await service.lock({
+      ...input,
+      promotion: {
+        id: "promotion-1",
+        code: "WELCOME10",
+        version: 2,
+        discount: createMoney(5_000),
+        deliveryFee: createMoney(5_000),
+      },
+    });
+
+    expect(order.appliedPromotion).toMatchObject({ id: "promotion-1", version: 2 });
+    expect(order.totals.discount?.centavos).toBe(5_000);
+    expect(order.totals.totalDue.centavos).toBe(100_000);
+  });
+
   it("replays the same order without publishing another event", async () => {
     const outbox = new InMemoryOutboxPublisher();
     let sequence = 0;
