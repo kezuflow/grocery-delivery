@@ -99,10 +99,21 @@ export class PromotionRedemptionService {
       result,
       createdAt: input.context.now,
     };
-    if (this.repository.saveRedemptionAndUpdatePromotion) {
-      await this.repository.saveRedemptionAndUpdatePromotion(redemption);
-    } else {
-      await this.repository.saveRedemption(redemption);
+    try {
+      if (this.repository.saveRedemptionAndUpdatePromotion) {
+        await this.repository.saveRedemptionAndUpdatePromotion(redemption);
+      } else {
+        await this.repository.saveRedemption(redemption);
+      }
+    } catch (error) {
+      const raced = await this.repository.findRedemption(input.customerId, key);
+      if (raced) {
+        if (raced.requestFingerprint !== fingerprint) {
+          throw new Error("idempotency key was already used for a different promotion request");
+        }
+        return raced;
+      }
+      throw error;
     }
     return redemption;
   }

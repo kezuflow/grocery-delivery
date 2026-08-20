@@ -106,7 +106,7 @@ describe("promotion repository", () => {
 
     expect(database.batches).toHaveLength(1);
     expect(database.batches[0]).toHaveLength(2);
-    expect(database.calls[0]?.sql).toContain("INSERT OR IGNORE INTO promotion_redemptions");
+    expect(database.calls[0]?.sql).toContain("INSERT INTO promotion_redemptions");
   });
 });
 

@@ -75,6 +75,43 @@ describe("promotion redemption", () => {
       }),
     ).rejects.toThrow("customer redemption limit");
   });
+  it("recovers a concurrent idempotent persistence race", async () => {
+    const stored = {
+      id: "redemption-race",
+      promotionId: promotion.id,
+      customerId: "customer-1",
+      idempotencyKey: "coupon-race",
+      requestFingerprint: JSON.stringify({
+        customerId: "customer-1",
+        code: "WELCOME10",
+        context,
+      }),
+      result: {
+        promotionId: promotion.id,
+        discount: createMoney(5000),
+        deliveryFee: createMoney(5000),
+        reason: null,
+      },
+      createdAt: context.now,
+    } as const;
+    let lookupCount = 0;
+    const repository = {
+      findActiveByCode: () => Promise.resolve(promotion),
+      findRedemption: () => Promise.resolve(++lookupCount === 1 ? null : stored),
+      countCustomerRedemptions: () => Promise.resolve(0),
+      saveRedemption: () => Promise.resolve(),
+      saveRedemptionAndUpdatePromotion: () => Promise.reject(new Error("unique constraint")),
+    };
+
+    await expect(
+      new PromotionRedemptionService(repository).apply({
+        customerId: "customer-1",
+        code: "welcome10",
+        idempotencyKey: "coupon-race",
+        context,
+      }),
+    ).resolves.toEqual(stored);
+  });
   it("rejects non-stacking promotions", () =>
     expect(() => assertPromotionStacking([promotion, { ...promotion, id: "promo-2" }])).toThrow(
       "cannot be stacked",

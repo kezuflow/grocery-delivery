@@ -86,7 +86,7 @@ export class D1PromotionRepository implements PromotionRepository {
 
   async saveRedemptionAndUpdatePromotion(redemption: PromotionRedemptionRecord): Promise<void> {
     await this.database.batch([
-      redemptionStatement(this.database, redemption),
+      redemptionStatement(this.database, redemption, false),
       this.database
         .prepare(
           `UPDATE promotions
@@ -116,10 +116,11 @@ export class D1PromotionRepository implements PromotionRepository {
 function redemptionStatement(
   database: CatalogDatabase,
   redemption: PromotionRedemptionRecord,
+  ignoreDuplicate = true,
 ): CatalogPreparedStatement {
   return database
     .prepare(
-      `INSERT OR IGNORE INTO promotion_redemptions (
+      `INSERT ${ignoreDuplicate ? "OR IGNORE " : ""}INTO promotion_redemptions (
          id, promotion_id, customer_id, idempotency_key,
          request_fingerprint, result_json, created_at
        )
