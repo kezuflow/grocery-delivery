@@ -39,3 +39,43 @@ export class DeterministicMediaSigner implements DeliveryMediaSigner {
     });
   }
 }
+
+export interface PromotionMediaSigner {
+  createUploadUrl(input: {
+    objectKey: string;
+    contentType: string;
+    sizeBytes: number;
+    expiresAt: string;
+  }): Promise<{ uploadUrl: string }>;
+  createDownloadUrl(input: {
+    objectKey: string;
+    expiresAt: string;
+  }): Promise<{ downloadUrl: string }>;
+}
+
+export class DeterministicPromotionMediaSigner implements PromotionMediaSigner {
+  constructor(private readonly baseUrl = "https://promotion-media.invalid") {}
+
+  createUploadUrl(input: {
+    objectKey: string;
+    contentType: string;
+    sizeBytes: number;
+    expiresAt: string;
+  }) {
+    const query = new URLSearchParams({
+      contentType: input.contentType,
+      sizeBytes: String(input.sizeBytes),
+      expires: input.expiresAt,
+    });
+    return Promise.resolve({
+      uploadUrl: `${this.baseUrl}/promotions/upload/${encodeURIComponent(input.objectKey)}?${query.toString()}`,
+    });
+  }
+
+  createDownloadUrl(input: { objectKey: string; expiresAt: string }) {
+    const query = new URLSearchParams({ expires: input.expiresAt });
+    return Promise.resolve({
+      downloadUrl: `${this.baseUrl}/promotions/download/${encodeURIComponent(input.objectKey)}?${query.toString()}`,
+    });
+  }
+}

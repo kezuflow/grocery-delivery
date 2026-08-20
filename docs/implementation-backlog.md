@@ -367,6 +367,21 @@ successful commands.
 Next resume point: add banner content and media management, public active-promotion reads, and
 admin customer/support/refund/audit surfaces.
 
+Current increment: promotional banners, dedicated media signing, and public active reads
+
+Completion record: promotion banners now have forward-only D1 persistence, validated placement,
+schedule, CTA, accessibility, and dedicated `promotions/` object-key boundaries. Marketing admins
+can create and list drafts, finance admins alone can activate them, and pause/archive changes bump
+the cache version. Public placement reads filter status and schedule server-side, issue short-lived
+download URLs through a signer separate from delivery proof media, and return cache-control plus ETag
+metadata. Upload requests enforce supported image types, a 5 MB bound, bounded dimensions, and
+promotion-only object keys. Storefront hero content consumes only the validated active response and
+falls back safely when banners are unavailable. Focused contract, repository, storage, API, and web
+checks pass.
+
+Next resume point: add durable impression/click analytics, then continue admin customer/support,
+refund, audit, and alert surfaces.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

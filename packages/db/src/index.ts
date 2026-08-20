@@ -17,3 +17,4 @@ export * from "./operations.js";
 export * from "./payments.js";
 export * from "./plan-approvals.js";
 export * from "./subscriptions.js";
+export * from "./promotion-banners.js";

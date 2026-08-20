@@ -1,4 +1,8 @@
-import type { CatalogListResponse, PlansListResponse } from "@carbon/contracts";
+import type {
+  ActivePromotionBannersResponse,
+  CatalogListResponse,
+  PlansListResponse,
+} from "@carbon/contracts";
 
 import { createApiClient, type ApiClientError } from "./api/client";
 import { createRuntimeApiTransport } from "./api/runtime";
@@ -6,18 +10,29 @@ import { createRuntimeApiTransport } from "./api/runtime";
 export type StorefrontData = Readonly<{
   plans: PlansListResponse["data"]["plans"];
   catalog: CatalogListResponse["data"];
+  banners: ActivePromotionBannersResponse["data"]["banners"];
   error: string | null;
 }>;
 
 export async function loadStorefront(): Promise<StorefrontData> {
   try {
     const client = createApiClient(createRuntimeApiTransport());
-    const [plans, catalog] = await Promise.all([client.listPlans(), client.listCatalog()]);
-    return { plans: plans.data.plans, catalog: catalog.data, error: null };
+    const [plans, catalog, banners] = await Promise.all([
+      client.listPlans(),
+      client.listCatalog(),
+      client.getActivePromotionBanners("home-hero"),
+    ]);
+    return {
+      plans: plans.data.plans,
+      catalog: catalog.data,
+      banners: banners.data.banners,
+      error: null,
+    };
   } catch (error) {
     return {
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },
+      banners: [],
       error: toStorefrontError(error),
     };
   }

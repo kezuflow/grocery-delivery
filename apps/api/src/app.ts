@@ -96,6 +96,14 @@ import {
   promotionStatusRequestSchema,
   promotionAdminResponseSchema,
   promotionAdminListResponseSchema,
+  promotionBannerAdminListResponseSchema,
+  promotionBannerResponseSchema,
+  promotionBannerStatusRequestSchema,
+  promotionBannerUpsertRequestSchema,
+  activePromotionBannersResponseSchema,
+  bannerPlacementSchema,
+  promotionMediaUploadRequestSchema,
+  promotionMediaUploadResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -126,6 +134,8 @@ import {
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
   D1PromotionRepository,
+  D1PromotionBannerRepository,
+  type PromotionBannerRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -172,7 +182,12 @@ import {
   type MetricsSink,
 } from "@carbon/observability";
 import type { NotificationSender } from "@carbon/notifications";
-import { DeterministicMediaSigner, type DeliveryMediaSigner } from "@carbon/storage";
+import {
+  DeterministicMediaSigner,
+  DeterministicPromotionMediaSigner,
+  type DeliveryMediaSigner,
+  type PromotionMediaSigner,
+} from "@carbon/storage";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
@@ -196,6 +211,7 @@ export type ApiBindings = Readonly<{
   PAYMONGO_API_URL?: string;
   VERSION?: string;
   MEDIA_BASE_URL?: string;
+  PROMOTION_MEDIA_BASE_URL?: string;
 }>;
 
 type ApiVariables = {
@@ -237,6 +253,8 @@ export type ApiOptions = Readonly<{
   deliveryMediaRepository?: DeliveryMediaRepository;
   notificationSender?: NotificationSender;
   mediaSigner?: DeliveryMediaSigner;
+  promotionMediaSigner?: PromotionMediaSigner;
+  promotionBannerRepository?: PromotionBannerRepository;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -527,6 +545,60 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     if (context.req.header("if-none-match") === etag) {
       return context.body(null, 304);
     }
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/promotions/banners", async (context) => {
+    const placement = context.req.query("placement");
+    const parsedPlacement = bannerPlacementSchema.safeParse(placement);
+    if (!parsedPlacement.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_BANNER_PLACEMENT",
+          "banner placement is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const repository =
+      options.promotionBannerRepository ??
+      (context.env?.DB ? new D1PromotionBannerRepository(context.env.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROMOTION_BANNERS_UNAVAILABLE",
+          "promotion banners are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const at = now().toISOString();
+    const banners = await repository.listActive(parsedPlacement.data, at);
+    const signer =
+      options.promotionMediaSigner ??
+      new DeterministicPromotionMediaSigner(context.env?.PROMOTION_MEDIA_BASE_URL);
+    const mapped = await Promise.all(
+      banners.map(async (banner) => {
+        const expiresAt = new Date(now().getTime() + 5 * 60_000).toISOString();
+        const [desktop, mobile] = await Promise.all([
+          signer.createDownloadUrl({ objectKey: banner.desktopObjectKey, expiresAt }),
+          signer.createDownloadUrl({ objectKey: banner.mobileObjectKey, expiresAt }),
+        ]);
+        return { ...banner, desktopUrl: desktop.downloadUrl, mobileUrl: mobile.downloadUrl };
+      }),
+    );
+    const body = {
+      data: {
+        placement: parsedPlacement.data,
+        banners: mapped,
+        cacheVersion: mapped.reduce((max, banner) => Math.max(max, banner.cacheVersion), 1),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    activePromotionBannersResponseSchema.parse(body);
+    context.header("cache-control", "public, max-age=60, stale-while-revalidate=300");
+    context.header("etag", `W/"banners-${body.data.cacheVersion}"`);
     return context.json(body, 200);
   });
 
@@ -2455,6 +2527,194 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       meta: { correlationId: context.get("correlationId") },
     };
     promotionAdminResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/admin/promotion-banners", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "marketing"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "marketing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    const repository =
+      options.promotionBannerRepository ??
+      (context.env?.DB ? new D1PromotionBannerRepository(context.env.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROMOTION_BANNERS_UNAVAILABLE",
+          "promotion banners are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const body = {
+      data: { banners: await repository.list() },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    promotionBannerAdminListResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/admin/promotion-media/uploads", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "marketing"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "marketing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    const input = promotionMediaUploadRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_PROMOTION_MEDIA",
+          "promotion media input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const extension =
+      input.data.contentType === "image/jpeg"
+        ? "jpg"
+        : input.data.contentType === "image/png"
+          ? "png"
+          : "webp";
+    const objectKey = `promotions/${input.data.bannerId}/${input.data.variant}/${crypto.randomUUID()}.${extension}`;
+    const expiresAt = new Date(now().getTime() + 5 * 60_000).toISOString();
+    const signer =
+      options.promotionMediaSigner ??
+      new DeterministicPromotionMediaSigner(context.env?.PROMOTION_MEDIA_BASE_URL);
+    const signed = await signer.createUploadUrl({
+      objectKey,
+      contentType: input.data.contentType,
+      sizeBytes: input.data.sizeBytes,
+      expiresAt,
+    });
+    const body = {
+      data: { objectKey, uploadUrl: signed.uploadUrl, expiresAt },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    promotionMediaUploadResponseSchema.parse(body);
+    return context.json(body, 201);
+  });
+
+  app.post("/api/v1/admin/promotion-banners", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "marketing"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "marketing administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    const repository =
+      options.promotionBannerRepository ??
+      (context.env?.DB ? new D1PromotionBannerRepository(context.env.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROMOTION_BANNERS_UNAVAILABLE",
+          "promotion banners are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = promotionBannerUpsertRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_PROMOTION_BANNER",
+          "promotion banner input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const createdAt = now().toISOString();
+    const banner = {
+      id: crypto.randomUUID(),
+      ...input.data,
+      status: "draft" as const,
+      cacheVersion: 1,
+      createdByUserId: session.userId,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    await repository.save(banner);
+    const body = { data: banner, meta: { correlationId: context.get("correlationId") } };
+    promotionBannerResponseSchema.parse(body);
+    return context.json(body, 201);
+  });
+
+  app.patch("/api/v1/admin/promotion-banners/:id/status", async (context) => {
+    const requested = promotionBannerStatusRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!requested.success)
+      return context.json(
+        errorResponse(
+          "INVALID_PROMOTION_BANNER_STATUS",
+          "promotion banner status is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const session = context.get("session");
+    const permission = requested.data.status === "active" ? "finance" : "marketing";
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, permission))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          `${permission} administrator permission is required`,
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    const repository =
+      options.promotionBannerRepository ??
+      (context.env?.DB ? new D1PromotionBannerRepository(context.env.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "PROMOTION_BANNERS_UNAVAILABLE",
+          "promotion banners are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    await repository.updateStatus(
+      context.req.param("id"),
+      requested.data.status,
+      now().toISOString(),
+    );
+    const banner = (await repository.list()).find(
+      (candidate) => candidate.id === context.req.param("id"),
+    );
+    if (!banner)
+      return context.json(
+        errorResponse(
+          "PROMOTION_BANNER_NOT_FOUND",
+          "promotion banner was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    const body = { data: banner, meta: { correlationId: context.get("correlationId") } };
+    promotionBannerResponseSchema.parse(body);
     return context.json(body, 200);
   });
 

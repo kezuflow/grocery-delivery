@@ -12,3 +12,4 @@ export * from "./system";
 export * from "./tracking";
 export * from "./media";
 export * from "./openapi";
+export * from "./banners";

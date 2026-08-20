@@ -30,6 +30,8 @@ import {
   procurementShortageRequestSchema,
   procurementSubstitutionRequestSchema,
   dispatchAssignmentRequestSchema,
+  activePromotionBannersResponseSchema,
+  bannerPlacementSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
@@ -59,6 +61,7 @@ import {
   type SubscriptionActionRequest,
   type SubscriptionCreateRequest,
   type SubscriptionResponse,
+  type ActivePromotionBannersResponse,
 } from "@carbon/contracts";
 
 export type ApiTransport = Readonly<{
@@ -120,6 +123,16 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     listCatalog(limit = 12): Promise<CatalogListResponse> {
       return getJson(transport, `/api/v1/catalog?limit=${limit}`, catalogListResponseSchema);
+    },
+    getActivePromotionBanners(
+      placement: "home-hero" | "storefront-strip" | "account-banner",
+    ): Promise<ActivePromotionBannersResponse> {
+      const value = bannerPlacementSchema.parse(placement);
+      return getJson(
+        transport,
+        `/api/v1/promotions/banners?placement=${encodeURIComponent(value)}`,
+        activePromotionBannersResponseSchema,
+      );
     },
     getCurrentSession(init?: RequestInit): Promise<CurrentSessionResponse> {
       return getJson(transport, "/api/v1/me", currentSessionResponseSchema, init);

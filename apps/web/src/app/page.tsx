@@ -49,16 +49,25 @@ export default async function HomePage() {
 
       <section className="hero" id="join">
         <div className="hero-shade" />
+        {storefront.banners[0] ? (
+          <img
+            className="hero-banner-image"
+            src={storefront.banners[0].desktopUrl}
+            alt={storefront.banners[0].altText}
+          />
+        ) : null}
         <div className="hero-inner">
           <div className="hero-copy">
             <p className="eyebrow">A better weekly shop</p>
             <h1>Carbon Food Delivery</h1>
             <p className="lede">
-              Practical weekly groceries, thoughtful sourcing, and delivery routes that use less.
+              {storefront.banners[0]?.copy ??
+                "Practical weekly groceries, thoughtful sourcing, and delivery routes that use less."}
             </p>
             <div className="hero-actions">
-              <a className="button" href="#plans">
-                Explore plans <span aria-hidden="true">-&gt;</span>
+              <a className="button" href={storefront.banners[0]?.ctaDestination ?? "#plans"}>
+                {storefront.banners[0]?.ctaLabel ?? "Explore plans"}{" "}
+                <span aria-hidden="true">-&gt;</span>
               </a>
               <a className="text-link" href="#how-it-works">
                 See how it works

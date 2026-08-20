@@ -582,6 +582,15 @@ nav a:not(.button) {
   position: absolute;
 }
 
+.hero-banner-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.45;
+}
+
 .hero-inner {
   margin: 0 auto;
   max-width: 1180px;

@@ -25,6 +25,9 @@ import {
   planResponseSchema,
   plansListResponseSchema,
   subscriptionResponseSchema,
+  activePromotionBannersResponseSchema,
+  promotionBannerResponseSchema,
+  promotionMediaUploadResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultCartLockService,
@@ -64,6 +67,7 @@ import {
   InMemoryPlanReader,
   InMemorySubscriptionReader,
   InMemoryOperationalProjectionRepository,
+  InMemoryPromotionBannerRepository,
 } from "@carbon/db";
 import { createApi } from "./app.js";
 import { createInMemoryMetricsSink } from "@carbon/observability";
@@ -2002,5 +2006,104 @@ describe("API worker", () => {
 
     expect(response.status).toBe(200);
     expect(calls).toEqual(["mfa:true", "identity.role-assigned"]);
+  });
+
+  it("creates, finance-publishes, and publicly filters promotion banners", async () => {
+    const repository = new InMemoryPromotionBannerRepository();
+    const session = (permissions: readonly ("marketing" | "finance")[]) => ({
+      resolve: () =>
+        Promise.resolve(
+          createSession({
+            id: `session-${permissions.join("-")}`,
+            userId: `admin-${permissions[0]}`,
+            role: "admin",
+            adminPermissions: [...permissions],
+            customerId: null,
+            expiresAt: "2026-08-21T00:00:00.000Z",
+            revokedAt: null,
+            mfaRequired: true,
+            mfaVerified: true,
+          }),
+        ),
+    });
+    const marketingApp = createApi({
+      promotionBannerRepository: repository,
+      sessionResolver: session(["marketing"]),
+      sink: () => undefined,
+      now: () => new Date("2026-08-20T12:00:00.000Z"),
+    });
+    const upload = await marketingApp.request("/api/v1/admin/promotion-media/uploads", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        bannerId: "banner-client-1",
+        variant: "desktop",
+        contentType: "image/webp",
+        sizeBytes: 120000,
+        width: 1600,
+        height: 800,
+      }),
+    });
+    expect(upload.status).toBe(201);
+    expect(promotionMediaUploadResponseSchema.parse(await upload.json()).data.objectKey).toMatch(
+      /^promotions\//,
+    );
+    const create = await marketingApp.request("/api/v1/admin/promotion-banners", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        placement: "home-hero",
+        title: "Fresh week",
+        copy: "Seasonal produce",
+        ctaLabel: "Shop",
+        ctaDestination: "/#plans",
+        altText: "Fresh vegetables",
+        priority: 10,
+        startsAt: "2026-08-20T00:00:00.000Z",
+        endsAt: "2026-08-30T00:00:00.000Z",
+        desktopObjectKey: "promotions/banner-client-1/desktop/image.webp",
+        mobileObjectKey: "promotions/banner-client-1/mobile/image.webp",
+      }),
+    });
+    expect(create.status).toBe(201);
+    const banner = promotionBannerResponseSchema.parse(await create.json()).data;
+    expect(banner.status).toBe("draft");
+    expect(
+      (
+        await marketingApp.request(`/api/v1/admin/promotion-banners/${banner.id}/status`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "active" }),
+        })
+      ).status,
+    ).toBe(403);
+
+    const financeApp = createApi({
+      promotionBannerRepository: repository,
+      sessionResolver: session(["finance"]),
+      sink: () => undefined,
+      now: () => new Date("2026-08-20T12:00:00.000Z"),
+    });
+    expect(
+      (
+        await financeApp.request(`/api/v1/admin/promotion-banners/${banner.id}/status`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "active" }),
+        })
+      ).status,
+    ).toBe(200);
+    const publicApp = createApi({
+      promotionBannerRepository: repository,
+      sink: () => undefined,
+      now: () => new Date("2026-08-20T12:00:00.000Z"),
+    });
+    const response = await publicApp.request("/api/v1/promotions/banners?placement=home-hero");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("etag")).toBe('W/"banners-2"');
+    const publicBody = activePromotionBannersResponseSchema.parse(await response.json());
+    expect(publicBody.data.banners).toHaveLength(1);
+    expect(publicBody.data.banners[0]?.id).toBe(banner.id);
+    expect(publicBody.data.banners[0]?.desktopUrl).toContain("/promotions/download/");
   });
 });

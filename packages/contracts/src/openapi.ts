@@ -59,6 +59,13 @@ export const openApiDocument: OpenApiDocument = {
         responses: { "200": jsonResponse(), "400": jsonResponse("Invalid pagination") },
       },
     },
+    "/api/v1/promotions/banners": {
+      get: {
+        tags: ["customer"],
+        summary: "Read active promotional banners",
+        responses: { "200": jsonResponse(), "400": jsonResponse("Invalid placement") },
+      },
+    },
     "/api/v1/me": protectedOperation("Read the current session", "get"),
     "/api/v1/account/export": protectedOperation("Export the current account", "get"),
     "/api/v1/account/profile": protectedOperation("Correct the account profile", "put"),
@@ -128,6 +135,19 @@ export const openApiDocument: OpenApiDocument = {
       "get",
     ),
     "/api/v1/admin/payments/refunds": protectedOperation("Refund a payment", "post"),
+    "/api/v1/admin/promotion-banners": {
+      ...protectedOperation("List promotion banners", "get"),
+      ...protectedOperation("Create a promotion banner", "post", "201"),
+    },
+    "/api/v1/admin/promotion-banners/{id}/status": protectedOperation(
+      "Update promotion banner status",
+      "patch",
+    ),
+    "/api/v1/admin/promotion-media/uploads": protectedOperation(
+      "Request a promotion media upload",
+      "post",
+      "201",
+    ),
     "/api/auth/{path}": {
       post: {
         tags: ["system"],
