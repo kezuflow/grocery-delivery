@@ -234,6 +234,60 @@ export function AdminActions({ permissions, procurement, promotions }: Props) {
           ))}
         </div>
       ) : null}
+      {can("marketing") ? (
+        <form
+          className="admin-action-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            const startsAtValue = form.get("startsAt");
+            const endsAtValue = form.get("endsAt");
+            if (typeof startsAtValue !== "string" || typeof endsAtValue !== "string") return;
+            const startsAt = new Date(startsAtValue).toISOString();
+            const endsAt = new Date(endsAtValue).toISOString();
+            void run(() =>
+              client.createAdminPromotion({
+                code: form.get("code"),
+                startsAt,
+                endsAt,
+                discount: {
+                  kind: "fixed",
+                  amount: { centavos: Number(form.get("discountCentavos")), currency: "PHP" },
+                },
+                minimumSubtotal: null,
+                planIds: [],
+                skuIds: [],
+                categoryIds: [],
+                firstOrderOnly: false,
+                firstWeekOnly: false,
+                totalBudget: null,
+                totalRedemptions: null,
+                perCustomerRedemptions: null,
+                allowsStacking: false,
+              }),
+            );
+          }}
+        >
+          <h3>Draft campaign</h3>
+          <input name="code" placeholder="Coupon code" minLength={2} maxLength={32} required />
+          <input
+            name="discountCentavos"
+            type="number"
+            min="1"
+            placeholder="Discount centavos"
+            required
+          />
+          <label>
+            Starts <input name="startsAt" type="datetime-local" required />
+          </label>
+          <label>
+            Ends <input name="endsAt" type="datetime-local" required />
+          </label>
+          <button type="submit" disabled={busy}>
+            Save draft
+          </button>
+        </form>
+      ) : null}
     </section>
   );
 }
