@@ -82,11 +82,32 @@ export default async function AccountPage() {
                     <dt>Last update</dt>
                     <dd>{new Date(account.subscription.updatedAt).toLocaleDateString("en-PH")}</dd>
                   </div>
+                  <div>
+                    <dt>Billing</dt>
+                    <dd>
+                      {account.subscription.billingStatus === "past_due" ? "Past due" : "Current"}
+                    </dd>
+                  </div>
                 </dl>
+                {account.subscription.effectiveCycleId ? (
+                  <p className="subscription-note">
+                    Changes apply to cycle{" "}
+                    {account.subscription.effectiveCycleId.replace("cycle-", "")}.
+                  </p>
+                ) : null}
                 <SubscriptionActions
+                  billingStatus={account.subscription.billingStatus}
                   skippedCycleId={account.subscription.skippedCycleId}
                   status={account.subscription.status}
                 />
+                {account.subscription.status !== "canceled" &&
+                account.subscription.billingStatus === "current" ? (
+                  <PlanSelector
+                    currentPlanId={account.subscription.planId}
+                    mode="change"
+                    plans={account.plans}
+                  />
+                ) : null}
               </>
             ) : (
               <div className="account-empty">
@@ -95,7 +116,7 @@ export default async function AccountPage() {
                 <a className="button button-small" href="/#plans">
                   View plans
                 </a>
-                <PlanSelector plans={account.plans} />
+                <PlanSelector mode="create" plans={account.plans} />
               </div>
             )}
           </article>
@@ -133,7 +154,10 @@ export default async function AccountPage() {
             )}
             <PlaceOrderButton
               cartHasLines={account.cart.lines.length > 0}
-              subscriptionActive={account.subscription?.status === "active"}
+              subscriptionActive={
+                account.subscription?.status === "active" &&
+                account.subscription.billingStatus === "current"
+              }
             />
           </article>
           <article className="account-panel account-panel-wide">

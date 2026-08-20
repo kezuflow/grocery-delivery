@@ -127,13 +127,22 @@ export const orderResponseSchema = z.object({
 });
 
 export const subscriptionStatusSchema = z.enum(["active", "paused", "canceled"]);
-export const subscriptionActionSchema = z.enum(["pause", "resume", "skip", "cancel"]);
+export const subscriptionActionSchema = z.enum([
+  "pause",
+  "resume",
+  "skip",
+  "cancel",
+  "change-plan",
+]);
+export const subscriptionBillingStatusSchema = z.enum(["current", "past_due"]);
 
 export const subscriptionSchema = z.object({
   id: z.string().min(1),
   customerId: z.string().min(1),
   planId: z.string().min(1),
   status: subscriptionStatusSchema,
+  billingStatus: subscriptionBillingStatusSchema.default("current"),
+  effectiveCycleId: z.string().min(1).nullable().default(null),
   skippedCycleId: z.string().min(1).nullable(),
   lastAction: subscriptionActionSchema.nullable(),
   createdAt: z.string().datetime(),
@@ -147,9 +156,13 @@ export const subscriptionResponseSchema = z.object({
 
 export const currentSubscriptionResponseSchema = subscriptionResponseSchema;
 
-export const subscriptionActionRequestSchema = z.object({
-  action: subscriptionActionSchema,
-});
+export const subscriptionActionRequestSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.enum(["pause", "resume", "skip", "cancel"]) }),
+  z.object({
+    action: z.literal("change-plan"),
+    planId: z.string().trim().min(1).max(128),
+  }),
+]);
 
 export const subscriptionCreateRequestSchema = z.object({
   planId: z.string().trim().min(1).max(128),

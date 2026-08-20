@@ -510,6 +510,68 @@ describe("API worker", () => {
     expect(body.data.status).toBe("paused");
   });
 
+  it("changes the authenticated customer's plan for the assigned cycle", async () => {
+    const plans = new InMemoryPlanReader();
+    const subscriptionService = new DefaultSubscriptionCommandService(
+      new InMemorySubscriptionRepository([
+        createSubscription({
+          id: "subscription-plan-change",
+          customerId: "customer-1",
+          planId: "plan-small",
+          status: "active",
+          skippedCycleId: null,
+          lastAction: null,
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z",
+        }),
+      ]),
+      new InMemoryIdempotencyStore(),
+      plans,
+    );
+    const authenticatedApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-plan-change",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+      subscriptionService,
+    });
+
+    const response = await authenticatedApp.request(
+      "/api/v1/subscription/actions",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": "change-plan-1" },
+        body: JSON.stringify({
+          action: "change-plan",
+          planId: "plan-medium",
+          customerId: "customer-from-browser",
+          weeklyFeeCentavos: 1,
+        }),
+      },
+      { APP_ENV: "test" },
+    );
+    const body = subscriptionResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({
+      customerId: "customer-1",
+      planId: "plan-medium",
+      effectiveCycleId: assignWeeklyCycle(new Date("2026-08-20T10:00:00.000Z")).id,
+    });
+  });
+
   it("creates a server-resolved subscription and replays idempotent retries", async () => {
     const subscriptions = new InMemorySubscriptionRepository();
     const idempotency = new InMemoryIdempotencyStore();

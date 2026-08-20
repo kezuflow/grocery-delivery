@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DomainValidationError } from "./errors.js";
 import {
   applySubscriptionCommand,
+  applySubscriptionBillingCommand,
   createDefaultPlans,
   createPlan,
   createPlanChangeRequest,
@@ -106,5 +107,49 @@ describe("plans and subscriptions", () => {
         { ...command, action: "pause" },
       ),
     ).toThrow(DomainValidationError);
+  });
+
+  it("applies plan and lifecycle changes to the assigned upcoming cycle", () => {
+    const changed = applySubscriptionCommand(subscription, {
+      ...command,
+      action: "change-plan",
+      planId: "plan-medium",
+    });
+    const paused = applySubscriptionCommand(changed, { ...command, action: "pause" });
+
+    expect(changed).toMatchObject({
+      planId: "plan-medium",
+      effectiveCycleId: command.cycleId,
+      lastAction: null,
+    });
+    expect(paused).toMatchObject({ status: "paused", effectiveCycleId: command.cycleId });
+    expect(() =>
+      applySubscriptionCommand(changed, {
+        ...command,
+        action: "change-plan",
+        planId: "plan-medium",
+      }),
+    ).toThrow("already uses");
+  });
+
+  it("keeps past-due billing separate from customer lifecycle status", () => {
+    const pastDue = applySubscriptionBillingCommand(subscription, {
+      billingStatus: "past_due",
+      now: command.now,
+    });
+
+    expect(pastDue).toMatchObject({ status: "active", billingStatus: "past_due" });
+    expect(() => applySubscriptionCommand(pastDue, { ...command, action: "pause" })).toThrow(
+      "resolve billing",
+    );
+    expect(
+      applySubscriptionBillingCommand(pastDue, {
+        billingStatus: "current",
+        now: "2026-08-20T11:00:00.000Z",
+      }),
+    ).toMatchObject({ status: "active", billingStatus: "current" });
+    expect(
+      applySubscriptionCommand({ ...pastDue, status: "paused" }, { ...command, action: "cancel" }),
+    ).toMatchObject({ status: "canceled", effectiveCycleId: command.cycleId });
   });
 });

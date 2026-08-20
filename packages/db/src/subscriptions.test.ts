@@ -35,6 +35,8 @@ describe("subscription repositories", () => {
           customer_id: "customer-1",
           plan_id: "plan-small",
           status: "paused",
+          billing_status: "past_due",
+          effective_cycle_id: "cycle-2026-08-22",
           skipped_cycle_id: null,
           last_action: "pause",
           created_at: "2026-08-18T00:00:00.000Z",
@@ -46,12 +48,15 @@ describe("subscription repositories", () => {
 
     await expect(repository.findByCustomerId("customer-1")).resolves.toMatchObject({
       status: "paused",
+      billingStatus: "past_due",
+      effectiveCycleId: "cycle-2026-08-22",
       lastAction: "pause",
     });
     await repository.save(subscription);
 
     expect(database.calls[0]?.values).toEqual(["customer-1"]);
     expect(database.calls[1]?.sql).toContain("ON CONFLICT(customer_id)");
+    expect(database.calls[1]?.values).toContain("current");
     expect(database.batches).toHaveLength(1);
   });
 

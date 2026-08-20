@@ -48,7 +48,8 @@ export class D1SubscriptionRepository implements SubscriptionRepository {
   async findByCustomerId(customerId: string): Promise<Subscription | null> {
     const rows = await this.database
       .prepare(
-        `SELECT id, customer_id, plan_id, status, skipped_cycle_id, last_action,
+        `SELECT id, customer_id, plan_id, status, billing_status, effective_cycle_id,
+                skipped_cycle_id, last_action,
                 created_at, updated_at
          FROM subscriptions
          WHERE customer_id = ?
@@ -92,11 +93,14 @@ function subscriptionStatement(database: SubscriptionDatabase, subscription: Sub
   return database
     .prepare(
       `INSERT INTO subscriptions (
-           id, customer_id, plan_id, status, skipped_cycle_id, last_action, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           id, customer_id, plan_id, status, billing_status, effective_cycle_id,
+           skipped_cycle_id, last_action, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(customer_id) DO UPDATE SET
            plan_id = excluded.plan_id,
            status = excluded.status,
+           billing_status = excluded.billing_status,
+           effective_cycle_id = excluded.effective_cycle_id,
            skipped_cycle_id = excluded.skipped_cycle_id,
            last_action = excluded.last_action,
            updated_at = excluded.updated_at`,
@@ -106,6 +110,8 @@ function subscriptionStatement(database: SubscriptionDatabase, subscription: Sub
       subscription.customerId,
       subscription.planId,
       subscription.status,
+      subscription.billingStatus,
+      subscription.effectiveCycleId,
       subscription.skippedCycleId,
       subscription.lastAction,
       subscription.createdAt,
@@ -161,6 +167,8 @@ type SubscriptionRow = Record<string, unknown> & {
   customer_id: string;
   plan_id: string;
   status: SubscriptionStatus;
+  billing_status: Subscription["billingStatus"];
+  effective_cycle_id: string | null;
   skipped_cycle_id: string | null;
   last_action: Subscription["lastAction"];
   created_at: string;
@@ -179,6 +187,8 @@ function mapSubscription(row: SubscriptionRow): Subscription {
     customerId: row.customer_id,
     planId: row.plan_id,
     status: row.status,
+    billingStatus: row.billing_status,
+    effectiveCycleId: row.effective_cycle_id,
     skippedCycleId: row.skipped_cycle_id,
     lastAction: row.last_action,
     createdAt: row.created_at,

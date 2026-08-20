@@ -4,6 +4,7 @@ import { createSubscription } from "@carbon/domain";
 import {
   DefaultSubscriptionCommandService,
   DefaultSubscriptionCreationService,
+  DefaultSubscriptionBillingService,
   InMemoryIdempotencyStore,
   InMemorySubscriptionRepository,
 } from "./subscriptions.js";
@@ -133,5 +134,55 @@ describe("subscription command application", () => {
         now: "2026-08-20T10:00:00.000Z",
       }),
     ).rejects.toThrow("plan is unavailable");
+  });
+
+  it("changes plans only after resolving the active server-owned plan", async () => {
+    const service = new DefaultSubscriptionCommandService(
+      new InMemorySubscriptionRepository([initial]),
+      new InMemoryIdempotencyStore(),
+      {
+        findActiveById: (planId) =>
+          Promise.resolve(planId === "plan-medium" ? { id: planId } : null),
+      },
+    );
+    const input = {
+      customerId: "customer-1",
+      idempotencyKey: "change-plan-1",
+      command: {
+        action: "change-plan" as const,
+        planId: "plan-medium",
+        cycleId: "cycle-2026-08-22",
+        cutoffAt: "2026-08-21T10:00:00.000Z",
+        now: "2026-08-20T10:00:00.000Z",
+      },
+    };
+
+    await expect(service.execute(input)).resolves.toMatchObject({
+      planId: "plan-medium",
+      effectiveCycleId: "cycle-2026-08-22",
+    });
+    await expect(
+      service.execute({
+        ...input,
+        idempotencyKey: "change-plan-2",
+        command: { ...input.command, planId: "plan-retired" },
+      }),
+    ).rejects.toThrow("plan is unavailable");
+  });
+
+  it("records past-due billing transitions idempotently", async () => {
+    const service = new DefaultSubscriptionBillingService(
+      new InMemorySubscriptionRepository([initial]),
+      new InMemoryIdempotencyStore(),
+    );
+    const input = {
+      customerId: "customer-1",
+      billingStatus: "past_due" as const,
+      idempotencyKey: "billing-1",
+      now: "2026-08-20T10:00:00.000Z",
+    };
+
+    await expect(service.execute(input)).resolves.toMatchObject({ billingStatus: "past_due" });
+    await expect(service.execute(input)).resolves.toMatchObject({ billingStatus: "past_due" });
   });
 });

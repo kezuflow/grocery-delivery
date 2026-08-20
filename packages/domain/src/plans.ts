@@ -37,19 +37,31 @@ export type Subscription = Readonly<{
   customerId: string;
   planId: string;
   status: SubscriptionStatus;
+  billingStatus: SubscriptionBillingStatus;
+  effectiveCycleId: string | null;
   skippedCycleId: string | null;
   lastAction: SubscriptionAction | null;
   createdAt: string;
   updatedAt: string;
 }>;
 
+export const SUBSCRIPTION_BILLING_STATUSES = ["current", "past_due"] as const;
+export type SubscriptionBillingStatus = (typeof SUBSCRIPTION_BILLING_STATUSES)[number];
+
 export const SUBSCRIPTION_ACTIONS = ["pause", "resume", "skip", "cancel"] as const;
 export type SubscriptionAction = (typeof SUBSCRIPTION_ACTIONS)[number];
+export type SubscriptionCommandAction = SubscriptionAction | "change-plan";
 
 export type SubscriptionCommand = Readonly<{
-  action: SubscriptionAction;
+  action: SubscriptionCommandAction;
+  planId?: string;
   cycleId: string;
   cutoffAt: string;
+  now: string;
+}>;
+
+export type SubscriptionBillingCommand = Readonly<{
+  billingStatus: SubscriptionBillingStatus;
   now: string;
 }>;
 
@@ -151,25 +163,34 @@ export function decidePlanChangeRequest(
   });
 }
 
-export function createSubscription(input: Subscription): Subscription {
+export function createSubscription(
+  input: Omit<Subscription, "billingStatus" | "effectiveCycleId"> &
+    Partial<Pick<Subscription, "billingStatus" | "effectiveCycleId">>,
+): Subscription {
   assertText(input.id, "subscription id");
   assertText(input.customerId, "subscription customer id");
   assertText(input.planId, "subscription plan id");
   assertStatus(input.status);
+  const billingStatus = input.billingStatus ?? "current";
+  assertBillingStatus(billingStatus);
+  const effectiveCycleId = input.effectiveCycleId ?? null;
+  if (effectiveCycleId !== null) {
+    assertText(effectiveCycleId, "subscription effective cycle id");
+  }
   if (input.skippedCycleId !== null) {
     assertText(input.skippedCycleId, "subscription skipped cycle id");
   }
   assertIsoTimestamp(input.createdAt, "subscription createdAt");
   assertIsoTimestamp(input.updatedAt, "subscription updatedAt");
 
-  return Object.freeze({ ...input });
+  return Object.freeze({ ...input, billingStatus, effectiveCycleId });
 }
 
 export function applySubscriptionCommand(
   subscription: Subscription,
   command: SubscriptionCommand,
 ): Subscription {
-  assertAction(command.action);
+  assertCommandAction(command.action);
   assertText(command.cycleId, "subscription cycle id");
   assertIsoTimestamp(command.cutoffAt, "subscription cutoffAt");
   assertIsoTimestamp(command.now, "subscription now");
@@ -180,11 +201,38 @@ export function applySubscriptionCommand(
     );
   }
 
+  if (command.action === "change-plan") {
+    requireMutableSubscription(subscription);
+    if (!command.planId?.trim()) {
+      throw new DomainValidationError(
+        "INVALID_SUBSCRIPTION_PLAN",
+        "subscription plan id must not be empty",
+      );
+    }
+    if (subscription.planId === command.planId) {
+      throw new DomainValidationError(
+        "SUBSCRIPTION_PLAN_UNCHANGED",
+        "subscription already uses the selected plan",
+      );
+    }
+    return createSubscription({
+      ...subscription,
+      planId: command.planId,
+      effectiveCycleId: command.cycleId,
+      updatedAt: command.now,
+    });
+  }
+
+  if (command.action !== "cancel") {
+    requireCurrentBilling(subscription);
+  }
+
   if (command.action === "pause") {
     requireStatus(subscription, "active", "SUBSCRIPTION_NOT_ACTIVE");
     return createSubscription({
       ...subscription,
       status: "paused",
+      effectiveCycleId: command.cycleId,
       lastAction: "pause",
       updatedAt: command.now,
     });
@@ -195,6 +243,7 @@ export function applySubscriptionCommand(
     return createSubscription({
       ...subscription,
       status: "active",
+      effectiveCycleId: command.cycleId,
       lastAction: "resume",
       updatedAt: command.now,
     });
@@ -208,16 +257,45 @@ export function applySubscriptionCommand(
     return createSubscription({
       ...subscription,
       skippedCycleId: command.cycleId,
+      effectiveCycleId: command.cycleId,
       lastAction: "skip",
       updatedAt: command.now,
     });
   }
 
-  requireStatus(subscription, "active", "SUBSCRIPTION_ALREADY_CANCELED");
+  if (subscription.status === "canceled") {
+    throw new DomainValidationError(
+      "SUBSCRIPTION_ALREADY_CANCELED",
+      "subscription is already canceled",
+    );
+  }
   return createSubscription({
     ...subscription,
     status: "canceled",
+    effectiveCycleId: command.cycleId,
     lastAction: "cancel",
+    updatedAt: command.now,
+  });
+}
+
+export function applySubscriptionBillingCommand(
+  subscription: Subscription,
+  command: SubscriptionBillingCommand,
+): Subscription {
+  assertBillingStatus(command.billingStatus);
+  assertIsoTimestamp(command.now, "subscription billing command time");
+  if (subscription.status === "canceled") {
+    throw new DomainValidationError(
+      "SUBSCRIPTION_CANCELED",
+      "canceled subscriptions cannot change billing status",
+    );
+  }
+  if (subscription.billingStatus === command.billingStatus) {
+    return subscription;
+  }
+  return createSubscription({
+    ...subscription,
+    billingStatus: command.billingStatus,
     updatedAt: command.now,
   });
 }
@@ -264,6 +342,25 @@ function requireStatus(
   }
 }
 
+function requireMutableSubscription(subscription: Subscription): void {
+  if (subscription.status === "canceled") {
+    throw new DomainValidationError(
+      "SUBSCRIPTION_CANCELED",
+      "canceled subscriptions cannot change plans",
+    );
+  }
+  requireCurrentBilling(subscription);
+}
+
+function requireCurrentBilling(subscription: Subscription): void {
+  if (subscription.billingStatus !== "current") {
+    throw new DomainValidationError(
+      "SUBSCRIPTION_PAST_DUE",
+      "past-due subscriptions must resolve billing before this change",
+    );
+  }
+}
+
 function assertMoney(value: Money, field: string): void {
   if (value.currency !== "PHP" || !Number.isSafeInteger(value.centavos) || value.centavos < 0) {
     throw new DomainValidationError(
@@ -282,6 +379,19 @@ function assertStatus(value: string): asserts value is SubscriptionStatus {
 function assertAction(value: string): asserts value is SubscriptionAction {
   if (!SUBSCRIPTION_ACTIONS.includes(value as SubscriptionAction)) {
     throw new DomainValidationError("INVALID_SUBSCRIPTION_ACTION", `unsupported action: ${value}`);
+  }
+}
+
+function assertCommandAction(value: string): asserts value is SubscriptionCommand["action"] {
+  if (value !== "change-plan") assertAction(value);
+}
+
+function assertBillingStatus(value: string): asserts value is SubscriptionBillingStatus {
+  if (!SUBSCRIPTION_BILLING_STATUSES.includes(value as SubscriptionBillingStatus)) {
+    throw new DomainValidationError(
+      "INVALID_SUBSCRIPTION_BILLING_STATUS",
+      `unsupported billing status: ${value}`,
+    );
   }
 }
 

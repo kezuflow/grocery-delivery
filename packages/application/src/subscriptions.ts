@@ -1,8 +1,10 @@
 import {
+  applySubscriptionBillingCommand,
   applySubscriptionCommand,
   createSubscription,
   type Subscription,
   type SubscriptionCommand,
+  type SubscriptionBillingStatus,
 } from "@carbon/domain";
 
 export type SubscriptionRepository = Readonly<{
@@ -38,6 +40,16 @@ export type SubscriptionCreationService = Readonly<{
   execute(input: {
     customerId: string;
     planId: string;
+    idempotencyKey: string;
+    now: string;
+    cycleId?: string;
+  }): Promise<Subscription>;
+}>;
+
+export type SubscriptionBillingService = Readonly<{
+  execute(input: {
+    customerId: string;
+    billingStatus: SubscriptionBillingStatus;
     idempotencyKey: string;
     now: string;
   }): Promise<Subscription>;
@@ -83,6 +95,7 @@ export class DefaultSubscriptionCommandService implements SubscriptionCommandSer
   constructor(
     private readonly subscriptions: SubscriptionRepository,
     private readonly idempotency: IdempotencyStore,
+    private readonly plans?: SubscriptionPlanLookup,
   ) {}
 
   async execute(input: {
@@ -108,7 +121,14 @@ export class DefaultSubscriptionCommandService implements SubscriptionCommandSer
     if (!current) {
       throw new Error("subscription was not found");
     }
-    const updated = applySubscriptionCommand(current, input.command);
+    const command =
+      input.command.action === "change-plan"
+        ? {
+            ...input.command,
+            planId: await this.resolvePlanId(input.command.planId),
+          }
+        : input.command;
+    const updated = applySubscriptionCommand(current, command);
     const record = { key, fingerprint, subscription: updated };
     const atomicRepository = this.subscriptions as Partial<AtomicSubscriptionRepository>;
     if (atomicRepository.saveAndRecord) {
@@ -118,6 +138,17 @@ export class DefaultSubscriptionCommandService implements SubscriptionCommandSer
       await this.idempotency.put(record);
     }
     return updated;
+  }
+
+  private async resolvePlanId(planId: string | undefined): Promise<string> {
+    if (!planId || !this.plans) {
+      throw new Error("selected plan is unavailable");
+    }
+    const plan = await this.plans.findActiveById(planId);
+    if (!plan) {
+      throw new Error("selected plan is unavailable");
+    }
+    return plan.id;
   }
 }
 
@@ -134,6 +165,7 @@ export class DefaultSubscriptionCreationService implements SubscriptionCreationS
     planId: string;
     idempotencyKey: string;
     now: string;
+    cycleId?: string;
   }): Promise<Subscription> {
     const key = input.idempotencyKey.trim();
     if (!key || key.length > 128) {
@@ -159,6 +191,8 @@ export class DefaultSubscriptionCreationService implements SubscriptionCreationS
       customerId: input.customerId,
       planId: plan.id,
       status: "active",
+      billingStatus: "current",
+      effectiveCycleId: input.cycleId ?? null,
       skippedCycleId: null,
       lastAction: null,
       createdAt: input.now,
@@ -173,5 +207,52 @@ export class DefaultSubscriptionCreationService implements SubscriptionCreationS
       await this.idempotency.put(record);
     }
     return subscription;
+  }
+}
+
+export class DefaultSubscriptionBillingService implements SubscriptionBillingService {
+  constructor(
+    private readonly subscriptions: SubscriptionRepository,
+    private readonly idempotency: IdempotencyStore,
+  ) {}
+
+  async execute(input: {
+    customerId: string;
+    billingStatus: SubscriptionBillingStatus;
+    idempotencyKey: string;
+    now: string;
+  }): Promise<Subscription> {
+    const key = input.idempotencyKey.trim();
+    if (!key || key.length > 128) {
+      throw new Error("idempotency key must be between 1 and 128 characters");
+    }
+    const fingerprint = JSON.stringify({
+      customerId: input.customerId,
+      billingStatus: input.billingStatus,
+    });
+    const existing = await this.idempotency.get(key);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        throw new Error("idempotency key was already used for a different command");
+      }
+      return existing.subscription;
+    }
+    const current = await this.subscriptions.findByCustomerId(input.customerId);
+    if (!current) {
+      throw new Error("subscription was not found");
+    }
+    const updated = applySubscriptionBillingCommand(current, {
+      billingStatus: input.billingStatus,
+      now: input.now,
+    });
+    const record = { key, fingerprint, subscription: updated };
+    const atomicRepository = this.subscriptions as Partial<AtomicSubscriptionRepository>;
+    if (atomicRepository.saveAndRecord) {
+      await atomicRepository.saveAndRecord(updated, record);
+    } else {
+      await this.subscriptions.save(updated);
+      await this.idempotency.put(record);
+    }
+    return updated;
   }
 }

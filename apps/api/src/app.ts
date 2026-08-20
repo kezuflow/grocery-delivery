@@ -784,11 +784,13 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     }
     try {
+      const commandTime = now();
       const subscription = await creationService.execute({
         customerId: session.customerId,
         planId: input.data.planId,
         idempotencyKey,
-        now: now().toISOString(),
+        now: commandTime.toISOString(),
+        cycleId: assignWeeklyCycle(commandTime).id,
       });
       const body: SubscriptionResponse = {
         data: subscription,
@@ -817,6 +819,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         ? new DefaultSubscriptionCommandService(
             new D1SubscriptionRepository(bindings.DB),
             new D1SubscriptionIdempotencyStore(bindings.DB),
+            options.planLookup ?? new D1PlanReader(bindings.DB),
           )
         : undefined);
     if (!subscriptionService) {
@@ -873,6 +876,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         idempotencyKey,
         command: {
           action: input.data.action,
+          ...(input.data.action === "change-plan" ? { planId: input.data.planId } : {}),
           cycleId: cycle.id,
           cutoffAt: cycle.cutoffAt,
           now: commandTime.toISOString(),
@@ -890,7 +894,11 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         ? "IDEMPOTENCY_KEY_REUSED"
         : message.includes("not found")
           ? "SUBSCRIPTION_NOT_FOUND"
-          : "INVALID_SUBSCRIPTION_ACTION";
+          : message.includes("plan is unavailable")
+            ? "PLAN_UNAVAILABLE"
+            : message.includes("past-due")
+              ? "SUBSCRIPTION_PAST_DUE"
+              : "INVALID_SUBSCRIPTION_ACTION";
       return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
   });
@@ -2094,7 +2102,11 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     }
     const subscription = await subscriptionReader.findByCustomerId(session.customerId);
-    if (!subscription || subscription.status !== "active") {
+    if (
+      !subscription ||
+      subscription.status !== "active" ||
+      subscription.billingStatus !== "current"
+    ) {
       return context.json(
         errorResponse(
           "SUBSCRIPTION_NOT_ELIGIBLE",

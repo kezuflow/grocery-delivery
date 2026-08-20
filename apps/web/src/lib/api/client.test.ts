@@ -182,6 +182,43 @@ describe("web API client", () => {
     ).resolves.toMatchObject({ data: { planId: "plan-small", status: "active" } });
   });
 
+  it("changes plans with only the selected plan identifier", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            id: "subscription-1",
+            customerId: "customer-1",
+            planId: "plan-medium",
+            status: "active",
+            billingStatus: "current",
+            effectiveCycleId: "cycle-2026-08-22",
+            skippedCycleId: null,
+            lastAction: null,
+            createdAt: "2026-08-18T00:00:00.000Z",
+            updatedAt: "2026-08-20T00:00:00.000Z",
+          },
+          meta,
+        },
+        200,
+        (init) => {
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe("change-plan-1");
+          expect(JSON.parse(init?.body as string)).toEqual({
+            action: "change-plan",
+            planId: "plan-medium",
+          });
+        },
+      ),
+    );
+
+    await expect(
+      client.performSubscriptionAction(
+        { action: "change-plan", planId: "plan-medium" },
+        "change-plan-1",
+      ),
+    ).resolves.toMatchObject({ data: { planId: "plan-medium" } });
+  });
+
   it("creates an order from the saved cart without client commerce fields", async () => {
     const client = createApiClient(
       transport(

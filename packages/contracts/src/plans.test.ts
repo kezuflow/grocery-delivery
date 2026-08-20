@@ -6,6 +6,7 @@ import {
   planAdminUpsertRequestSchema,
   plansListResponseSchema,
   subscriptionCreateRequestSchema,
+  subscriptionActionRequestSchema,
 } from "./plans.js";
 
 describe("plan contracts", () => {
@@ -50,6 +51,27 @@ describe("plan contracts", () => {
     expect(
       subscriptionCreateRequestSchema.parse({ planId: "plan-small", weeklyFeeCentavos: 1 }),
     ).toEqual({ planId: "plan-small" });
+  });
+
+  it("accepts plan changes without browser prices or customer ownership", () => {
+    expect(
+      subscriptionActionRequestSchema.parse({ action: "change-plan", planId: "plan-medium" }),
+    ).toEqual({ action: "change-plan", planId: "plan-medium" });
+    expect(() =>
+      subscriptionActionRequestSchema.parse({
+        action: "change-plan",
+        planId: "plan-medium",
+        customerId: "customer-from-browser",
+        weeklyFeeCentavos: 1,
+      }),
+    ).not.toThrow();
+    expect(
+      subscriptionActionRequestSchema.parse({
+        action: "change-plan",
+        planId: "plan-medium",
+        weeklyFeeCentavos: 1,
+      }),
+    ).toEqual({ action: "change-plan", planId: "plan-medium" });
   });
 
   it("accepts an order request and immutable order response", () => {
