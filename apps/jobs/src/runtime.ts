@@ -23,7 +23,7 @@ export function createEventProcessor(
     ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   return async (message: OutboxJobMessage) => {
     const request = () =>
-      bindings.EVENT_PROCESSOR.fetch("https://event-processor.internal/outbox", {
+      bindings.EVENT_PROCESSOR.fetch("https://event-processor.internal/internal/events/outbox", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -40,8 +40,22 @@ export function createEventProcessor(
       await sleep(5_000);
       response = await request();
     }
-    if (!response.ok) throw new Error(`event processor failed with status ${response.status}`);
+    if (!response.ok) {
+      const providerMessage = await readProcessorError(response);
+      throw new Error(
+        `event processor failed with status ${response.status}${providerMessage ? `: ${providerMessage}` : ""}`,
+      );
+    }
   };
+}
+
+async function readProcessorError(response: Response): Promise<string | null> {
+  const payload: unknown = await response.json().catch(() => null);
+  if (!payload || typeof payload !== "object") return null;
+  const error = (payload as Record<string, unknown>).error;
+  if (!error || typeof error !== "object") return null;
+  const message = (error as Record<string, unknown>).message;
+  return typeof message === "string" && message.trim() ? message.slice(0, 512) : null;
 }
 
 export function createConfiguredJobsWorker(

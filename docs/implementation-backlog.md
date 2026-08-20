@@ -27,31 +27,31 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status      | Commit / resume point                                                                             |
-| ----- | --------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete    | Existing history through `c3da0bc`                                                                |
-| 001   | API environment database bindings                               | complete    | `03ef3bc`                                                                                         |
-| 002   | API runtime composition                                         | complete    | `5f6a64e`                                                                                         |
-| 003   | Payment-method revocation administration                        | complete    | `7229e08`                                                                                         |
-| 004   | Better Auth production integration                              | complete    | `51a8de1`                                                                                         |
-| 005   | Web-to-API service binding and customer flows                   | complete    | Complete through order creation                                                                   |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete    | Address geofence and weekly capacity selection complete                                           |
-| 007   | Procurement, shortages, substitutions, and packing              | complete    | Demand aggregation, exceptions, substitutions, and manifests                                      |
-| 008   | Dispatch, route planning, and driver assignments                | complete    | Cycle-scoped admin dispatch assignments                                                           |
-| 009   | Deliveryman PWA and offline event sync                          | complete    | Deliveryman assignments and idempotent offline event sync                                         |
-| 010   | Customer tracking, notifications, and delivery media            | complete    | Customer tracking, idempotent notification adapter, and media URLs                                |
-| 011   | Jobs, workflows, retries, and operational projections           | complete    | Durable outbox, workflow retries, and operational projections                                     |
-| 012   | Release hardening and production rehearsal                      | complete    | OpenAPI, origin checks, and rehearsal foundations complete                                        |
-| 013   | Production identity and account lifecycle                       | complete    | Verified auth, admin role controls, and MFA enforcement complete                                  |
-| 014   | Subscription onboarding and plan selection                      | complete    | Onboarding, effective-cycle lifecycle, and confirmation UX complete                               |
-| 015   | Real payments and customer checkout                             | complete    | `a5469f2` checkout pricing; campaign administration complete                                      |
-| 016   | Immutable order fulfillment and cutoff enforcement              | complete    | `b7fde24`; immutable snapshots, payable/packed dispatch, and order history complete               |
-| 017   | Admin operations console                                        | complete    | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete |
-| 018   | Deployable jobs, queues, workflows, and notifications           | in progress | Worker shells and authenticated event-processor handoff complete                                  |
-| 019   | Customer fulfillment, support, and payment history              | planned     | Depends on orders, payments, tracking, and notifications                                          |
-| 020   | Delivery staff production workflow                              | planned     | Depends on immutable orders, dispatch, storage, and offline sync                                  |
-| 021   | Privacy, audit, compliance, and launch observability            | planned     | Depends on identity, payments, admin, and operational events                                      |
-| 022   | Staging launch rehearsal and go/no-go gate                      | planned     | Depends on all launch-critical slices                                                             |
+| Slice | Area                                                            | Status   | Commit / resume point                                                                             |
+| ----- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                                                |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                                                         |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                                                         |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                                                         |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                                                         |
+| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                                                   |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete                                           |
+| 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests                                      |
+| 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                                                           |
+| 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync                                         |
+| 010   | Customer tracking, notifications, and delivery media            | complete | Customer tracking, idempotent notification adapter, and media URLs                                |
+| 011   | Jobs, workflows, retries, and operational projections           | complete | Durable outbox, workflow retries, and operational projections                                     |
+| 012   | Release hardening and production rehearsal                      | complete | OpenAPI, origin checks, and rehearsal foundations complete                                        |
+| 013   | Production identity and account lifecycle                       | complete | Verified auth, admin role controls, and MFA enforcement complete                                  |
+| 014   | Subscription onboarding and plan selection                      | complete | Onboarding, effective-cycle lifecycle, and confirmation UX complete                               |
+| 015   | Real payments and customer checkout                             | complete | `a5469f2` checkout pricing; campaign administration complete                                      |
+| 016   | Immutable order fulfillment and cutoff enforcement              | complete | `b7fde24`; immutable snapshots, payable/packed dispatch, and order history complete               |
+| 017   | Admin operations console                                        | complete | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete |
+| 018   | Deployable jobs, queues, workflows, and notifications           | complete | Staging queue retry/dead-letter/replay and durable workflow evidence complete                     |
+| 019   | Customer fulfillment, support, and payment history              | next     | Depends on orders, payments, tracking, and notifications                                          |
+| 020   | Delivery staff production workflow                              | planned  | Depends on immutable orders, dispatch, storage, and offline sync                                  |
+| 021   | Privacy, audit, compliance, and launch observability            | planned  | Depends on identity, payments, admin, and operational events                                      |
+| 022   | Staging launch rehearsal and go/no-go gate                      | planned  | Depends on all launch-critical slices                                                             |
 
 ### Completed Slice: 013 production identity and account lifecycle
 
@@ -689,6 +689,22 @@ provider receipt reconciliation and complete remaining customer fulfillment hist
 Completion record: added a staging-only Ubuntu/WSL deployment script that installs the pinned Node
 and pnpm toolchain when needed, builds OpenNext in a temporary Linux filesystem, verifies the Worker
 bundle, authenticates Wrangler if required, and deploys only `app-staging.getscenepass.com`.
+
+Final completion record: Slice 018 is complete. The staging API, jobs, and workflow Workers are
+deployed at the configured `getscenepass.com` origins with current D1 migrations, required secret
+names, one queue producer/consumer pair, and the weekly Workflow binding. The jobs service-binding
+route now targets the real internal API path and preserves bounded processor errors for retry and
+dead-letter evidence. PayMongo reconciliation uses the payments collection, accepts provider Unix
+timestamps and paid status, and avoids an illegal platform-fetch receiver binding. A measured
+staging rehearsal published one synthetic event, retried it with approximately 30/60/120/240 second
+delays, dead-lettered it at attempt 5, replayed the same event ID, and published it successfully
+without a duplicate row. The Friday 18:05 Asia/Manila cron is deployed, and a staging Workflow
+instance completed all five durable steps in order while preserving cycle and correlation metadata.
+Focused checks and the complete `pnpm check` pass all 55 tasks.
+
+Next resume point: begin Slice 019 with customer fulfillment and payment history. Prioritize
+customer-visible payment records and receipts, substitution decisions, cancellation/refund requests,
+and proof-of-delivery media reads while preserving customer isolation and server-owned statuses.
 
 ### Slice 019: Customer fulfillment, support, and payment history
 

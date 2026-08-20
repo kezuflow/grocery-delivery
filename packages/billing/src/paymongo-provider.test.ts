@@ -106,6 +106,59 @@ describe("PayMongo payment provider", () => {
     expect(waits).toEqual([5000]);
   });
 
+  it("invokes the platform fetch without rebinding its receiver", async () => {
+    const originalFetch = globalThis.fetch;
+    const expectedReceiver = globalThis;
+    globalThis.fetch = function (this: unknown) {
+      if (this !== expectedReceiver) throw new TypeError("Illegal invocation");
+      return Promise.resolve(Response.json({ data: [] }));
+    };
+
+    try {
+      const provider = new PayMongoPaymentProvider({ secretKey: "sk_test_secret" });
+      await expect(
+        provider.reconcile({
+          from: "2026-08-20T00:00:00.000Z",
+          to: "2026-08-20T23:59:59.999Z",
+        }),
+      ).resolves.toEqual({ entries: [] });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("uses PayMongo's payments collection for reconciliation", async () => {
+    const requests: Request[] = [];
+    const provider = new PayMongoPaymentProvider({
+      secretKey: "sk_test_secret",
+      fetcher: (input, init) => {
+        requests.push(new Request(input, init));
+        return Promise.resolve(
+          Response.json({
+            data: [
+              {
+                id: "pay_123",
+                attributes: { status: "paid", amount: 6900, created_at: 1_787_184_000 },
+              },
+            ],
+          }),
+        );
+      },
+    });
+
+    await expect(
+      provider.reconcile({
+        from: "2026-08-20T00:00:00.000Z",
+        to: "2026-08-20T23:59:59.999Z",
+      }),
+    ).resolves.toMatchObject({
+      entries: [{ reference: "pay_123", status: "succeeded", amount: createMoney(6900) }],
+    });
+    expect(requests[0]?.url).toContain("/v1/payments?");
+    expect(requests[0]?.url).toContain("created_at.gte=");
+    expect(requests[0]?.url).toContain("created_at.lte=");
+  });
+
   it("verifies signed webhook bodies", async () => {
     const body = JSON.stringify({
       data: { id: "evt_1", type: "charge.succeeded", attributes: { reference: "pi_1" } },

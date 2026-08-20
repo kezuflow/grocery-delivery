@@ -54,7 +54,7 @@ export class PayMongoPaymentProvider implements PaymentProvider {
       throw new PaymentProviderError("PROVIDER_CONFIGURATION", "secret key is required");
     }
     this.apiUrl = (options.apiUrl ?? "https://api.paymongo.com").replace(/\/$/, "");
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init));
     this.now = options.now ?? (() => new Date());
     this.secretKey = options.secretKey;
     this.sleep =
@@ -170,12 +170,13 @@ export class PayMongoPaymentProvider implements PaymentProvider {
   }
 
   async reconcile(input: ReconcileInput): Promise<ReconciliationResult> {
-    const data = await this.request(
+    const payload = await this.requestPayload(
       "GET",
-      `/v1/payment_intents?from=${encodeURIComponent(input.from)}&to=${encodeURIComponent(input.to)}`,
+      `/v1/payments?created_at.gte=${encodeURIComponent(input.from)}&created_at.lte=${encodeURIComponent(input.to)}&limit=100`,
       undefined,
       undefined,
     );
+    const data = asRecord(payload);
     const entries = Array.isArray(data.data)
       ? data.data.map((entry) => {
           const value = asRecord(entry);
@@ -185,7 +186,10 @@ export class PayMongoPaymentProvider implements PaymentProvider {
             type: "charge" as const,
             status: mapStatus(attributes.status),
             amount: createMoney(numberField(attributes.amount)),
-            occurredAt: stringOrDefault(attributes.updated_at, input.to),
+            occurredAt: timestampOrDefault(
+              attributes.created_at ?? attributes.updated_at,
+              input.to,
+            ),
           };
         })
       : [];
@@ -198,6 +202,16 @@ export class PayMongoPaymentProvider implements PaymentProvider {
     idempotencyKey: string | undefined,
     body: unknown,
   ): Promise<Record<string, unknown>> {
+    const payload = await this.requestPayload(method, path, idempotencyKey, body);
+    return asRecord(asRecord(payload).data ?? payload);
+  }
+
+  private async requestPayload(
+    method: string,
+    path: string,
+    idempotencyKey: string | undefined,
+    body: unknown,
+  ): Promise<unknown> {
     const request = () =>
       this.fetcher(`${this.apiUrl}${path}`, {
         method,
@@ -225,7 +239,7 @@ export class PayMongoPaymentProvider implements PaymentProvider {
         `PROVIDER_HTTP_${response.status}`,
         `PayMongo request failed with status ${response.status}`,
       );
-    return asRecord(asRecord(payload).data ?? payload);
+    return payload;
   }
 }
 
@@ -250,11 +264,21 @@ function stringOrNull(value: unknown): string | null {
 function stringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value ? value : fallback;
 }
+function timestampOrDefault(value: unknown, fallback: string): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value * 1000).toISOString();
+  }
+  return stringOrDefault(value, fallback);
+}
 function numberField(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 1;
 }
 function mapStatus(value: unknown): ChargeResult["status"] {
-  return value === "succeeded" ? "succeeded" : value === "failed" ? "failed" : "pending";
+  return value === "succeeded" || value === "paid"
+    ? "succeeded"
+    : value === "failed"
+      ? "failed"
+      : "pending";
 }
 function encodeBase64(value: string): string {
   return btoa(value);

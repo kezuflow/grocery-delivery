@@ -6,10 +6,13 @@ import {
   type WeeklyOperationsInput,
   type WeeklyOperationsStep,
 } from "./weekly-operations.js";
+import { createWeeklyOperationsScheduler, type WeeklyOperationsScheduler } from "./scheduler.js";
 
 export * from "./weekly-operations.js";
+export * from "./scheduler.js";
 
 export type WorkflowEnvironment = Readonly<{
+  WEEKLY_OPERATIONS?: WeeklyOperationsScheduler;
   runStep?: (step: WeeklyOperationsStep, input: WeeklyOperationsInput) => Promise<void>;
 }>;
 
@@ -22,7 +25,6 @@ export class WeeklyOperationsWorkflow extends WorkflowEntrypoint<
       ...event.payload,
       correlationId: event.payload.correlationId,
     });
-    if (!this.env.runStep) return definition;
 
     await runWeeklyOperations(definition, async (workflowStep, input) => {
       await step.do(
@@ -34,7 +36,14 @@ export class WeeklyOperationsWorkflow extends WorkflowEntrypoint<
             backoff: workflowStep.retry.backoff,
           },
         },
-        () => this.env.runStep!(workflowStep, input),
+        async () => {
+          await this.env.runStep?.(workflowStep, input);
+          return {
+            cycleId: input.cycleId,
+            correlationId: input.correlationId,
+            step: workflowStep.name,
+          };
+        },
       );
     });
     return definition;
@@ -44,5 +53,11 @@ export class WeeklyOperationsWorkflow extends WorkflowEntrypoint<
 export default {
   fetch() {
     return new Response("Not found", { status: 404 });
+  },
+  async scheduled(controller: ScheduledController, environment: WorkflowEnvironment) {
+    if (!environment.WEEKLY_OPERATIONS) {
+      throw new Error("weekly operations workflow binding is unavailable");
+    }
+    await createWeeklyOperationsScheduler(environment.WEEKLY_OPERATIONS)(controller.scheduledTime);
   },
 } satisfies ExportedHandler<WorkflowEnvironment>;
