@@ -10,6 +10,7 @@ import { DeliveryWindowSelector } from "./delivery-window-selector";
 import { PlaceOrderButton } from "./place-order-button";
 import { SubscriptionActions } from "./subscription-actions";
 import { PlanSelector } from "./plan-selector";
+import { SupportCaseForm } from "./support-case-form";
 
 export const dynamic = "force-dynamic";
 
@@ -172,6 +173,24 @@ export default async function AccountPage() {
               </span>
             </div>
             <DeliveryAddressEditor initialAddress={account.deliveryAddress} />
+          </article>
+          <article className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
+              <p className="eyebrow">Support</p>
+              <span>{account.supportCases.length} requests</span>
+            </div>
+            <SupportCaseForm />
+            {account.supportCases.length ? (
+              <ul className="account-history">
+                {account.supportCases.map((supportCase) => (
+                  <li key={supportCase.id}>
+                    <span>{supportCase.subject}</span>
+                    <strong>{supportCase.status}</strong>
+                    <small>{new Date(supportCase.updatedAt).toLocaleDateString("en-PH")}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </article>
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">

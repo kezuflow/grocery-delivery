@@ -109,6 +109,10 @@ import {
   promotionBannerAnalyticsRequestSchema,
   promotionBannerAnalyticsResponseSchema,
   adminAuditResponseSchema,
+  supportCaseCreateRequestSchema,
+  supportCaseResponseSchema,
+  supportCaseStatusRequestSchema,
+  supportCasesResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -142,7 +146,10 @@ import {
   D1PromotionBannerRepository,
   type PromotionBannerRepository,
   D1PromotionBannerAnalyticsRepository,
+  D1SupportCaseRepository,
   type PromotionBannerAnalyticsRepository,
+  type SupportCaseRepository,
+  type SupportCase,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -262,6 +269,7 @@ export type ApiOptions = Readonly<{
   dispatchRepository?: DispatchRepository;
   operationalProjectionRepository?: OperationalProjectionRepository;
   operationalAlertThresholds?: Partial<OperationalAlertThresholds>;
+  supportCaseRepository?: SupportCaseRepository;
   identityRepository?: AccountIdentityRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
@@ -455,6 +463,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path.startsWith("/api/v1/admin/procurement") ||
       context.req.path.startsWith("/api/v1/admin/dispatch") ||
       context.req.path === "/api/v1/admin/operations/projection" ||
+      context.req.path.startsWith("/api/v1/support") ||
       context.req.path.startsWith("/api/v1/deliveryman/") ||
       context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
@@ -1695,6 +1704,217 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       200,
     );
   });
+  app.get("/api/v1/support/cases", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.supportCaseRepository ??
+      (bindings.DB ? new D1SupportCaseRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SUPPORT_UNAVAILABLE",
+          "support cases are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    if (!session || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const cases = await repository.listByCustomer(session.customerId);
+    const body = {
+      data: { cases: cases.map(toSupportCaseData) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    supportCasesResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/support/cases", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.supportCaseRepository ??
+      (bindings.DB ? new D1SupportCaseRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SUPPORT_UNAVAILABLE",
+          "support cases are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    if (!session || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = supportCaseCreateRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_SUPPORT_CASE",
+          "support case input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const existing = await repository.findByIdempotency(session.customerId, idempotencyKey);
+    if (existing) {
+      const body = {
+        data: toSupportCaseData(existing),
+        meta: { correlationId: context.get("correlationId") },
+      };
+      supportCaseResponseSchema.parse(body);
+      return context.json(body, 200);
+    }
+    const timestamp = now().toISOString();
+    const record = {
+      id: crypto.randomUUID(),
+      customerId: session.customerId,
+      subject: input.data.subject,
+      message: input.data.message,
+      status: "open" as const,
+      idempotencyKey,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await repository.save(record);
+    const body = {
+      data: toSupportCaseData(record),
+      meta: { correlationId: context.get("correlationId") },
+    };
+    supportCaseResponseSchema.parse(body);
+    return context.json(body, 201);
+  });
+
+  app.get("/api/v1/admin/support/cases", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.supportCaseRepository ??
+      (bindings.DB ? new D1SupportCaseRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "support")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "support administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SUPPORT_UNAVAILABLE",
+          "support cases are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const cases = await repository.listAll();
+    const body = {
+      data: { cases: cases.map(toSupportCaseData) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    supportCasesResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.patch("/api/v1/admin/support/cases/:id/status", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.supportCaseRepository ??
+      (bindings.DB ? new D1SupportCaseRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "support")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "support administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SUPPORT_UNAVAILABLE",
+          "support cases are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const input = supportCaseStatusRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_SUPPORT_STATUS",
+          "support status is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const updated = await repository.updateStatus(
+      context.req.param("id"),
+      input.data.status,
+      now().toISOString(),
+    );
+    if (!updated) {
+      return context.json(
+        errorResponse(
+          "SUPPORT_CASE_NOT_FOUND",
+          "support case was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const body = {
+      data: toSupportCaseData(updated),
+      meta: { correlationId: context.get("correlationId") },
+    };
+    supportCaseResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
   app.get("/api/v1/admin/operations/projection", async (context) => {
     const bindings = context.env ?? {};
     const repository =
@@ -4139,6 +4359,18 @@ function toDeliveryAddressData(
     serviceable,
     createdAt: address.createdAt,
     updatedAt: address.updatedAt,
+  };
+}
+
+function toSupportCaseData(caseRecord: SupportCase) {
+  return {
+    id: caseRecord.id,
+    customerId: caseRecord.customerId,
+    subject: caseRecord.subject,
+    message: caseRecord.message,
+    status: caseRecord.status,
+    createdAt: caseRecord.createdAt,
+    updatedAt: caseRecord.updatedAt,
   };
 }
 

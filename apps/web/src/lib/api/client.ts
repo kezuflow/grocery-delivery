@@ -33,6 +33,10 @@ import {
   activePromotionBannersResponseSchema,
   bannerPlacementSchema,
   adminAuditResponseSchema,
+  supportCaseCreateRequestSchema,
+  supportCaseResponseSchema,
+  supportCaseStatusRequestSchema,
+  supportCasesResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   plansListResponseSchema,
@@ -66,6 +70,8 @@ import {
   type SubscriptionResponse,
   type ActivePromotionBannersResponse,
   type AdminAuditResponse,
+  type SupportCaseResponse,
+  type SupportCasesResponse,
   type PaymentRefundResponse,
 } from "@carbon/contracts";
 
@@ -160,6 +166,45 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getAdminAudit(init?: RequestInit): Promise<AdminAuditResponse> {
       return getJson(transport, "/api/v1/admin/audit?limit=50", adminAuditResponseSchema, init);
+    },
+    getSupportCases(init?: RequestInit): Promise<SupportCasesResponse> {
+      return getJson(transport, "/api/v1/support/cases", supportCasesResponseSchema, init);
+    },
+    createSupportCase(
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<SupportCaseResponse> {
+      const payload = supportCaseCreateRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/support/cases",
+        payload,
+        supportCaseResponseSchema,
+        "POST",
+        {
+          ...init,
+          headers: { ...init?.headers, "idempotency-key": idempotencyKey },
+        },
+      );
+    },
+    listAdminSupportCases(init?: RequestInit): Promise<SupportCasesResponse> {
+      return getJson(transport, "/api/v1/admin/support/cases", supportCasesResponseSchema, init);
+    },
+    updateAdminSupportCaseStatus(
+      id: string,
+      input: unknown,
+      init?: RequestInit,
+    ): Promise<SupportCaseResponse> {
+      const payload = supportCaseStatusRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        `/api/v1/admin/support/cases/${encodeURIComponent(id)}/status`,
+        payload,
+        supportCaseResponseSchema,
+        "PATCH",
+        init,
+      );
     },
     getAdminProcurement(init?: RequestInit): Promise<ProcurementResponse> {
       return getJson(transport, "/api/v1/admin/procurement", procurementResponseSchema, init);

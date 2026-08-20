@@ -4,6 +4,7 @@ export * from "./promotion-admin";
 export * from "./delivery";
 export * from "./delivery-windows";
 export * from "./operations";
+export * from "./support";
 export * from "./deliveryman";
 export * from "./identity";
 export * from "./plans";

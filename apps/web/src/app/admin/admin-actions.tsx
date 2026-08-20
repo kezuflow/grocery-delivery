@@ -8,15 +8,20 @@ import {
   createApiClient,
   createSameOriginApiTransport,
 } from "../../lib/api/client";
-import type { ProcurementResponse, PromotionAdminSummary } from "@carbon/contracts";
+import type {
+  ProcurementResponse,
+  PromotionAdminSummary,
+  SupportCasesResponse,
+} from "@carbon/contracts";
 
 type Props = Readonly<{
   permissions: string[];
   procurement: ProcurementResponse["data"] | null;
   promotions: PromotionAdminSummary[];
+  supportCases: SupportCasesResponse["data"]["cases"];
 }>;
 
-export function AdminActions({ permissions, procurement, promotions }: Props) {
+export function AdminActions({ permissions, procurement, promotions, supportCases }: Props) {
   const router = useRouter();
   const client = createApiClient(createSameOriginApiTransport());
   const [message, setMessage] = useState<string | null>(null);
@@ -328,6 +333,35 @@ export function AdminActions({ permissions, procurement, promotions }: Props) {
             Submit refund
           </button>
         </form>
+      ) : null}
+      {can("support") && supportCases.length ? (
+        <div className="admin-action-grid">
+          {supportCases.map((supportCase) => (
+            <form
+              key={supportCase.id}
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                void run(() =>
+                  client.updateAdminSupportCaseStatus(supportCase.id, {
+                    status: form.get("status"),
+                  }),
+                );
+              }}
+            >
+              <h3>{supportCase.subject}</h3>
+              <p>{supportCase.message}</p>
+              <select name="status" defaultValue={supportCase.status}>
+                <option value="open">Open</option>
+                <option value="in_progress">In progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+              <button type="submit" disabled={busy}>
+                Update case
+              </button>
+            </form>
+          ))}
+        </div>
       ) : null}
     </section>
   );

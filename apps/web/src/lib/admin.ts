@@ -6,6 +6,7 @@ import type {
   ProcurementResponse,
   PromotionAdminListResponse,
   AdminAuditResponse,
+  SupportCasesResponse,
 } from "@carbon/contracts";
 
 import { createApiClient } from "./api/client";
@@ -17,6 +18,7 @@ export type AdminDashboardData = Readonly<{
   dispatch: DispatchResponse["data"] | null;
   promotions: PromotionAdminListResponse["data"]["promotions"];
   auditEvents: AdminAuditResponse["data"]["events"];
+  supportCases: SupportCasesResponse["data"]["cases"];
   error: string | null;
 }>;
 
@@ -27,12 +29,13 @@ export async function loadAdminDashboard(
   const client = createApiClient(createRuntimeApiTransport());
   const init: RequestInit = { headers: { cookie: cookieHeader } };
   try {
-    const [projection, procurement, dispatch, promotions, audit] = await Promise.all([
+    const [projection, procurement, dispatch, promotions, audit, supportCases] = await Promise.all([
       permissions.includes("reporting") ? client.getAdminProjection(init) : null,
       permissions.includes("procurement") ? client.getAdminProcurement(init) : null,
       permissions.includes("dispatch") ? client.getAdminDispatch(init) : null,
       permissions.includes("marketing") ? client.listAdminPromotions(init) : null,
       permissions.includes("reporting") ? client.getAdminAudit(init) : null,
+      permissions.includes("support") ? client.listAdminSupportCases(init) : null,
     ]);
     return {
       projection: projection?.data ?? null,
@@ -40,6 +43,7 @@ export async function loadAdminDashboard(
       dispatch: dispatch?.data ?? null,
       promotions: promotions?.data.promotions ?? [],
       auditEvents: audit?.data.events ?? [],
+      supportCases: supportCases?.data.cases ?? [],
       error: null,
     };
   } catch {
@@ -49,6 +53,7 @@ export async function loadAdminDashboard(
       dispatch: null,
       promotions: [],
       auditEvents: [],
+      supportCases: [],
       error: "The operations dashboard is temporarily unavailable.",
     };
   }

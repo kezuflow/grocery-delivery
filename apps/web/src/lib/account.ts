@@ -8,6 +8,7 @@ import type {
   PlansListResponse,
   PaymentHistoryResponse,
   SubscriptionResponse,
+  SupportCasesResponse,
 } from "@carbon/contracts";
 
 import { ApiClientError, createApiClient, type ApiTransport } from "./api/client";
@@ -20,6 +21,7 @@ export type CustomerAccountData = Readonly<{
   cart: CartResponse["data"];
   plans: PlansListResponse["data"]["plans"];
   paymentHistory: PaymentHistoryResponse["data"]["entries"];
+  supportCases: SupportCasesResponse["data"]["cases"];
   catalog: CatalogListResponse["data"];
   error: string | null;
 }>;
@@ -43,19 +45,28 @@ export async function resolveCustomerAccount(
   const init: RequestInit = { headers: { cookie: cookieHeader } };
 
   try {
-    const [subscription, cart, deliveryAddress, deliveryWindows, plans, catalog, paymentHistory] =
-      await Promise.all([
-        client.getCurrentSubscription(init).catch((error: unknown) => {
-          if (error instanceof ApiClientError && error.status === 404) return null;
-          throw error;
-        }),
-        client.getCart(init),
-        client.getDeliveryAddress(init),
-        client.getDeliveryWindows(init),
-        client.listPlans(),
-        client.listCatalog(100),
-        client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
-      ]);
+    const [
+      subscription,
+      cart,
+      deliveryAddress,
+      deliveryWindows,
+      plans,
+      catalog,
+      paymentHistory,
+      supportCases,
+    ] = await Promise.all([
+      client.getCurrentSubscription(init).catch((error: unknown) => {
+        if (error instanceof ApiClientError && error.status === 404) return null;
+        throw error;
+      }),
+      client.getCart(init),
+      client.getDeliveryAddress(init),
+      client.getDeliveryWindows(init),
+      client.listPlans(),
+      client.listCatalog(100),
+      client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
+      client.getSupportCases(init).catch(() => ({ data: { cases: [] } })),
+    ]);
     return {
       subscription: subscription?.data ?? null,
       deliveryAddress: deliveryAddress.data,
@@ -64,6 +75,7 @@ export async function resolveCustomerAccount(
       plans: plans.data.plans,
       catalog: catalog.data,
       paymentHistory: paymentHistory.data.entries,
+      supportCases: supportCases.data.cases,
       error: null,
     };
   } catch {
@@ -75,6 +87,7 @@ export async function resolveCustomerAccount(
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },
       paymentHistory: [],
+      supportCases: [],
       error: "We could not load your account right now. Please try again shortly.",
     };
   }

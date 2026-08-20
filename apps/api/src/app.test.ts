@@ -28,6 +28,8 @@ import {
   activePromotionBannersResponseSchema,
   promotionBannerResponseSchema,
   promotionMediaUploadResponseSchema,
+  supportCaseResponseSchema,
+  supportCasesResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultCartLockService,
@@ -68,6 +70,7 @@ import {
   InMemorySubscriptionReader,
   InMemoryOperationalProjectionRepository,
   InMemoryPromotionBannerRepository,
+  InMemorySupportCaseRepository,
 } from "@carbon/db";
 import { createApi } from "./app.js";
 import { createInMemoryMetricsSink } from "@carbon/observability";
@@ -749,6 +752,75 @@ describe("API worker", () => {
       },
     });
     expect((await deniedApp.request("/api/v1/admin/operations/projection")).status).toBe(403);
+  });
+
+  it("keeps support cases customer-owned, idempotent, and permission-scoped", async () => {
+    const repository = new InMemorySupportCaseRepository();
+    const customerApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      supportCaseRepository: repository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-customer",
+              userId: "user-customer",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const request = {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "support-1" },
+      body: JSON.stringify({ subject: "Missing item", message: "The spinach was not included." }),
+    };
+    const created = await customerApp.request("/api/v1/support/cases", request);
+    const replay = await customerApp.request("/api/v1/support/cases", request);
+    expect(created.status).toBe(201);
+    expect(replay.status).toBe(200);
+    const createdBody = supportCaseResponseSchema.parse(await created.json());
+    const replayBody = supportCaseResponseSchema.parse(await replay.json());
+    expect(replayBody.data.id).toBe(createdBody.data.id);
+    const customerCases = supportCasesResponseSchema.parse(
+      await (await customerApp.request("/api/v1/support/cases")).json(),
+    );
+    expect(customerCases.data.cases).toHaveLength(1);
+
+    const supportApp = createApi({
+      sink: () => undefined,
+      supportCaseRepository: repository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-support",
+              userId: "admin-support",
+              role: "admin",
+              adminPermissions: ["support"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const queue = await supportApp.request("/api/v1/admin/support/cases");
+    expect(supportCasesResponseSchema.parse(await queue.json()).data.cases).toHaveLength(1);
+    const updated = await supportApp.request(
+      `/api/v1/admin/support/cases/${createdBody.data.id}/status`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "resolved" }),
+      },
+    );
+    expect(supportCaseResponseSchema.parse(await updated.json()).data.status).toBe("resolved");
   });
 
   it("scopes deliveryman assignments and deduplicates event retries", async () => {

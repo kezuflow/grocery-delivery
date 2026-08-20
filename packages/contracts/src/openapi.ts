@@ -142,6 +142,15 @@ export const openApiDocument: OpenApiDocument = {
       "get",
     ),
     "/api/v1/admin/audit": protectedOperation("Read audit history", "get"),
+    "/api/v1/support/cases": {
+      ...protectedOperation("List customer support cases", "get"),
+      ...protectedOperation("Create a customer support case", "post", "201"),
+    },
+    "/api/v1/admin/support/cases": protectedOperation("List support cases", "get"),
+    "/api/v1/admin/support/cases/{id}/status": protectedOperation(
+      "Update support case status",
+      "patch",
+    ),
     "/api/v1/admin/payments/refunds": protectedOperation("Refund a payment", "post"),
     "/api/v1/admin/promotion-banners": {
       ...protectedOperation("List promotion banners", "get"),

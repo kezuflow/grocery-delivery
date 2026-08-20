@@ -19,3 +19,4 @@ export * from "./plan-approvals.js";
 export * from "./subscriptions.js";
 export * from "./promotion-banners.js";
 export * from "./promotion-banner-analytics.js";
+export * from "./support.js";

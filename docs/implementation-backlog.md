@@ -439,6 +439,17 @@ API, contract, and web checks pass.
 Next resume point: add notification/payment/retention event processors, then customer support cases
 and fulfillment history.
 
+Current increment: customer and support-admin case workflow
+
+Completion record: customers can create idempotent support cases, list only their own requests, and
+see server-owned status updates in the account page. Support administrators can read the bounded
+queue and transition cases through open, in-progress, and resolved states. Migration `0030` adds
+forward-only D1 persistence with a customer/idempotency uniqueness boundary, while API and web
+contracts validate every response. Focused DB, API, and web checks pass.
+
+Next resume point: add explicit notification/payment/retention processors, then complete remaining
+customer fulfillment and delivery-staff production controls.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete
