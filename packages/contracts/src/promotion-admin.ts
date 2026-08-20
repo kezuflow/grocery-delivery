@@ -41,7 +41,23 @@ export const promotionAdminResponseSchema = z.object({
   data: z.unknown(),
   meta: responseMetaSchema,
 });
+export const promotionAdminSummarySchema = z
+  .object({
+    id: z.string().min(1),
+    code: z.string().nullable(),
+    version: z.number().int().positive(),
+    status: z.enum(["draft", "scheduled", "active", "paused", "expired", "archived"]),
+    startsAt: z.string().datetime(),
+    endsAt: z.string().datetime(),
+    redemptionCount: z.number().int().nonnegative(),
+    redeemedAmount: moneySchema,
+    totalBudget: moneySchema.nullable(),
+  })
+  .passthrough();
 export const promotionAdminListResponseSchema = z.object({
-  data: z.object({ promotions: z.array(z.unknown()) }),
+  data: z.object({ promotions: z.array(promotionAdminSummarySchema) }),
   meta: responseMetaSchema,
 });
+
+export type PromotionAdminSummary = z.infer<typeof promotionAdminSummarySchema>;
+export type PromotionAdminListResponse = z.infer<typeof promotionAdminListResponseSchema>;

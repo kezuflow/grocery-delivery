@@ -1,0 +1,107 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { loadAdminDashboard } from "../../lib/admin";
+import { loadCurrentSession } from "../../lib/session";
+import { AuthControls } from "../auth-controls";
+
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Operations" };
+
+export default async function AdminPage() {
+  const auth = await loadCurrentSession();
+  if (!auth.session || auth.session.role !== "admin") redirect("/");
+  const dashboard = await loadAdminDashboard();
+  return (
+    <main className="account-page">
+      <header className="site-header account-header">
+        <a className="wordmark" href="/" aria-label="Carbon Food Delivery home">
+          <span className="wordmark-mark">C</span>
+          <span>Carbon</span>
+        </a>
+        <nav aria-label="Operations navigation">
+          <a href="/">Storefront</a>
+          <AuthControls signedIn />
+        </nav>
+      </header>
+      <section className="account-intro">
+        <div>
+          <p className="eyebrow">Operations console</p>
+          <h1>Weekly operations</h1>
+        </div>
+        <span className="account-status">
+          {auth.session.adminPermissions.join(", ") || "admin"}
+        </span>
+      </section>
+      {dashboard.error ? (
+        <section className="account-state" role="status">
+          <h2>Dashboard unavailable</h2>
+          <p>{dashboard.error}</p>
+        </section>
+      ) : (
+        <section className="account-grid" aria-label="Operations dashboard">
+          <MetricPanel title="Cycle" value={dashboard.projection?.cycleId ?? "Unavailable"} />
+          <MetricPanel
+            title="Pending outbox"
+            value={String(dashboard.projection?.outbox.pendingCount ?? 0)}
+          />
+          <MetricPanel
+            title="Open shortages"
+            value={String(dashboard.projection?.procurement.openShortages ?? 0)}
+          />
+          <MetricPanel
+            title="Assignments"
+            value={String(dashboard.projection?.delivery.totalAssignments ?? 0)}
+          />
+          <section className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
+              <p className="eyebrow">Packing</p>
+              <span>{dashboard.procurement?.manifests.length ?? 0} manifests</span>
+            </div>
+            {dashboard.procurement?.manifests.length ? (
+              <ul className="account-history">
+                {dashboard.procurement.manifests.map((manifest) => (
+                  <li key={manifest.id}>
+                    <span>{manifest.orderId}</span>
+                    <strong>{manifest.status}</strong>
+                    <small>{manifest.cycleId}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="subscription-note">No packing manifests for this cycle.</p>
+            )}
+          </section>
+          <section className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
+              <p className="eyebrow">Campaigns</p>
+              <span>{dashboard.promotions.length} records</span>
+            </div>
+            {dashboard.promotions.length ? (
+              <ul className="account-history">
+                {dashboard.promotions.map((promotion) => (
+                  <li key={promotion.id}>
+                    <span>{promotion.code ?? promotion.id}</span>
+                    <strong>{promotion.status}</strong>
+                    <small>{promotion.redemptionCount} redemptions</small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="subscription-note">No campaigns have been created.</p>
+            )}
+          </section>
+        </section>
+      )}
+    </main>
+  );
+}
+
+function MetricPanel({ title, value }: Readonly<{ title: string; value: string }>) {
+  return (
+    <article className="account-panel">
+      <p className="eyebrow">{title}</p>
+      <h2>{value}</h2>
+    </article>
+  );
+}

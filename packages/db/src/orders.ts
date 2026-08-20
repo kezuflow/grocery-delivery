@@ -4,6 +4,9 @@ import {
   createLockedOrder,
   createMoney,
   type LockedOrder,
+  type AppliedPromotionSnapshot,
+  type DeliveryAddress,
+  type DeliveryWindow,
 } from "@carbon/domain";
 
 import type { CatalogDatabase, CatalogPreparedStatement } from "./catalog.js";
@@ -246,14 +249,22 @@ function mapOrder(order: OrderRow, lines: readonly OrderLineRow[]): LockedOrder 
       totalDue: createMoney(order.total_due_centavos),
     },
     appliedPromotion: order.applied_promotion_json
-      ? JSON.parse(order.applied_promotion_json)
+      ? parseJson<AppliedPromotionSnapshot>(order.applied_promotion_json)
       : null,
-    deliveryAddress: order.delivery_address_json ? JSON.parse(order.delivery_address_json) : null,
-    deliveryWindow: order.delivery_window_json ? JSON.parse(order.delivery_window_json) : null,
+    deliveryAddress: order.delivery_address_json
+      ? parseJson<DeliveryAddress>(order.delivery_address_json)
+      : null,
+    deliveryWindow: order.delivery_window_json
+      ? parseJson<DeliveryWindow>(order.delivery_window_json)
+      : null,
     paymentState: order.payment_state ?? "unpaid",
     status: "locked",
     lockedAt: order.locked_at,
   });
+}
+
+function parseJson<T>(value: string): T {
+  return JSON.parse(value) as T;
 }
 
 type OrderRow = Record<string, unknown> & {

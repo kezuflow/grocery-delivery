@@ -18,6 +18,10 @@ import {
   orderResponseSchema,
   couponRequestSchema,
   checkoutQuoteResponseSchema,
+  dispatchResponseSchema,
+  operationalProjectionResponseSchema,
+  procurementResponseSchema,
+  promotionAdminListResponseSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
@@ -38,6 +42,10 @@ import {
   type OrderCreateRequest,
   type OrderResponse,
   type CheckoutQuoteResponse,
+  type DispatchResponse,
+  type OperationalProjectionResponse,
+  type ProcurementResponse,
+  type PromotionAdminListResponse,
   type PlansListResponse,
   type PaymentHistoryResponse,
   type SubscriptionActionRequest,
@@ -90,6 +98,23 @@ export function createApiClient(transport: ApiTransport) {
     },
     getPaymentHistory(init?: RequestInit): Promise<PaymentHistoryResponse> {
       return getJson(transport, "/api/v1/payments/history", paymentHistoryResponseSchema, init);
+    },
+    getAdminProjection(init?: RequestInit): Promise<OperationalProjectionResponse> {
+      return getJson(
+        transport,
+        "/api/v1/admin/operations/projection",
+        operationalProjectionResponseSchema,
+        init,
+      );
+    },
+    getAdminProcurement(init?: RequestInit): Promise<ProcurementResponse> {
+      return getJson(transport, "/api/v1/admin/procurement", procurementResponseSchema, init);
+    },
+    getAdminDispatch(init?: RequestInit): Promise<DispatchResponse> {
+      return getJson(transport, "/api/v1/admin/dispatch", dispatchResponseSchema, init);
+    },
+    listAdminPromotions(init?: RequestInit): Promise<PromotionAdminListResponse> {
+      return getJson(transport, "/api/v1/admin/promotions", promotionAdminListResponseSchema, init);
     },
     createSubscription(
       input: SubscriptionCreateRequest,
