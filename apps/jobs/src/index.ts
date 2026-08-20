@@ -192,3 +192,4 @@ function retryDelay(attempts: number, baseSeconds: number, maxSeconds: number): 
 
 export * from "./worker.js";
 export * from "./processors.js";
+export * from "./schedule.js";

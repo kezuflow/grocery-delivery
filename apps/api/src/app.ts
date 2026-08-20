@@ -233,6 +233,10 @@ export type ApiBindings = Readonly<{
   PAYMONGO_API_URL?: string;
   VERSION?: string;
   EVENT_PROCESSOR_TOKEN?: string;
+  NOTIFICATION_ENDPOINT?: string;
+  NOTIFICATION_TOKEN?: string;
+  DELIVERY_MEDIA_RETENTION_DAYS?: string;
+  MEDIA_BUCKET?: R2Bucket;
   MEDIA_BASE_URL?: string;
   PROMOTION_MEDIA_BASE_URL?: string;
   OPERATIONAL_ALERT_PENDING_COUNT?: string;

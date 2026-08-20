@@ -15,6 +15,9 @@
       "migrations_dir": "../../packages/db/migrations",
     },
   ],
+  "r2_buckets": [
+    { "binding": "MEDIA_BUCKET", "bucket_name": "carbon-food-delivery-media-development" },
+  ],
   "vars": {
     "APP_ENV": "development",
     "API_PUBLIC_ORIGIN": "http://localhost:8787",
@@ -23,6 +26,8 @@
     "VERSION": "0.0.0-dev",
     "DELIVERY_FEE_CENTAVOS": "0",
     "PAYMENT_PROVIDER": "fake",
+    "NOTIFICATION_ENDPOINT": "http://localhost:8788/events",
+    "DELIVERY_MEDIA_RETENTION_DAYS": "30",
     "OPERATIONAL_ALERT_PENDING_COUNT": "10",
     "OPERATIONAL_ALERT_PENDING_AGE_SECONDS": "900",
     "OPERATIONAL_ALERT_DEAD_LETTERED_COUNT": "1",
@@ -41,6 +46,9 @@
           "migrations_dir": "../../packages/db/migrations",
         },
       ],
+      "r2_buckets": [
+        { "binding": "MEDIA_BUCKET", "bucket_name": "carbon-food-delivery-media-staging" },
+      ],
       "vars": {
         "APP_ENV": "staging",
         "API_PUBLIC_ORIGIN": "https://api-staging.carbon-food-delivery.example",
@@ -51,6 +59,8 @@
         "DELIVERY_FEE_CENTAVOS": "990",
         "DELIVERY_SERVICE_POSTAL_CODES": "1000,1100,1200",
         "PAYMENT_PROVIDER": "paymongo",
+        "NOTIFICATION_ENDPOINT": "https://notifications-staging.carbon-food-delivery.example/events",
+        "DELIVERY_MEDIA_RETENTION_DAYS": "30",
         "OPERATIONAL_ALERT_PENDING_COUNT": "10",
         "OPERATIONAL_ALERT_PENDING_AGE_SECONDS": "900",
         "OPERATIONAL_ALERT_DEAD_LETTERED_COUNT": "1",
@@ -69,6 +79,9 @@
           "migrations_dir": "../../packages/db/migrations",
         },
       ],
+      "r2_buckets": [
+        { "binding": "MEDIA_BUCKET", "bucket_name": "carbon-food-delivery-media-production" },
+      ],
       "vars": {
         "APP_ENV": "production",
         "API_PUBLIC_ORIGIN": "https://api.carbon-food-delivery.example",
@@ -79,6 +92,8 @@
         "DELIVERY_FEE_CENTAVOS": "990",
         "DELIVERY_SERVICE_POSTAL_CODES": "1000,1100,1200",
         "PAYMENT_PROVIDER": "paymongo",
+        "NOTIFICATION_ENDPOINT": "https://notifications.carbon-food-delivery.example/events",
+        "DELIVERY_MEDIA_RETENTION_DAYS": "30",
         "OPERATIONAL_ALERT_PENDING_COUNT": "10",
         "OPERATIONAL_ALERT_PENDING_AGE_SECONDS": "900",
         "OPERATIONAL_ALERT_DEAD_LETTERED_COUNT": "1",

@@ -1,7 +1,11 @@
 import type { BetterAuthApi } from "@carbon/auth";
 import type { EventProcessor } from "@carbon/application";
-import { FakePaymentProvider, PayMongoPaymentProvider } from "@carbon/billing";
-import type { PaymentProvider } from "@carbon/billing";
+import {
+  FakePaymentProvider,
+  PayMongoPaymentProvider,
+  PaymentReconciliationService,
+  type PaymentProvider,
+} from "@carbon/billing";
 import {
   ConfigurationError,
   parseApiRuntimeConfiguration,
@@ -9,10 +13,13 @@ import {
 } from "@carbon/config";
 import { resolveCorrelationId } from "@carbon/observability";
 import type { IdentityEmailSender } from "@carbon/notifications";
-import { InMemoryIdentityEmailSender } from "@carbon/notifications";
+import { HttpNotificationTransport, InMemoryIdentityEmailSender } from "@carbon/notifications";
+import { D1DeliveryMediaRepository, D1PaymentRepository } from "@carbon/db";
+import { R2DeliveryMediaObjectStore } from "@carbon/storage";
 
 import { createApi, type ApiApp, type ApiBindings } from "./app.js";
 import { createConfiguredBetterAuthApi } from "./better-auth.js";
+import { createEventProcessorHandlers, createMediaRetentionHandler } from "./event-processors.js";
 
 export type ApiRuntimeFactories = Readonly<{
   createBetterAuthApi?: (
@@ -75,7 +82,9 @@ export function createConfiguredApi(
   const configuration = parseApiRuntimeConfiguration(bindings);
   const betterAuthApi = resolveBetterAuthApi(bindings, configuration, factories);
   const paymentProvider = resolvePaymentProvider(bindings, configuration, factories);
-  const eventProcessor = factories.createEventProcessor?.(bindings, configuration);
+  const eventProcessor =
+    factories.createEventProcessor?.(bindings, configuration) ??
+    createConfiguredEventProcessor(bindings, paymentProvider);
 
   return createApi({
     ...(betterAuthApi ? { betterAuthApi } : {}),
@@ -85,6 +94,45 @@ export function createConfiguredApi(
       ? { eventProcessorToken: bindings.EVENT_PROCESSOR_TOKEN }
       : {}),
   });
+}
+
+function createConfiguredEventProcessor(
+  bindings: ApiBindings,
+  paymentProvider: PaymentProvider | undefined,
+): EventProcessor | undefined {
+  const notificationTransport = bindings.NOTIFICATION_ENDPOINT
+    ? new HttpNotificationTransport(bindings.NOTIFICATION_ENDPOINT, {
+        ...(bindings.NOTIFICATION_TOKEN ? { token: bindings.NOTIFICATION_TOKEN } : {}),
+      })
+    : undefined;
+  const paymentReconciliation =
+    bindings.DB && paymentProvider
+      ? new PaymentReconciliationService(new D1PaymentRepository(bindings.DB), paymentProvider)
+      : undefined;
+  const retention =
+    bindings.DB && bindings.MEDIA_BUCKET
+      ? createMediaRetentionHandler({
+          repository: new D1DeliveryMediaRepository(bindings.DB),
+          objectStore: new R2DeliveryMediaObjectStore(bindings.MEDIA_BUCKET),
+          retentionDays: parseRetentionDays(bindings.DELIVERY_MEDIA_RETENTION_DAYS),
+        })
+      : undefined;
+  return createEventProcessorHandlers({
+    ...(notificationTransport ? { notificationTransport } : {}),
+    ...(paymentReconciliation ? { paymentReconciliation } : {}),
+    ...(retention ? { retention } : {}),
+  });
+}
+
+function parseRetentionDays(value: string | undefined): number {
+  const retentionDays = Number(value ?? 30);
+  if (!Number.isInteger(retentionDays) || retentionDays <= 0 || retentionDays > 3650) {
+    throw new ConfigurationError(
+      "DELIVERY_MEDIA_RETENTION_DAYS",
+      "delivery media retention days must be between 1 and 3650",
+    );
+  }
+  return retentionDays;
 }
 
 function resolveBetterAuthApi(

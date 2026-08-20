@@ -643,8 +643,16 @@ secrets; local and test environments may omit it. Invalid, missing, unavailable,
 processor requests return correlation-aware errors, while successful dispatches return `202`.
 Focused API/jobs tests, typechecks, lint, and the retention test lint correction pass.
 
-Next resume point: compose concrete notification, payment, and R2 retention handlers behind this
-boundary, then run staging queue retry and dead-letter rehearsal with measured evidence.
+Completion record: the API runtime now composes concrete notification, payment-reconciliation, and
+media-retention handlers when their configured provider boundaries are available. Notifications
+use an HTTPS idempotent HTTP transport, reconciliation runs through the existing provider-neutral
+PayMongo/D1 service, and retention deletes expired R2 objects before D1 metadata. Jobs schedule one
+previous-day reconciliation event and one daily retention event through the durable outbox with
+deterministic IDs, so repeated cron runs are safe. Focused API, jobs, DB, notification, storage,
+and application checks pass.
+
+Next resume point: run staging queue retry and dead-letter rehearsal with measured evidence, then
+add provider delivery receipts and notification preference enforcement.
 
 ### Slice 019: Customer fulfillment, support, and payment history
 

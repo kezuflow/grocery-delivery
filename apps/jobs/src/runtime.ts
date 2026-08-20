@@ -1,6 +1,7 @@
 import { D1OutboxRepository, type CatalogDatabase } from "@carbon/db";
 import { createJobsWorker, type OutboxJobMessage } from "./index.js";
 import { resolveEventProcessorKind } from "./processors.js";
+import { createOperationalEventScheduler } from "./schedule.js";
 
 export type JobsBindings = Readonly<{
   DB: CatalogDatabase;
@@ -49,6 +50,7 @@ export function createConfiguredJobsWorker(
 ) {
   return createJobsWorker({
     createOutboxRepository: () => new D1OutboxRepository(bindings.DB),
+    scheduleOutboxEvents: createOperationalEventScheduler(),
     queue: bindings.OUTBOX_QUEUE,
     processOutboxJob: createEventProcessor(bindings, options),
   });

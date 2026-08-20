@@ -25,6 +25,7 @@ export type OutboxFailure = Readonly<{
 export type OutboxFailureResult = "retry" | "dead_letter" | "ignored";
 
 export interface OutboxRepository {
+  schedule?(event: OutboxScheduledEvent): Promise<void>;
   claimPending(input: {
     now: string;
     limit: number;
@@ -36,11 +37,37 @@ export interface OutboxRepository {
   markFailed(id: string, claimToken: string, failure: OutboxFailure): Promise<OutboxFailureResult>;
 }
 
+export type OutboxScheduledEvent = Readonly<{
+  id: string;
+  eventType: string;
+  aggregateId: string;
+  occurredAt: string;
+  payloadJson: string;
+}>;
+
 export class InMemoryOutboxRepository implements OutboxRepository {
   private readonly events = new Map<string, OutboxEventRecord>();
 
   constructor(events: readonly OutboxEventRecord[] = []) {
     for (const event of events) this.events.set(event.id, Object.freeze({ ...event }));
+  }
+
+  schedule(event: OutboxScheduledEvent): Promise<void> {
+    if (this.events.has(event.id)) return Promise.resolve();
+    this.events.set(
+      event.id,
+      Object.freeze({
+        ...event,
+        attempts: 0,
+        publishedAt: null,
+        claimedAt: null,
+        claimToken: null,
+        nextAttemptAt: null,
+        lastError: null,
+        deadLetteredAt: null,
+      }),
+    );
+    return Promise.resolve();
   }
 
   claimPending(input: { now: string; limit: number; leaseSeconds: number; claimToken: string }) {
@@ -113,6 +140,18 @@ export class InMemoryOutboxRepository implements OutboxRepository {
 
 export class D1OutboxRepository implements OutboxRepository {
   constructor(private readonly database: CatalogDatabase) {}
+
+  async schedule(event: OutboxScheduledEvent) {
+    await this.database.batch([
+      this.database
+        .prepare(
+          `INSERT OR IGNORE INTO outbox_events (
+             id, event_type, aggregate_id, occurred_at, payload_json, attempts, published_at
+           ) VALUES (?, ?, ?, ?, ?, 0, NULL)`,
+        )
+        .bind(event.id, event.eventType, event.aggregateId, event.occurredAt, event.payloadJson),
+    ]);
+  }
 
   async claimPending(input: {
     now: string;

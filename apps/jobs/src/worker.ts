@@ -9,6 +9,7 @@ import {
 
 export type JobsWorkerEnvironment = Readonly<{
   createOutboxRepository(): OutboxRepository;
+  scheduleOutboxEvents?: (repository: OutboxRepository) => Promise<void>;
   processOutboxJob: OutboxJobProcessor;
   queue: { send(message: OutboxJobMessage): Promise<void> };
 }>;
@@ -22,6 +23,7 @@ export function createJobsWorker(environment: JobsWorkerEnvironment): JobsWorker
   return {
     async scheduled() {
       const repository = environment.createOutboxRepository();
+      await environment.scheduleOutboxEvents?.(repository);
       await createOutboxDispatcher(repository, environment.queue).dispatch();
     },
     async queue(batch) {

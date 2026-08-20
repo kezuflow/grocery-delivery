@@ -18,6 +18,26 @@ const event = {
 } as const;
 
 describe("outbox repository", () => {
+  it("schedules deterministic events once", async () => {
+    const repository = new InMemoryOutboxRepository();
+    const event = {
+      id: "payment-reconcile:2026-08-20",
+      eventType: "payment.reconcile",
+      aggregateId: "2026-08-20",
+      occurredAt: "2026-08-21T00:00:00.000Z",
+      payloadJson: "{}",
+    };
+    await repository.schedule(event);
+    await repository.schedule(event);
+    const claimed = await repository.claimPending({
+      now: "2026-08-21T00:00:01.000Z",
+      limit: 10,
+      leaseSeconds: 300,
+      claimToken: "claim-scheduled",
+    });
+    expect(claimed).toHaveLength(1);
+  });
+
   it("claims an event once and marks successful delivery", async () => {
     const repository = new InMemoryOutboxRepository([event]);
     const input = {
