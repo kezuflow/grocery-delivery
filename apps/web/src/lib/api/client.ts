@@ -32,6 +32,9 @@ import {
   dispatchAssignmentRequestSchema,
   activePromotionBannersResponseSchema,
   bannerPlacementSchema,
+  adminAuditResponseSchema,
+  paymentRefundRequestSchema,
+  paymentRefundResponseSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
@@ -62,6 +65,8 @@ import {
   type SubscriptionCreateRequest,
   type SubscriptionResponse,
   type ActivePromotionBannersResponse,
+  type AdminAuditResponse,
+  type PaymentRefundResponse,
 } from "@carbon/contracts";
 
 export type ApiTransport = Readonly<{
@@ -89,12 +94,14 @@ export function createSameOriginApiTransport(
 export class ApiClientError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly correlationId: string | null;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, correlationId: string | null = null) {
     super(message);
     this.name = "ApiClientError";
     this.status = status;
     this.code = code;
+    this.correlationId = correlationId;
   }
 }
 
@@ -150,6 +157,9 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
         operationalProjectionResponseSchema,
         init,
       );
+    },
+    getAdminAudit(init?: RequestInit): Promise<AdminAuditResponse> {
+      return getJson(transport, "/api/v1/admin/audit?limit=50", adminAuditResponseSchema, init);
     },
     getAdminProcurement(init?: RequestInit): Promise<ProcurementResponse> {
       return getJson(transport, "/api/v1/admin/procurement", procurementResponseSchema, init);
@@ -235,6 +245,23 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
         promotionAdminResponseSchema,
         "PATCH",
         init,
+      );
+    },
+    refundPayment(
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<PaymentRefundResponse> {
+      const payload = paymentRefundRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        "/api/v1/admin/payments/refunds",
+        payload,
+        paymentRefundResponseSchema,
+        "POST",
+        { ...init, headers },
       );
     },
     createSubscription(
@@ -411,6 +438,7 @@ async function getJson<T>(
       response.status,
       error.success ? error.data.error.code : "API_REQUEST_FAILED",
       error.success ? error.data.error.message : "The API request failed",
+      error.success ? error.data.meta.correlationId : null,
     );
   }
 

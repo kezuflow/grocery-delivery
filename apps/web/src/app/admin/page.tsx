@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Operations" };
 export default async function AdminPage() {
   const auth = await loadCurrentSession();
   if (!auth.session || auth.session.role !== "admin") redirect("/");
-  const dashboard = await loadAdminDashboard();
+  const dashboard = await loadAdminDashboard(auth.session.adminPermissions);
   return (
     <main className="account-page">
       <header className="site-header account-header">
@@ -97,6 +97,27 @@ export default async function AdminPage() {
             procurement={dashboard.procurement}
             promotions={dashboard.promotions}
           />
+          {auth.session.adminPermissions.includes("reporting") ? (
+            <section className="account-panel account-panel-wide">
+              <div className="account-panel-heading">
+                <p className="eyebrow">Audit history</p>
+                <span>{dashboard.auditEvents.length} events</span>
+              </div>
+              {dashboard.auditEvents.length ? (
+                <ul className="account-history">
+                  {dashboard.auditEvents.map((event) => (
+                    <li key={event.id}>
+                      <span>{event.action}</span>
+                      <strong>{event.targetType}</strong>
+                      <small>{new Date(event.occurredAt).toLocaleString("en-PH")}</small>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="subscription-note">No audit events are available.</p>
+              )}
+            </section>
+          ) : null}
         </section>
       )}
     </main>

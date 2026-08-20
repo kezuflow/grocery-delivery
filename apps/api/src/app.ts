@@ -106,6 +106,7 @@ import {
   promotionMediaUploadResponseSchema,
   promotionBannerAnalyticsRequestSchema,
   promotionBannerAnalyticsResponseSchema,
+  adminAuditResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -160,6 +161,7 @@ import {
   type ProcurementRepository,
   type OperationalProjectionRepository,
   type AccountIdentityRepository,
+  type AuditEventReader,
   type IdentityUser,
 } from "@carbon/db";
 import {
@@ -260,6 +262,7 @@ export type ApiOptions = Readonly<{
   promotionMediaSigner?: PromotionMediaSigner;
   promotionBannerRepository?: PromotionBannerRepository;
   promotionBannerAnalyticsRepository?: PromotionBannerAnalyticsRepository;
+  auditEventReader?: AuditEventReader;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -1716,6 +1719,39 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     };
     operationalProjectionResponseSchema.parse(body);
     context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/admin/audit", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "reporting"))
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "reporting administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    const repository =
+      options.auditEventReader ??
+      (context.env?.DB ? new D1IdentityRepository(context.env.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "AUDIT_UNAVAILABLE",
+          "audit history is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const requested = Number(context.req.query("limit") ?? 50);
+    const limit = Number.isSafeInteger(requested) ? Math.min(100, Math.max(1, requested)) : 50;
+    const body = {
+      data: { events: await repository.listAuditEvents(limit) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    adminAuditResponseSchema.parse(body);
     return context.json(body, 200);
   });
 

@@ -57,6 +57,10 @@ export interface AccountIdentityRepository {
   ): Promise<void>;
 }
 
+export interface AuditEventReader {
+  listAuditEvents(limit: number): Promise<readonly AuditEvent[]>;
+}
+
 export type IdentityCommandResult = Readonly<{
   userId: string;
   command: string;
@@ -357,6 +361,27 @@ export class D1IdentityRepository {
     ]);
   }
 
+  async listAuditEvents(limit: number): Promise<readonly AuditEvent[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, actor_user_id, action, target_type, target_id, occurred_at, metadata_json
+         FROM audit_events ORDER BY occurred_at DESC, id DESC LIMIT ?`,
+      )
+      .bind(limit)
+      .all<AuditEventRow>();
+    return rows.results.map((row) =>
+      createAuditEvent({
+        id: row.id,
+        actorUserId: row.actor_user_id,
+        action: row.action,
+        targetType: row.target_type,
+        targetId: row.target_id,
+        occurredAt: row.occurred_at,
+        metadata: parseStringRecord(row.metadata_json),
+      }),
+    );
+  }
+
   async saveMfaChallenge(challenge: MfaChallenge): Promise<void> {
     const value = createMfaChallenge(challenge);
     await this.database.batch([
@@ -507,6 +532,26 @@ export class D1IdentityRepository {
         ),
     ]);
   }
+}
+
+type AuditEventRow = Readonly<{
+  id: string;
+  actor_user_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  occurred_at: string;
+  metadata_json: string;
+}>;
+
+function parseStringRecord(value: string): Readonly<Record<string, string>> {
+  const parsed = JSON.parse(value) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  return Object.fromEntries(
+    Object.entries(parsed).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
 }
 
 function parseAdminPermissions(value: string): readonly AdminPermission[] {

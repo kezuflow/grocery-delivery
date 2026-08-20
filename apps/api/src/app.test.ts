@@ -2106,4 +2106,46 @@ describe("API worker", () => {
     expect(publicBody.data.banners[0]?.id).toBe(banner.id);
     expect(publicBody.data.banners[0]?.desktopUrl).toContain("/promotions/download/");
   });
+
+  it("limits audit history to reporting administrators", async () => {
+    const auditEventReader = {
+      listAuditEvents: (limit: number) =>
+        Promise.resolve(
+          [
+            {
+              id: "audit-1",
+              actorUserId: "admin-1",
+              action: "payment.refunded",
+              targetType: "payment",
+              targetId: "attempt-1",
+              occurredAt: "2026-08-20T12:00:00.000Z",
+              metadata: { reason: "approved" },
+            },
+          ].slice(0, limit),
+        ),
+    };
+    const auditApp = createApi({
+      auditEventReader,
+      sink: () => undefined,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-reporting",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["reporting"],
+              customerId: null,
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await auditApp.request("/api/v1/admin/audit?limit=1");
+    expect(response.status).toBe(200);
+    expect((await response.json()) as unknown).toMatchObject({
+      data: { events: [{ id: "audit-1" }] },
+    });
+  });
 });

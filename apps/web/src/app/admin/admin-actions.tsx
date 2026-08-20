@@ -21,24 +21,27 @@ export function AdminActions({ permissions, procurement, promotions }: Props) {
   const client = createApiClient(createSameOriginApiTransport());
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [refundKey, setRefundKey] = useState(() => crypto.randomUUID());
   const can = (permission: string) => permissions.includes(permission);
 
-  async function run(action: () => Promise<unknown>) {
+  async function run(action: () => Promise<unknown>): Promise<boolean> {
     setBusy(true);
     setMessage(null);
     try {
       await action();
       setMessage("Saved. The server-owned dashboard has been refreshed.");
       router.refresh();
+      return true;
     } catch (error) {
       setMessage(
         error instanceof ApiClientError
-          ? `${error.message} (${error.code})`
+          ? `${error.message} (${error.code}${error.correlationId ? `, ${error.correlationId}` : ""})`
           : "The operation failed.",
       );
     } finally {
       setBusy(false);
     }
+    return false;
   }
 
   return (
@@ -285,6 +288,44 @@ export function AdminActions({ permissions, procurement, promotions }: Props) {
           </label>
           <button type="submit" disabled={busy}>
             Save draft
+          </button>
+        </form>
+      ) : null}
+      {can("finance") ? (
+        <form
+          className="admin-action-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            void (async () => {
+              const saved = await run(() =>
+                client.refundPayment(
+                  {
+                    customerId: form.get("customerId"),
+                    paymentAttemptId: form.get("paymentAttemptId"),
+                    amount: { centavos: Number(form.get("amountCentavos")), currency: "PHP" },
+                    reason: form.get("reason"),
+                  },
+                  refundKey,
+                ),
+              );
+              if (saved) setRefundKey(crypto.randomUUID());
+            })();
+          }}
+        >
+          <h3>Issue refund</h3>
+          <input name="customerId" placeholder="Customer ID" required />
+          <input name="paymentAttemptId" placeholder="Payment attempt ID" required />
+          <input
+            name="amountCentavos"
+            type="number"
+            min="1"
+            placeholder="Amount centavos"
+            required
+          />
+          <textarea name="reason" maxLength={500} placeholder="Approved refund reason" required />
+          <button type="submit" disabled={busy}>
+            Submit refund
           </button>
         </form>
       ) : null}

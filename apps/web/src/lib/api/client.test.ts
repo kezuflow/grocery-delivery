@@ -45,6 +45,7 @@ describe("web API client", () => {
       status: 503,
       code: "SERVICE_UNAVAILABLE",
       message: "try later",
+      correlationId: "test-correlation",
     });
   });
 

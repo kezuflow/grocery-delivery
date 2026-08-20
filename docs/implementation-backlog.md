@@ -393,6 +393,18 @@ and focused contract/repository coverage protects inactive and duplicate behavio
 Next resume point: add customer/support/refund/audit admin surfaces, then continue deployable
 workers and launch observability.
 
+Current increment: permission-scoped audit and refund administration
+
+Completion record: reporting administrators can read bounded server-owned audit history through a
+new repository read boundary, while finance administrators can issue refunds from the existing
+idempotent payment command. The admin dashboard now loads only surfaces covered by the current
+permission set, avoiding unrelated 403 responses blanking the entire console. Refund retries keep
+their idempotency key until success, and API errors retain the correlation ID for actionable support
+and incident tracing. Focused typechecks, lint, and existing API refund coverage pass.
+
+Next resume point: add customer/support case workflows and alert projections, then continue Slice
+018 deployable queue/cron/workflow entrypoints.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

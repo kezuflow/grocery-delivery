@@ -50,6 +50,13 @@ export const auditEventSchema = z.object({
   metadata: z.record(z.string(), z.string()),
 });
 
+export const adminAuditResponseSchema = z.object({
+  data: z.object({ events: z.array(auditEventSchema) }),
+  meta: responseMetaSchema,
+});
+
+export type AdminAuditResponse = z.infer<typeof adminAuditResponseSchema>;
+
 export const accountProfileSchema = z.object({
   userId: z.string().min(1),
   email: z.string().email(),

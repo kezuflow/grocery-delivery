@@ -141,6 +141,7 @@ export const openApiDocument: OpenApiDocument = {
       "Read operational projections",
       "get",
     ),
+    "/api/v1/admin/audit": protectedOperation("Read audit history", "get"),
     "/api/v1/admin/payments/refunds": protectedOperation("Refund a payment", "post"),
     "/api/v1/admin/promotion-banners": {
       ...protectedOperation("List promotion banners", "get"),

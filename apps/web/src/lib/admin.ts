@@ -5,6 +5,7 @@ import type {
   OperationalProjectionResponse,
   ProcurementResponse,
   PromotionAdminListResponse,
+  AdminAuditResponse,
 } from "@carbon/contracts";
 
 import { createApiClient } from "./api/client";
@@ -15,25 +16,30 @@ export type AdminDashboardData = Readonly<{
   procurement: ProcurementResponse["data"] | null;
   dispatch: DispatchResponse["data"] | null;
   promotions: PromotionAdminListResponse["data"]["promotions"];
+  auditEvents: AdminAuditResponse["data"]["events"];
   error: string | null;
 }>;
 
-export async function loadAdminDashboard(): Promise<AdminDashboardData> {
+export async function loadAdminDashboard(
+  permissions: readonly string[],
+): Promise<AdminDashboardData> {
   const cookieHeader = (await cookies()).toString();
   const client = createApiClient(createRuntimeApiTransport());
   const init: RequestInit = { headers: { cookie: cookieHeader } };
   try {
-    const [projection, procurement, dispatch, promotions] = await Promise.all([
-      client.getAdminProjection(init),
-      client.getAdminProcurement(init),
-      client.getAdminDispatch(init),
-      client.listAdminPromotions(init),
+    const [projection, procurement, dispatch, promotions, audit] = await Promise.all([
+      permissions.includes("reporting") ? client.getAdminProjection(init) : null,
+      permissions.includes("procurement") ? client.getAdminProcurement(init) : null,
+      permissions.includes("dispatch") ? client.getAdminDispatch(init) : null,
+      permissions.includes("marketing") ? client.listAdminPromotions(init) : null,
+      permissions.includes("reporting") ? client.getAdminAudit(init) : null,
     ]);
     return {
-      projection: projection.data,
-      procurement: procurement.data,
-      dispatch: dispatch.data,
-      promotions: promotions.data.promotions,
+      projection: projection?.data ?? null,
+      procurement: procurement?.data ?? null,
+      dispatch: dispatch?.data ?? null,
+      promotions: promotions?.data.promotions ?? [],
+      auditEvents: audit?.data.events ?? [],
       error: null,
     };
   } catch {
@@ -42,6 +48,7 @@ export async function loadAdminDashboard(): Promise<AdminDashboardData> {
       procurement: null,
       dispatch: null,
       promotions: [],
+      auditEvents: [],
       error: "The operations dashboard is temporarily unavailable.",
     };
   }
