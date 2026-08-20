@@ -1786,6 +1786,14 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       ...input.data,
       updatedAt: now().toISOString(),
     });
+    await saveOptionalAudit(options.identityRepository, bindings, {
+      actorUserId: session.userId,
+      action: "notification_preferences.updated",
+      targetType: "customer",
+      targetId: session.customerId,
+      occurredAt: value.updatedAt,
+      metadata: { correlationId: context.get("correlationId") },
+    });
     const body = { data: value, meta: { correlationId: context.get("correlationId") } };
     notificationPreferencesResponseSchema.parse(body);
     return context.json(body, 200);
@@ -1897,6 +1905,14 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       updatedAt: timestamp,
     };
     await repository.save(record);
+    await saveOptionalAudit(options.identityRepository, bindings, {
+      actorUserId: session.userId,
+      action: "support_case.created",
+      targetType: "support_case",
+      targetId: record.id,
+      occurredAt: timestamp,
+      metadata: { correlationId: context.get("correlationId") },
+    });
     const body = {
       data: toSupportCaseData(record),
       meta: { correlationId: context.get("correlationId") },
@@ -1994,6 +2010,14 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         404,
       );
     }
+    await saveOptionalAudit(options.identityRepository, bindings, {
+      actorUserId: session.userId,
+      action: "support_case.status_updated",
+      targetType: "support_case",
+      targetId: updated.id,
+      occurredAt: updated.updatedAt,
+      metadata: { status: updated.status, correlationId: context.get("correlationId") },
+    });
     const body = {
       data: toSupportCaseData(updated),
       meta: { correlationId: context.get("correlationId") },
@@ -4460,6 +4484,17 @@ function toSupportCaseData(caseRecord: SupportCase) {
     createdAt: caseRecord.createdAt,
     updatedAt: caseRecord.updatedAt,
   };
+}
+
+async function saveOptionalAudit(
+  configured: AccountIdentityRepository | undefined,
+  bindings: ApiBindings,
+  event: Omit<Parameters<AccountIdentityRepository["saveAuditEvent"]>[0], "id">,
+): Promise<void> {
+  const repository =
+    configured ?? (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+  if (!repository) return;
+  await repository.saveAuditEvent({ id: crypto.randomUUID(), ...event });
 }
 
 function resolveServiceability(
