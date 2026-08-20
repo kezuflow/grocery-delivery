@@ -17,6 +17,8 @@ export interface DeliveryMediaRepository {
   save(record: DeliveryMediaRecord): Promise<DeliveryMediaRecord>;
   findByClientId(clientMediaId: string): Promise<DeliveryMediaRecord | null>;
   listForCustomer(orderId: string, customerId: string): Promise<readonly DeliveryMediaRecord[]>;
+  listCreatedBefore?(cutoff: string, limit: number): Promise<readonly DeliveryMediaRecord[]>;
+  deleteById?(id: string): Promise<boolean>;
 }
 
 export class InMemoryDeliveryMediaRepository implements DeliveryMediaRepository {
@@ -36,6 +38,20 @@ export class InMemoryDeliveryMediaRepository implements DeliveryMediaRepository 
   listForCustomer(orderId: string, customerId: string) {
     if (!customerId.trim()) return Promise.resolve([] as readonly DeliveryMediaRecord[]);
     return Promise.resolve([...this.values.values()].filter((item) => item.orderId === orderId));
+  }
+
+  listCreatedBefore(cutoff: string, limit: number) {
+    return Promise.resolve(
+      [...this.values.values()]
+        .filter((item) => item.createdAt < cutoff)
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+        .slice(0, limit),
+    );
+  }
+
+  deleteById(id: string) {
+    const entry = [...this.values.entries()].find(([, value]) => value.id === id);
+    return Promise.resolve(entry ? this.values.delete(entry[0]) : false);
   }
 }
 
@@ -85,6 +101,28 @@ export class D1DeliveryMediaRepository implements DeliveryMediaRepository {
       .bind(orderId, customerId)
       .all<MediaRow>();
     return rows.results.map(mapMedia);
+  }
+
+  async listCreatedBefore(cutoff: string, limit: number) {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, client_media_id, order_id, assignment_id, uploaded_by_user_id, kind, object_key, content_type, size_bytes, created_at
+         FROM delivery_media WHERE created_at < ? ORDER BY created_at LIMIT ?`,
+      )
+      .bind(cutoff, limit)
+      .all<MediaRow>();
+    return rows.results.map(mapMedia);
+  }
+
+  async deleteById(id: string) {
+    await this.database.batch([
+      this.database.prepare(`DELETE FROM delivery_media WHERE id = ?`).bind(id),
+    ]);
+    const rows = await this.database
+      .prepare(`SELECT id FROM delivery_media WHERE id = ? LIMIT 1`)
+      .bind(id)
+      .all<{ id: string }>();
+    return rows.results.length === 0;
   }
 }
 

@@ -24,6 +24,38 @@ export interface DeliveryMediaSigner {
   }): Promise<Pick<DeliveryMediaDownload, "downloadUrl">>;
 }
 
+/** Storage boundary used by retention workers and delivery-media integrations. */
+export interface DeliveryMediaObjectStore {
+  put(
+    objectKey: string,
+    value: ArrayBuffer | ReadableStream<Uint8Array>,
+    contentType: string,
+  ): Promise<void>;
+  delete(objectKey: string): Promise<void>;
+}
+
+/** Adapter for a Cloudflare R2 bucket. The API still issues signed URLs through a signer. */
+export class R2DeliveryMediaObjectStore implements DeliveryMediaObjectStore {
+  constructor(
+    private readonly bucket: {
+      put(key: string, value: unknown, options?: unknown): Promise<unknown>;
+      delete(key: string): Promise<void>;
+    },
+  ) {}
+
+  async put(
+    objectKey: string,
+    value: ArrayBuffer | ReadableStream<Uint8Array>,
+    contentType: string,
+  ) {
+    await this.bucket.put(objectKey, value, { httpMetadata: { contentType } });
+  }
+
+  delete(objectKey: string) {
+    return this.bucket.delete(objectKey);
+  }
+}
+
 export class DeterministicMediaSigner implements DeliveryMediaSigner {
   constructor(private readonly baseUrl = "https://media.invalid") {}
 
@@ -79,3 +111,5 @@ export class DeterministicPromotionMediaSigner implements PromotionMediaSigner {
     });
   }
 }
+
+export * from "./retention.js";

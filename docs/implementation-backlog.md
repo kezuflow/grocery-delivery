@@ -499,6 +499,14 @@ route data without exposing commerce totals, payment references, or unrelated cu
 Next resume point: implement real R2 media access and retention cleanup, then provider-backed job
 handlers and launch compliance evidence.
 
+Completion record: delivery media repositories now expose bounded retention queries and idempotent
+metadata deletion, while the storage package provides an R2 object-store adapter and a retention
+handler that removes expired proof objects before their database records. This is ready for a
+scheduled retention lane; signed R2 upload/download URL integration remains the next storage step.
+
+Next resume point: wire the R2 bucket and signed URL implementation into the API and jobs runtime,
+then add concrete provider-backed notification/payment/retention event handlers.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

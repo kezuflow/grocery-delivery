@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@carbon/application": "workspace:*"
+    "@carbon/application": "workspace:*",
+    "@carbon/db": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",

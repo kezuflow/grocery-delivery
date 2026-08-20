@@ -296,6 +296,9 @@ importers:
       '@carbon/application':
         specifier: workspace:*
         version: link:../application
+      '@carbon/db':
+        specifier: workspace:*
+        version: link:../db
     devDependencies:
       typescript:
         specifier: 'catalog:'
