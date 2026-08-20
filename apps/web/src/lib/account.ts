@@ -6,6 +6,7 @@ import type {
   DeliveryAddressResponse,
   DeliveryWindowsResponse,
   PlansListResponse,
+  PaymentHistoryResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
 
@@ -18,6 +19,7 @@ export type CustomerAccountData = Readonly<{
   deliveryWindows: DeliveryWindowsResponse["data"];
   cart: CartResponse["data"];
   plans: PlansListResponse["data"]["plans"];
+  paymentHistory: PaymentHistoryResponse["data"]["entries"];
   catalog: CatalogListResponse["data"];
   error: string | null;
 }>;
@@ -41,7 +43,7 @@ export async function resolveCustomerAccount(
   const init: RequestInit = { headers: { cookie: cookieHeader } };
 
   try {
-    const [subscription, cart, deliveryAddress, deliveryWindows, plans, catalog] =
+    const [subscription, cart, deliveryAddress, deliveryWindows, plans, catalog, paymentHistory] =
       await Promise.all([
         client.getCurrentSubscription(init).catch((error: unknown) => {
           if (error instanceof ApiClientError && error.status === 404) return null;
@@ -52,6 +54,7 @@ export async function resolveCustomerAccount(
         client.getDeliveryWindows(init),
         client.listPlans(),
         client.listCatalog(100),
+        client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
       ]);
     return {
       subscription: subscription?.data ?? null,
@@ -60,6 +63,7 @@ export async function resolveCustomerAccount(
       cart: cart.data,
       plans: plans.data.plans,
       catalog: catalog.data,
+      paymentHistory: paymentHistory.data.entries,
       error: null,
     };
   } catch {
@@ -70,6 +74,7 @@ export async function resolveCustomerAccount(
       cart: emptyCart,
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },
+      paymentHistory: [],
       error: "We could not load your account right now. Please try again shortly.",
     };
   }

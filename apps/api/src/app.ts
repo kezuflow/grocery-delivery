@@ -68,6 +68,7 @@ import {
   paymentMethodRevocationRequestSchema,
   paymentMethodListResponseSchema,
   paymentMethodResponseSchema,
+  paymentHistoryResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
@@ -2365,6 +2366,51 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       meta: { correlationId: context.get("correlationId") },
     };
     paymentMethodListResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/payments/history", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const paymentService =
+      options.paymentService ??
+      (bindings.DB && options.paymentProvider
+        ? new DefaultPaymentService(new D1PaymentRepository(bindings.DB), options.paymentProvider)
+        : undefined);
+    if (!paymentService)
+      return context.json(
+        errorResponse(
+          "PAYMENT_UNAVAILABLE",
+          "payment history is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const entries = await paymentService.listPaymentHistory(session.customerId);
+    const body = {
+      data: {
+        entries: entries.map((entry) => ({
+          id: entry.id,
+          kind: entry.kind,
+          orderId: entry.orderId,
+          paymentAttemptId: entry.paymentAttemptId,
+          amount: entry.amount,
+          status: entry.status,
+          occurredAt: entry.occurredAt,
+        })),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    paymentHistoryResponseSchema.parse(body);
     return context.json(body, 200);
   });
 

@@ -7,6 +7,7 @@ import {
   type PaymentAttempt,
   type PaymentLedgerEntry,
   type PaymentMethod,
+  type PaymentHistoryEntry,
   type PaymentMethodRevocation,
   type PaymentRepository,
   type PaymentWebhookEvent,
@@ -112,6 +113,32 @@ export class D1PaymentRepository implements PaymentRepository {
       .bind(customerId)
       .all<PaymentMethodRow>();
     return rows.results.map(mapPaymentMethod);
+  }
+
+  async listPaymentHistory(customerId: string): Promise<readonly PaymentHistoryEntry[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT a.id, a.customer_id, 'charge' AS kind, a.order_id, a.id AS payment_attempt_id,
+              a.amount_centavos, a.status, a.updated_at AS occurred_at
+       FROM payment_attempts a WHERE a.customer_id = ?
+       UNION ALL
+       SELECT r.id, r.customer_id, 'refund' AS kind, NULL AS order_id, r.payment_attempt_id,
+              r.amount_centavos, r.status, r.updated_at AS occurred_at
+       FROM payment_refunds r WHERE r.customer_id = ?
+       ORDER BY occurred_at DESC, id DESC`,
+      )
+      .bind(customerId, customerId)
+      .all<PaymentHistoryRow>();
+    return rows.results.map((row) => ({
+      id: row.id,
+      customerId: row.customer_id,
+      kind: row.kind,
+      orderId: row.order_id,
+      paymentAttemptId: row.payment_attempt_id,
+      amount: { centavos: row.amount_centavos, currency: "PHP" },
+      status: row.status,
+      occurredAt: row.occurred_at,
+    }));
   }
 
   async savePaymentMethod(method: PaymentMethod): Promise<void> {
@@ -568,4 +595,15 @@ type RefundRow = Record<string, unknown> & {
   request_fingerprint: string;
   created_at: string;
   updated_at: string;
+};
+
+type PaymentHistoryRow = Record<string, unknown> & {
+  id: string;
+  customer_id: string;
+  kind: "charge" | "refund";
+  order_id: string | null;
+  payment_attempt_id: string | null;
+  amount_centavos: number;
+  status: "pending" | "succeeded" | "failed";
+  occurred_at: string;
 };

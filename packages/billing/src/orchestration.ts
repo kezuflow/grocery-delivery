@@ -9,6 +9,7 @@ import {
   type PaymentAttempt,
   type PaymentLedgerEntry,
   type PaymentMethod,
+  type PaymentHistoryEntry,
   type PaymentMethodRevocation,
   type PaymentRepository,
   type Refund,
@@ -65,6 +66,7 @@ export type PaymentWebhookResult = Readonly<{
 export interface PaymentService {
   addPaymentMethod(input: AddPaymentMethodInput): Promise<PaymentMethod>;
   listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]>;
+  listPaymentHistory(customerId: string): Promise<readonly PaymentHistoryEntry[]>;
   revokePaymentMethod(input: RevokePaymentMethodInput): Promise<PaymentMethod>;
   charge(input: ChargePaymentInput): Promise<PaymentAttempt>;
   refund(input: RefundPaymentInput): Promise<Refund>;
@@ -115,6 +117,10 @@ export class DefaultPaymentService implements PaymentService {
 
   listPaymentMethods(customerId: string): Promise<readonly PaymentMethod[]> {
     return this.repository.listPaymentMethods(customerId);
+  }
+
+  listPaymentHistory(customerId: string): Promise<readonly PaymentHistoryEntry[]> {
+    return this.repository.listPaymentHistory(customerId);
   }
 
   async revokePaymentMethod(input: RevokePaymentMethodInput): Promise<PaymentMethod> {

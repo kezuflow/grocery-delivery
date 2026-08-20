@@ -17,6 +17,7 @@ import {
   orderCreateRequestSchema,
   orderResponseSchema,
   plansListResponseSchema,
+  paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionCreateRequestSchema,
   subscriptionResponseSchema,
@@ -35,6 +36,7 @@ import {
   type OrderCreateRequest,
   type OrderResponse,
   type PlansListResponse,
+  type PaymentHistoryResponse,
   type SubscriptionActionRequest,
   type SubscriptionCreateRequest,
   type SubscriptionResponse,
@@ -82,6 +84,9 @@ export function createApiClient(transport: ApiTransport) {
     },
     getCurrentSubscription(init?: RequestInit): Promise<SubscriptionResponse> {
       return getJson(transport, "/api/v1/subscription", subscriptionResponseSchema, init);
+    },
+    getPaymentHistory(init?: RequestInit): Promise<PaymentHistoryResponse> {
+      return getJson(transport, "/api/v1/payments/history", paymentHistoryResponseSchema, init);
     },
     createSubscription(
       input: SubscriptionCreateRequest,

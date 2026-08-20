@@ -82,6 +82,17 @@ export type PaymentLedgerEntry = Readonly<{
   metadata: Readonly<Record<string, unknown>>;
 }>;
 
+export type PaymentHistoryEntry = Readonly<{
+  id: string;
+  customerId: string;
+  kind: "charge" | "refund";
+  orderId: string | null;
+  paymentAttemptId: string | null;
+  amount: Money;
+  status: "pending" | "succeeded" | "failed";
+  occurredAt: string;
+}>;
+
 export type ReconciliationDiscrepancy = Readonly<{
   id: string;
   providerName: string;
@@ -143,6 +154,7 @@ export interface PaymentRepository {
   ): Promise<readonly PaymentAttempt[]>;
   listRefunds(providerName: string, from: string, to: string): Promise<readonly Refund[]>;
   saveReconciliationDiscrepancy(discrepancy: ReconciliationDiscrepancy): Promise<void>;
+  listPaymentHistory(customerId: string): Promise<readonly PaymentHistoryEntry[]>;
 }
 
 export function createPaymentAttempt(input: PaymentAttempt): PaymentAttempt {
@@ -366,6 +378,38 @@ export class InMemoryPaymentRepository implements PaymentRepository {
 
   get reconciliationDiscrepancies(): readonly ReconciliationDiscrepancy[] {
     return [...this.discrepancies.values()];
+  }
+
+  listPaymentHistory(customerId: string): Promise<readonly PaymentHistoryEntry[]> {
+    const charges: PaymentHistoryEntry[] = [...this.attempts.values()]
+      .filter((attempt) => attempt.customerId === customerId)
+      .map((attempt) => ({
+        id: attempt.id,
+        customerId,
+        kind: "charge",
+        orderId: attempt.orderId,
+        paymentAttemptId: attempt.id,
+        amount: createMoney(attempt.amount.centavos),
+        status: attempt.status,
+        occurredAt: attempt.updatedAt,
+      }));
+    const refunds: PaymentHistoryEntry[] = [...this.refunds.values()]
+      .filter((refund) => refund.customerId === customerId)
+      .map((refund) => ({
+        id: refund.id,
+        customerId,
+        kind: "refund",
+        orderId: null,
+        paymentAttemptId: refund.paymentAttemptId,
+        amount: createMoney(refund.amount.centavos),
+        status: refund.status,
+        occurredAt: refund.updatedAt,
+      }));
+    return Promise.resolve(
+      [...charges, ...refunds].sort((left, right) =>
+        right.occurredAt.localeCompare(left.occurredAt),
+      ),
+    );
   }
 }
 

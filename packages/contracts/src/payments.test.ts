@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   paymentAttemptResponseSchema,
+  paymentHistoryResponseSchema,
   paymentChargeRequestSchema,
   paymentMethodRequestSchema,
   paymentMethodListResponseSchema,
@@ -11,6 +12,26 @@ import {
 } from "./payments.js";
 
 describe("payment contracts", () => {
+  it("validates server-owned customer payment history", () => {
+    expect(
+      paymentHistoryResponseSchema.parse({
+        data: {
+          entries: [
+            {
+              id: "charge-1",
+              kind: "charge",
+              orderId: "order-1",
+              paymentAttemptId: "charge-1",
+              amount: { centavos: 6900, currency: "PHP" },
+              status: "succeeded",
+              occurredAt: "2026-08-20T10:00:00.000Z",
+            },
+          ],
+        },
+        meta: { correlationId: "correlation-1" },
+      }),
+    ).toMatchObject({ data: { entries: [{ kind: "charge" }] } });
+  });
   it("accepts charge requests without a client amount", () => {
     expect(
       paymentChargeRequestSchema.parse({

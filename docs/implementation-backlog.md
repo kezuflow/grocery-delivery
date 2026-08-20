@@ -281,6 +281,15 @@ exponential retry delays are covered by focused tests. Billing tests, lint, and 
 Next resume point: add durable payment-attempt history reads and customer payment UI, then implement
 the server-owned promotion and coupon rule engine before wiring checkout totals.
 
+Completion record: customer payment history is now a server-owned read across the billing, D1,
+contract, API, and web boundaries. Charge and refund records are normalized from durable attempts and
+refunds, scoped to the authenticated customer, sorted newest-first, and rendered in the account shell
+without provider references or client-supplied totals. Focused repository, contract, API-client, and
+web tests plus the complete `pnpm check` pass.
+
+Next resume point: implement the server-owned promotion and coupon rule engine, including eligibility,
+budgets, redemption idempotency, and non-stacking before adding checkout coupon controls.
+
 ### Slice 016: Immutable order fulfillment and cutoff enforcement
 
 Scope:

@@ -248,6 +248,29 @@ a {
   margin: 0;
 }
 
+.account-history {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-history li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-history small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
 .subscription-actions {
   border-top: 1px solid var(--line);
   margin-top: 22px;

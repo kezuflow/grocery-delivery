@@ -175,6 +175,30 @@ export default async function AccountPage() {
           </article>
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">
+              <p className="eyebrow">Payment history</p>
+              <span>{account.paymentHistory.length} records</span>
+            </div>
+            {account.paymentHistory.length === 0 ? (
+              <div className="account-empty">
+                <h2>No payment records yet</h2>
+                <p>Completed charges and refunds will appear here.</p>
+              </div>
+            ) : (
+              <ul className="account-history">
+                {account.paymentHistory.map((entry) => (
+                  <li key={entry.id}>
+                    <span>{entry.kind === "charge" ? "Weekly charge" : "Refund"}</span>
+                    <strong>{formatPrice(entry.amount.centavos)}</strong>
+                    <small>
+                      {entry.status} · {new Date(entry.occurredAt).toLocaleDateString("en-PH")}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+          <article className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
               <p className="eyebrow">Delivery window</p>
               <span>{account.deliveryWindows.selectedWindowId ? "selected" : "not selected"}</span>
             </div>

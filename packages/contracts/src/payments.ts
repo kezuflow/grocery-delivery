@@ -5,6 +5,20 @@ import { responseMetaSchema } from "./system";
 export const paymentAttemptStatusSchema = z.enum(["pending", "succeeded", "failed"]);
 export const paymentMethodTypeSchema = z.enum(["card", "bank_account", "ewallet"]);
 export const paymentMethodStatusSchema = z.enum(["active", "revoked"]);
+export const paymentHistoryEntrySchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["charge", "refund"]),
+  orderId: z.string().min(1).nullable(),
+  paymentAttemptId: z.string().min(1).nullable(),
+  amount: z.object({ centavos: z.number().int().positive(), currency: z.literal("PHP") }),
+  status: paymentAttemptStatusSchema,
+  occurredAt: z.string().datetime(),
+});
+
+export const paymentHistoryResponseSchema = z.object({
+  data: z.object({ entries: z.array(paymentHistoryEntrySchema) }),
+  meta: responseMetaSchema,
+});
 
 export const paymentAttemptSchema = z.object({
   id: z.string().min(1),
@@ -92,3 +106,4 @@ export type PaymentMethodListResponse = z.infer<typeof paymentMethodListResponse
 export type PaymentMethodRevocationRequest = z.infer<typeof paymentMethodRevocationRequestSchema>;
 export type PaymentRefundResponse = z.infer<typeof paymentRefundResponseSchema>;
 export type PaymentWebhookResponse = z.infer<typeof paymentWebhookResponseSchema>;
+export type PaymentHistoryResponse = z.infer<typeof paymentHistoryResponseSchema>;
