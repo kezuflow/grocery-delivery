@@ -8,6 +8,7 @@ import {
 } from "@carbon/auth";
 import {
   DefaultCartLockService,
+  evaluateOrderCutoff,
   DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
   DefaultSubscriptionCreationService,
@@ -2080,6 +2081,17 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           context.get("correlationId"),
         ),
         401,
+      );
+    }
+    const cutoff = evaluateOrderCutoff(now());
+    if (!cutoff.allowed) {
+      return context.json(
+        errorResponse(
+          "ORDER_CUTOFF_PASSED",
+          `orders for ${cutoff.cycleId} closed at ${cutoff.cutoffAt}`,
+          context.get("correlationId"),
+        ),
+        409,
       );
     }
     const idempotencyKey = context.req.header("idempotency-key");

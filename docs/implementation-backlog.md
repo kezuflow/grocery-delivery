@@ -301,6 +301,17 @@ controls that feed server-calculated checkout totals.
 
 ### Slice 016: Immutable order fulfillment and cutoff enforcement
 
+Current increment: server-side order cutoff enforcement
+
+Completion record: order creation now evaluates the server clock against the Manila weekly-cycle
+cutoff before reading or clearing the cart. Requests at or after the cutoff return stable
+`ORDER_CUTOFF_PASSED` errors with the affected cycle and cutoff timestamp; the cart remains intact.
+The reusable application cutoff policy has focused boundary tests, and the complete `pnpm check`
+passes.
+
+Next resume point: snapshot delivery address, delivery window, cycle, payment state, and applied
+promotion details into immutable locked orders.
+
 Scope:
 
 - Snapshot delivery address, delivery window, cycle, plan/credit, fees, and payment state into the

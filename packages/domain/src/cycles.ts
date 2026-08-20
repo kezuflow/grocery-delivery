@@ -10,7 +10,11 @@ export type WeeklyCycle = Readonly<{
   timeZone: typeof CYCLE_TIME_ZONE;
 }>;
 
-export function assignWeeklyCycle(now: Date, cutoffHour = DEFAULT_CYCLE_CUTOFF_HOUR): WeeklyCycle {
+/** Returns the cycle for the local week before applying cutoff rollover. */
+export function getWeeklyCycleWindow(
+  now: Date,
+  cutoffHour = DEFAULT_CYCLE_CUTOFF_HOUR,
+): WeeklyCycle {
   if (Number.isNaN(now.getTime())) {
     throw new DomainValidationError("INVALID_CYCLE_TIME", "cycle assignment requires a valid date");
   }
@@ -21,22 +25,29 @@ export function assignWeeklyCycle(now: Date, cutoffHour = DEFAULT_CYCLE_CUTOFF_H
   const local = manilaDateParts(now);
   const currentDate = new Date(Date.UTC(local.year, local.month - 1, local.day));
   const daysUntilSaturday = (6 - currentDate.getUTCDay() + 7) % 7;
-  let deliveryDate = addDays(currentDate, daysUntilSaturday);
-  const cutoffDate = addDays(deliveryDate, -1);
-  const cutoffAt = manilaTimestamp(cutoffDate, cutoffHour);
+  const deliveryDate = addDays(currentDate, daysUntilSaturday);
+  return createWeeklyCycle(deliveryDate, cutoffHour);
+}
 
-  if (now.getTime() >= cutoffAt.getTime()) {
-    deliveryDate = addDays(deliveryDate, 7);
+export function assignWeeklyCycle(now: Date, cutoffHour = DEFAULT_CYCLE_CUTOFF_HOUR): WeeklyCycle {
+  const cycle = getWeeklyCycleWindow(now, cutoffHour);
+
+  if (now.getTime() < Date.parse(cycle.cutoffAt)) {
+    return cycle;
   }
 
-  const finalCutoffDate = addDays(deliveryDate, -1);
-  const finalCutoffAt = manilaTimestamp(finalCutoffDate, cutoffHour);
+  return createWeeklyCycle(addDays(new Date(`${cycle.deliveryDate}T00:00:00.000Z`), 7), cutoffHour);
+}
+
+function createWeeklyCycle(deliveryDate: Date, cutoffHour: number): WeeklyCycle {
+  const cutoffDate = addDays(deliveryDate, -1);
+  const cutoffAt = manilaTimestamp(cutoffDate, cutoffHour);
   const deliveryDateText = isoDate(deliveryDate);
 
   return Object.freeze({
     id: `cycle-${deliveryDateText}`,
     deliveryDate: deliveryDateText,
-    cutoffAt: finalCutoffAt.toISOString(),
+    cutoffAt: cutoffAt.toISOString(),
     timeZone: CYCLE_TIME_ZONE,
   });
 }

@@ -1401,6 +1401,55 @@ describe("API worker", () => {
     await expect(cartRepository.findByCustomerId("customer-1")).resolves.toBeNull();
   });
 
+  it("rejects a saved cart after cutoff without clearing it", async () => {
+    const cartRepository = new InMemoryCartRepository();
+    await cartRepository.save({
+      customerId: "customer-1",
+      lines: [{ skuId: "sku-bananas", quantity: 1 }],
+      updatedAt: "2026-08-21T09:00:00.000Z",
+    });
+    const orderApp = createApi({
+      now: () => new Date("2026-08-21T10:00:00.000Z"),
+      sink: () => undefined,
+      cartRepository,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      planLookup: new InMemoryPlanReader(),
+      orderLockService: new DefaultCartLockService(
+        new InMemoryOrderRepository(),
+        new InMemoryOutboxPublisher(),
+      ),
+      subscriptionReader: new InMemorySubscriptionReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-22T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await orderApp.request("/api/v1/orders", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "checkout-cutoff" },
+      body: JSON.stringify({}),
+    });
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(409);
+    expect(body.error.code).toBe("ORDER_CUTOFF_PASSED");
+    expect(body.error.message).toContain("cycle-2026-08-22");
+    await expect(cartRepository.findByCustomerId("customer-1")).resolves.toMatchObject({
+      customerId: "customer-1",
+    });
+  });
+
   it("charges a locked order using its server-side total and accepts signed webhooks", async () => {
     const orderRepository = new InMemoryOrderRepository();
     await orderRepository.save(
