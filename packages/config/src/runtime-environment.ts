@@ -40,6 +40,25 @@ export function parseAllowedOrigins(
     .map((origin) => normalizeOrigin(origin, environment));
 }
 
+export function parseConfiguredOrigin(
+  value: string | undefined,
+  key: string,
+  environment: RuntimeEnvironment,
+): string | null {
+  if (!value?.trim()) {
+    return null;
+  }
+
+  try {
+    return normalizeOrigin(value.trim(), environment);
+  } catch (error) {
+    if (error instanceof ConfigurationError) {
+      throw new ConfigurationError(key, error.message.replace("CORS_ORIGINS", key));
+    }
+    throw error;
+  }
+}
+
 function normalizeOrigin(origin: string, environment: RuntimeEnvironment): string {
   let url: URL;
 

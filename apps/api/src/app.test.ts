@@ -179,6 +179,14 @@ describe("API worker", () => {
     expect(body.meta.correlationId).toBe("api-request");
   });
 
+  it("serves the generated OpenAPI document", async () => {
+    const response = await app.request("/openapi.json");
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toContain('"openapi":"3.1.0"');
+    const secondResponse = await app.request("/openapi.json");
+    await expect(secondResponse.text()).resolves.toContain('"/api/v1/orders"');
+  });
+
   it("lists active plan definitions with cache headers", async () => {
     const response = await app.request("/api/v1/plans", undefined, { APP_ENV: "test" });
     const body = plansListResponseSchema.parse(await response.json());
@@ -1484,6 +1492,41 @@ describe("API worker", () => {
     );
 
     expect(response.status).toBe(500);
+  });
+
+  it("requires a configured trusted origin for production mutations", async () => {
+    const response = await app.request(
+      "/api/v1/cart",
+      { method: "PUT", headers: { "content-type": "application/json" }, body: '{"lines":[]}' },
+      { APP_ENV: "production", CORS_ORIGINS: "https://app.example.test" },
+    );
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("ORIGIN_NOT_ALLOWED");
+  });
+
+  it("accepts same-origin production mutations and exempts provider webhooks", async () => {
+    const mutation = await app.request(
+      "/api/v1/cart",
+      {
+        method: "PUT",
+        headers: {
+          origin: "https://app.example.test",
+          "content-type": "application/json",
+        },
+        body: '{"lines":[]}',
+      },
+      { APP_ENV: "production", CORS_ORIGINS: "https://app.example.test" },
+    );
+    const webhook = await app.request(
+      "/api/v1/payments/webhooks/test",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+      { APP_ENV: "production" },
+    );
+
+    expect(mutation.status).not.toBe(403);
+    expect(webhook.status).not.toBe(403);
   });
 
   it("lists active catalog items with bounded cursors and cache headers", async () => {

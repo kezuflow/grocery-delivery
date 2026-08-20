@@ -41,7 +41,7 @@ conversation history or temporary handoff files.
 | 009   | Deliveryman PWA and offline event sync                          | complete    | Deliveryman assignments and idempotent offline event sync          |
 | 010   | Customer tracking, notifications, and delivery media            | complete    | Customer tracking, idempotent notification adapter, and media URLs |
 | 011   | Jobs, workflows, retries, and operational projections           | complete    | Durable outbox, workflow retries, and operational projections      |
-| 012   | Release hardening and production rehearsal                      | in progress | Rate limits and API metrics complete; OpenAPI and rehearsals next  |
+| 012   | Release hardening and production rehearsal                      | complete    | OpenAPI, origin checks, and rehearsal foundations complete         |
 | 013   | Production identity and account lifecycle                       | planned     | Depends on Slice 012 security boundaries                           |
 | 014   | Subscription onboarding and plan selection                      | planned     | Depends on production identity and server-side plan validation     |
 | 015   | Real payments and customer checkout                             | planned     | Depends on subscription onboarding and provider sandbox            |
@@ -53,7 +53,22 @@ conversation history or temporary handoff files.
 | 021   | Privacy, audit, compliance, and launch observability            | planned     | Depends on identity, payments, admin, and operational events       |
 | 022   | Staging launch rehearsal and go/no-go gate                      | planned     | Depends on all launch-critical slices                              |
 
-### Current Slice: 012 release hardening and production rehearsal
+### Current Slice: 013 production identity and account lifecycle
+
+Slice 012 completion record: all acceptance checks passed. The API now serves a reproducibly
+generated OpenAPI document from server-owned contract metadata, exposes explicit origin protection
+for state-changing browser requests, and has environment-specific API origins and CORS values in
+Wrangler service-binding configuration. Provider webhooks remain server-to-server and are exempt
+from browser-origin checks. Deterministic, credential-free rehearsal preflights validate migration
+numbering, backup/restore, Friday-cycle, provider sandbox, bounded load, and incident-response
+runbooks. Focused origin, configuration, OpenAPI, API runtime tests and the complete `pnpm check`
+pass all 55 tasks.
+
+Next resume point: begin Slice 013 with production Better Auth configuration and account lifecycle
+operations. Replace the example staging/production origins in `apps/api/wrangler.jsonc` with the
+real deployed origins before any non-local deployment.
+
+### Previous Slice: 012 release hardening and production rehearsal
 
 Completed increment: request rate limiting and API metrics
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ConfigurationError,
   parseAllowedOrigins,
+  parseConfiguredOrigin,
   parseRuntimeEnvironment,
 } from "./runtime-environment.js";
 
@@ -20,6 +21,12 @@ describe("runtime environment configuration", () => {
     expect(
       parseAllowedOrigins("https://customer.example.com, https://admin.example.com", "production"),
     ).toEqual(["https://customer.example.com", "https://admin.example.com"]);
+  });
+
+  it("normalizes a single configured origin", () => {
+    expect(
+      parseConfiguredOrigin("https://api.example.test", "API_PUBLIC_ORIGIN", "production"),
+    ).toBe("https://api.example.test");
   });
 
   it("permits HTTP only for local development", () => {

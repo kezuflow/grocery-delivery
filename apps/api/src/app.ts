@@ -17,7 +17,11 @@ import {
   type RequestRateLimiter,
   type SubscriptionCommandService,
 } from "@carbon/application";
-import { parseAllowedOrigins, parseRuntimeEnvironment } from "@carbon/config";
+import {
+  parseAllowedOrigins,
+  parseConfiguredOrigin,
+  parseRuntimeEnvironment,
+} from "@carbon/config";
 import {
   catalogListResponseSchema,
   cartResponseSchema,
@@ -70,6 +74,7 @@ import {
   type SubscriptionResponse,
   type PlansListResponse,
   type HealthResponse,
+  openApiDocument,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -154,6 +159,7 @@ export type ApiBindings = Readonly<{
   BETTER_AUTH_URL?: string;
   CATALOG_CACHE_VERSION?: string;
   CORS_ORIGINS?: string;
+  API_PUBLIC_ORIGIN?: string;
   DB?: CatalogDatabase;
   DELIVERY_FEE_CENTAVOS?: string;
   DELIVERY_SERVICE_POSTAL_CODES?: string;
@@ -295,6 +301,43 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   );
 
   app.use("/api/*", async (context, next) => {
+    if (!requiresTrustedOrigin(context.req.method, context.req.path)) {
+      await next();
+      return;
+    }
+
+    const bindings: ApiBindings = context.env ?? {};
+    const environment = parseRuntimeEnvironment(bindings.APP_ENV);
+    if (environment === "development" || environment === "test") {
+      await next();
+      return;
+    }
+
+    const origin = context.req.header("origin");
+    const configuredApiOrigin = parseConfiguredOrigin(
+      bindings.API_PUBLIC_ORIGIN,
+      "API_PUBLIC_ORIGIN",
+      environment,
+    );
+    const trustedOrigins = new Set([
+      ...parseAllowedOrigins(bindings.CORS_ORIGINS, environment),
+      ...(configuredApiOrigin ? [configuredApiOrigin] : []),
+    ]);
+    if (!origin || !trustedOrigins.has(origin)) {
+      return context.json(
+        errorResponse(
+          "ORIGIN_NOT_ALLOWED",
+          "a trusted Origin header is required for this request",
+          context.get("correlationId"),
+        ),
+        403,
+      );
+    }
+
+    await next();
+  });
+
+  app.use("/api/*", async (context, next) => {
     const policy = resolveRateLimitPolicy(context.req.method, context.req.path, rateLimitPolicies);
     if (!policy) {
       await next();
@@ -404,6 +447,10 @@ export function createApi(options: ApiOptions = {}): ApiApp {
 
   app.get("/health", healthHandler);
   app.get("/api/v1/health", healthHandler);
+  app.get("/openapi.json", (context) => {
+    context.header("cache-control", "public, max-age=300");
+    return context.json(openApiDocument, 200);
+  });
 
   app.get("/api/v1/plans", async (context) => {
     const bindings: ApiBindings = context.env ?? {};
@@ -2562,6 +2609,13 @@ function paymentAttemptResponse(
     },
     meta: { correlationId },
   };
+}
+
+function requiresTrustedOrigin(method: string, path: string): boolean {
+  if (["GET", "HEAD", "OPTIONS"].includes(method)) {
+    return false;
+  }
+  return !path.startsWith("/api/v1/payments/webhooks/");
 }
 
 function toDeliveryAddressData(

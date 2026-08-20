@@ -17,7 +17,9 @@
   ],
   "vars": {
     "APP_ENV": "development",
+    "API_PUBLIC_ORIGIN": "http://localhost:8787",
     "AUTH_MODE": "persistent-session",
+    "CORS_ORIGINS": "http://localhost:3000",
     "VERSION": "0.0.0-dev",
     "DELIVERY_FEE_CENTAVOS": "0",
     "PAYMENT_PROVIDER": "fake",
@@ -35,7 +37,9 @@
       ],
       "vars": {
         "APP_ENV": "staging",
+        "API_PUBLIC_ORIGIN": "https://api-staging.carbon-food-delivery.example",
         "AUTH_MODE": "persistent-session",
+        "CORS_ORIGINS": "https://staging.carbon-food-delivery.example",
         "DELIVERY_FEE_CENTAVOS": "0",
         "PAYMENT_PROVIDER": "disabled",
       },
@@ -52,7 +56,9 @@
       ],
       "vars": {
         "APP_ENV": "production",
+        "API_PUBLIC_ORIGIN": "https://api.carbon-food-delivery.example",
         "AUTH_MODE": "persistent-session",
+        "CORS_ORIGINS": "https://carbon-food-delivery.example",
         "DELIVERY_FEE_CENTAVOS": "0",
         "PAYMENT_PROVIDER": "disabled",
       },
