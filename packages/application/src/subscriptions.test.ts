@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createSubscription } from "@carbon/domain";
 import {
   DefaultSubscriptionCommandService,
+  DefaultSubscriptionCreationService,
   InMemoryIdempotencyStore,
   InMemorySubscriptionRepository,
 } from "./subscriptions.js";
@@ -61,5 +62,76 @@ describe("subscription command application", () => {
     await expect(
       service.execute({ ...input, command: { ...input.command, action: "cancel" } }),
     ).rejects.toThrow("different command");
+  });
+
+  it("creates one active subscription from a server-selected plan and replays it", async () => {
+    const repository = new InMemorySubscriptionRepository();
+    const service = new DefaultSubscriptionCreationService(
+      repository,
+      new InMemoryIdempotencyStore(),
+      { findActiveById: (planId) => Promise.resolve({ id: planId }) },
+      () => "subscription-created-1",
+    );
+    const input = {
+      customerId: "customer-1",
+      planId: "plan-medium",
+      idempotencyKey: "create-1",
+      now: "2026-08-20T10:00:00.000Z",
+    };
+
+    const first = await service.execute(input);
+    const replay = await service.execute(input);
+
+    expect(first.status).toBe("active");
+    expect(first.planId).toBe("plan-medium");
+    expect(replay).toEqual(first);
+  });
+
+  it("rejects a second subscription and conflicting idempotency reuse", async () => {
+    const service = new DefaultSubscriptionCreationService(
+      new InMemorySubscriptionRepository(),
+      new InMemoryIdempotencyStore(),
+      { findActiveById: (planId) => Promise.resolve({ id: planId }) },
+      () => "subscription-created-2",
+    );
+    await service.execute({
+      customerId: "customer-1",
+      planId: "plan-small",
+      idempotencyKey: "create-2",
+      now: "2026-08-20T10:00:00.000Z",
+    });
+    await expect(
+      service.execute({
+        customerId: "customer-1",
+        planId: "plan-large",
+        idempotencyKey: "create-2",
+        now: "2026-08-20T10:00:00.000Z",
+      }),
+    ).rejects.toThrow("different command");
+    await expect(
+      service.execute({
+        customerId: "customer-1",
+        planId: "plan-large",
+        idempotencyKey: "create-3",
+        now: "2026-08-20T10:00:00.000Z",
+      }),
+    ).rejects.toThrow("already has a subscription");
+  });
+
+  it("rejects an inactive or unknown plan before persistence", async () => {
+    const service = new DefaultSubscriptionCreationService(
+      new InMemorySubscriptionRepository(),
+      new InMemoryIdempotencyStore(),
+      { findActiveById: () => Promise.resolve(null) },
+    );
+
+    await expect(
+      service.execute({
+        customerId: "customer-1",
+        planId: "plan-retired",
+        idempotencyKey: "create-retired",
+        now: "2026-08-20T10:00:00.000Z",
+      }),
+    ).rejects.toThrow("plan is unavailable");
   });
 });

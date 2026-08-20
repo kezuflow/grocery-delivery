@@ -9,6 +9,7 @@ import { DeliveryAddressEditor } from "./delivery-address-editor";
 import { DeliveryWindowSelector } from "./delivery-window-selector";
 import { PlaceOrderButton } from "./place-order-button";
 import { SubscriptionActions } from "./subscription-actions";
+import { PlanSelector } from "./plan-selector";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,7 @@ export default async function AccountPage() {
                 <a className="button button-small" href="/#plans">
                   View plans
                 </a>
+                <PlanSelector plans={account.plans} />
               </div>
             )}
           </article>

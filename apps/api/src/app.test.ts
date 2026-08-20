@@ -30,6 +30,7 @@ import {
   DefaultCartLockService,
   DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
+  DefaultSubscriptionCreationService,
   InMemoryPlanApprovalRepository,
   InMemoryIdempotencyStore,
   InMemoryOrderRepository,
@@ -507,6 +508,84 @@ describe("API worker", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.status).toBe("paused");
+  });
+
+  it("creates a server-resolved subscription and replays idempotent retries", async () => {
+    const subscriptions = new InMemorySubscriptionRepository();
+    const idempotency = new InMemoryIdempotencyStore();
+    const plans = new InMemoryPlanReader();
+    const lookedUpPlanIds: string[] = [];
+    const subscriptionCreationService = new DefaultSubscriptionCreationService(
+      subscriptions,
+      idempotency,
+      {
+        findActiveById: (planId) => {
+          lookedUpPlanIds.push(planId);
+          return plans.findActiveById(planId);
+        },
+      },
+      () => "subscription-created",
+    );
+    const authenticatedApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-onboarding",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+      subscriptionCreationService,
+    });
+    const request = {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "onboarding-1" },
+      body: JSON.stringify({
+        planId: "plan-small",
+        customerId: "customer-from-browser",
+        weeklyFeeCentavos: 1,
+      }),
+    };
+
+    const first = await authenticatedApp.request("/api/v1/subscription", request);
+    const replay = await authenticatedApp.request("/api/v1/subscription", request);
+    const conflict = await authenticatedApp.request("/api/v1/subscription", {
+      ...request,
+      body: JSON.stringify({ planId: "plan-medium" }),
+    });
+    const unavailable = await authenticatedApp.request("/api/v1/subscription", {
+      ...request,
+      headers: { ...request.headers, "idempotency-key": "onboarding-2" },
+      body: JSON.stringify({ planId: "plan-unavailable" }),
+    });
+    const firstBody = subscriptionResponseSchema.parse(await first.json());
+    const replayBody = subscriptionResponseSchema.parse(await replay.json());
+    const conflictBody = apiErrorResponseSchema.parse(await conflict.json());
+    const unavailableBody = apiErrorResponseSchema.parse(await unavailable.json());
+
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(201);
+    expect(firstBody.data).toMatchObject({
+      id: "subscription-created",
+      customerId: "customer-1",
+      planId: "plan-small",
+      status: "active",
+    });
+    expect(replayBody.data).toEqual(firstBody.data);
+    expect(conflict.status).toBe(409);
+    expect(conflictBody.error.code).toBe("IDEMPOTENCY_KEY_REUSED");
+    expect(unavailable.status).toBe(409);
+    expect(unavailableBody.error.code).toBe("PLAN_UNAVAILABLE");
+    expect(lookedUpPlanIds).toEqual(["plan-small", "plan-unavailable"]);
+    await expect(subscriptions.findByCustomerId("customer-from-browser")).resolves.toBeNull();
   });
 
   it("protects procurement and dispatch operations with scoped admin permissions", async () => {

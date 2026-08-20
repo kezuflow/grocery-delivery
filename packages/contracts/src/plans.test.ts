@@ -5,6 +5,7 @@ import {
   orderResponseSchema,
   planAdminUpsertRequestSchema,
   plansListResponseSchema,
+  subscriptionCreateRequestSchema,
 } from "./plans.js";
 
 describe("plan contracts", () => {
@@ -40,6 +41,15 @@ describe("plan contracts", () => {
         active: true,
       }),
     ).toMatchObject({ code: "family-box" });
+  });
+
+  it("accepts only a server-resolved plan identifier for subscription creation", () => {
+    expect(subscriptionCreateRequestSchema.parse({ planId: "plan-small" })).toEqual({
+      planId: "plan-small",
+    });
+    expect(
+      subscriptionCreateRequestSchema.parse({ planId: "plan-small", weeklyFeeCentavos: 1 }),
+    ).toEqual({ planId: "plan-small" });
   });
 
   it("accepts an order request and immutable order response", () => {

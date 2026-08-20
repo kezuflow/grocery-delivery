@@ -10,12 +10,14 @@ import {
   DefaultCartLockService,
   DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
+  DefaultSubscriptionCreationService,
   InMemoryRequestRateLimiter,
   type CartLockService,
   type PlanApprovalService,
   type RateLimitPolicy,
   type RequestRateLimiter,
   type SubscriptionCommandService,
+  type SubscriptionCreationService,
 } from "@carbon/application";
 import {
   parseAllowedOrigins,
@@ -70,6 +72,7 @@ import {
   paymentRefundResponseSchema,
   paymentWebhookResponseSchema,
   subscriptionActionRequestSchema,
+  subscriptionCreateRequestSchema,
   subscriptionResponseSchema,
   type SubscriptionResponse,
   type PlansListResponse,
@@ -233,6 +236,7 @@ export type ApiOptions = Readonly<{
   rateLimiter?: RequestRateLimiter;
   rateLimitPolicies?: readonly ApiRateLimitPolicy[];
   subscriptionService?: SubscriptionCommandService;
+  subscriptionCreationService?: SubscriptionCreationService;
   version?: string;
 }>;
 
@@ -718,6 +722,90 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         errorResponse("INVALID_PLAN_APPROVAL", message, context.get("correlationId")),
         409,
       );
+    }
+  });
+
+  app.post("/api/v1/subscription", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const planLookup =
+      options.planLookup ?? (bindings.DB ? new D1PlanReader(bindings.DB) : undefined);
+    const creationService =
+      options.subscriptionCreationService ??
+      (bindings.DB && planLookup
+        ? new DefaultSubscriptionCreationService(
+            new D1SubscriptionRepository(bindings.DB),
+            new D1SubscriptionIdempotencyStore(bindings.DB),
+            planLookup,
+          )
+        : undefined);
+    if (!creationService) {
+      return context.json(
+        errorResponse(
+          "SUBSCRIPTION_UNAVAILABLE",
+          "subscription creation is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    const input = subscriptionCreateRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PLAN_SELECTION",
+          "plan selection is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const subscription = await creationService.execute({
+        customerId: session.customerId,
+        planId: input.data.planId,
+        idempotencyKey,
+        now: now().toISOString(),
+      });
+      const body: SubscriptionResponse = {
+        data: subscription,
+        meta: { correlationId: context.get("correlationId") },
+      };
+      subscriptionResponseSchema.parse(body);
+      return context.json(body, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "subscription creation failed";
+      const code = message.includes("idempotency")
+        ? "IDEMPOTENCY_KEY_REUSED"
+        : message.includes("plan is unavailable")
+          ? "PLAN_UNAVAILABLE"
+          : message.includes("already has")
+            ? "SUBSCRIPTION_ALREADY_EXISTS"
+            : "INVALID_PLAN_SELECTION";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
   });
 

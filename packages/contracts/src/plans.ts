@@ -151,6 +151,10 @@ export const subscriptionActionRequestSchema = z.object({
   action: subscriptionActionSchema,
 });
 
+export const subscriptionCreateRequestSchema = z.object({
+  planId: z.string().trim().min(1).max(128),
+});
+
 export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
@@ -162,3 +166,4 @@ export type CartUpdateRequest = z.infer<typeof cartUpdateRequestSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;
 export type SubscriptionActionRequest = z.infer<typeof subscriptionActionRequestSchema>;
+export type SubscriptionCreateRequest = z.infer<typeof subscriptionCreateRequestSchema>;

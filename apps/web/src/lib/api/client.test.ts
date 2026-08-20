@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription\/actions|orders)/,
+        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders)/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -150,6 +150,36 @@ describe("web API client", () => {
     await expect(
       client.performSubscriptionAction({ action: "pause" }, "subscription-action-1"),
     ).resolves.toMatchObject({ data: { status: "paused", lastAction: "pause" } });
+  });
+
+  it("creates a subscription with only a plan identifier", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            id: "subscription-1",
+            customerId: "customer-1",
+            planId: "plan-small",
+            status: "active",
+            skippedCycleId: null,
+            lastAction: null,
+            createdAt: "2026-08-20T00:00:00.000Z",
+            updatedAt: "2026-08-20T00:00:00.000Z",
+          },
+          meta,
+        },
+        201,
+        (init) => {
+          expect(init?.method).toBe("POST");
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe("subscription-create-1");
+          expect(JSON.parse(init?.body as string)).toEqual({ planId: "plan-small" });
+        },
+      ),
+    );
+
+    await expect(
+      client.createSubscription({ planId: "plan-small" }, "subscription-create-1"),
+    ).resolves.toMatchObject({ data: { planId: "plan-small", status: "active" } });
   });
 
   it("creates an order from the saved cart without client commerce fields", async () => {

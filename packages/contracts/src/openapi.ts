@@ -5,12 +5,12 @@ const jsonResponse = (description = "Validated JSON response") => ({
   content: { "application/json": { schema: { $ref: "#/components/schemas/ApiResponse" } } },
 });
 
-const protectedOperation = (summary: string, method = "get") => ({
+const protectedOperation = (summary: string, method = "get", successStatus = "200") => ({
   [method]: {
     summary,
     security: [{ sessionCookie: [] }],
     responses: {
-      "200": jsonResponse(),
+      [successStatus]: jsonResponse(),
       "401": jsonResponse("Authentication is required"),
       "403": jsonResponse("The active session lacks permission"),
       "429": jsonResponse("The request rate limit was exceeded"),
@@ -69,7 +69,10 @@ export const openApiDocument: OpenApiDocument = {
       "post",
     ),
     "/api/v1/account/deletion-eligibility": protectedOperation("Read deletion eligibility", "get"),
-    "/api/v1/subscription": protectedOperation("Read the current subscription", "get"),
+    "/api/v1/subscription": {
+      ...protectedOperation("Read the current subscription", "get"),
+      ...protectedOperation("Create a subscription from an active plan", "post", "201"),
+    },
     "/api/v1/subscription/actions": protectedOperation("Apply a subscription action", "post"),
     "/api/v1/cart": {
       ...protectedOperation("Read the saved cart", "get"),
