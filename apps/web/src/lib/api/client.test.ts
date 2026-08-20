@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders)/,
+        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|admin)/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -46,6 +46,36 @@ describe("web API client", () => {
       code: "SERVICE_UNAVAILABLE",
       message: "try later",
     });
+  });
+
+  it("retries a rate-limited request once after five seconds", async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const client = createApiClient(
+      {
+        fetch: () => {
+          calls += 1;
+          return Promise.resolve(
+            calls === 1
+              ? Response.json(
+                  { error: { code: "RATE_LIMITED", message: "try later" }, meta },
+                  { status: 429 },
+                )
+              : Response.json({ data: { plans: [] }, meta }),
+          );
+        },
+      },
+      {
+        sleep: (milliseconds) => {
+          waits.push(milliseconds);
+          return Promise.resolve();
+        },
+      },
+    );
+
+    await expect(client.listPlans()).resolves.toMatchObject({ data: { plans: [] } });
+    expect(calls).toBe(2);
+    expect(waits).toEqual([5000]);
   });
 
   it("rejects malformed successful payloads before the UI can use them", async () => {

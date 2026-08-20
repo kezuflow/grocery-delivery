@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { loadAdminDashboard } from "../../lib/admin";
 import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
+import { AdminActions } from "./admin-actions";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Operations" };
@@ -91,6 +92,11 @@ export default async function AdminPage() {
               <p className="subscription-note">No campaigns have been created.</p>
             )}
           </section>
+          <AdminActions
+            permissions={auth.session.adminPermissions}
+            procurement={dashboard.procurement}
+            promotions={dashboard.promotions}
+          />
         </section>
       )}
     </main>

@@ -126,7 +126,6 @@ import {
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
   D1PromotionRepository,
-  type PromotionRepository as DbPromotionRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -2382,7 +2381,6 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         ),
         400,
       );
-    const nowIso = now().toISOString();
     const promotion: Promotion = {
       id: crypto.randomUUID(),
       code: normalizePromotionCode(input.data.code),

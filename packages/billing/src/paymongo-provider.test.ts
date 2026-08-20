@@ -62,6 +62,7 @@ describe("PayMongo payment provider", () => {
 
     const failing = new PayMongoPaymentProvider({
       secretKey: "sk_test_secret",
+      sleep: () => Promise.resolve(),
       fetcher: () => Promise.resolve(new Response("no", { status: 429 })),
     });
     await expect(
@@ -73,6 +74,36 @@ describe("PayMongo payment provider", () => {
         idempotencyKey: "charge-1",
       }),
     ).rejects.toMatchObject({ code: "PROVIDER_HTTP_429" });
+  });
+
+  it("retries a rate-limited provider request after five seconds", async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const provider = new PayMongoPaymentProvider({
+      secretKey: "sk_test_secret",
+      sleep: (milliseconds) => {
+        waits.push(milliseconds);
+        return Promise.resolve();
+      },
+      fetcher: () => {
+        calls += 1;
+        return Promise.resolve(
+          calls === 1
+            ? new Response("rate limited", { status: 429 })
+            : Response.json({ data: { id: "cus_123", attributes: {} } }),
+        );
+      },
+    });
+
+    await expect(
+      provider.createCustomer({
+        customerId: "customer-1",
+        email: "a@example.com",
+        idempotencyKey: "customer-1",
+      }),
+    ).resolves.toMatchObject({ reference: "cus_123" });
+    expect(calls).toBe(2);
+    expect(waits).toEqual([5000]);
   });
 
   it("verifies signed webhook bodies", async () => {

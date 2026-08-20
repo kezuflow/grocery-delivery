@@ -25,6 +25,8 @@ export type PayMongoPaymentProviderOptions = Readonly<{
   apiUrl?: string;
   fetcher?: typeof fetch;
   now?: () => Date;
+  sleep?: (milliseconds: number) => Promise<void>;
+  maxRateLimitRetries?: number;
 }>;
 
 const CAPABILITIES: PaymentCapabilities = Object.freeze({
@@ -44,6 +46,8 @@ export class PayMongoPaymentProvider implements PaymentProvider {
   private readonly fetcher: typeof fetch;
   private readonly now: () => Date;
   private readonly secretKey: string;
+  private readonly sleep: (milliseconds: number) => Promise<void>;
+  private readonly maxRateLimitRetries: number;
 
   constructor(options: PayMongoPaymentProviderOptions) {
     if (!options.secretKey.trim()) {
@@ -53,6 +57,10 @@ export class PayMongoPaymentProvider implements PaymentProvider {
     this.fetcher = options.fetcher ?? fetch;
     this.now = options.now ?? (() => new Date());
     this.secretKey = options.secretKey;
+    this.sleep =
+      options.sleep ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.maxRateLimitRetries = options.maxRateLimitRetries ?? 1;
   }
 
   capabilities(): PaymentCapabilities {
@@ -190,16 +198,27 @@ export class PayMongoPaymentProvider implements PaymentProvider {
     idempotencyKey: string | undefined,
     body: unknown,
   ): Promise<Record<string, unknown>> {
-    const response = await this.fetcher(`${this.apiUrl}${path}`, {
-      method,
-      headers: {
-        accept: "application/json",
-        authorization: `Basic ${encodeBase64(`${this.secretKey}:`)}`,
-        ...(body ? { "content-type": "application/json" } : {}),
-        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    const request = () =>
+      this.fetcher(`${this.apiUrl}${path}`, {
+        method,
+        headers: {
+          accept: "application/json",
+          authorization: `Basic ${encodeBase64(`${this.secretKey}:`)}`,
+          ...(body ? { "content-type": "application/json" } : {}),
+          ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+
+    let response = await request();
+    for (
+      let attempt = 0;
+      response.status === 429 && attempt < this.maxRateLimitRetries;
+      attempt += 1
+    ) {
+      await this.sleep(5_000);
+      response = await request();
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok)
       throw new PaymentProviderError(

@@ -22,6 +22,14 @@ import {
   operationalProjectionResponseSchema,
   procurementResponseSchema,
   promotionAdminListResponseSchema,
+  promotionAdminResponseSchema,
+  promotionAdminUpsertRequestSchema,
+  promotionStatusRequestSchema,
+  packingManifestRequestSchema,
+  procurementPurchaseRequestSchema,
+  procurementShortageRequestSchema,
+  procurementSubstitutionRequestSchema,
+  dispatchAssignmentRequestSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
@@ -57,6 +65,11 @@ export type ApiTransport = Readonly<{
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }>;
 
+export type ApiClientOptions = Readonly<{
+  sleep?: (milliseconds: number) => Promise<void>;
+  maxRateLimitRetries?: number;
+}>;
+
 export function createSameOriginApiTransport(
   fetchImplementation: typeof fetch = fetch,
 ): ApiTransport {
@@ -82,7 +95,25 @@ export class ApiClientError extends Error {
   }
 }
 
-export function createApiClient(transport: ApiTransport) {
+export function createApiClient(baseTransport: ApiTransport, options: ApiClientOptions = {}) {
+  const sleep =
+    options.sleep ??
+    ((milliseconds: number) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, milliseconds);
+      }));
+  const maxRateLimitRetries = options.maxRateLimitRetries ?? 1;
+  const transport: ApiTransport = {
+    fetch: async (input, init) => {
+      let attempt = 0;
+      while (true) {
+        const response = await baseTransport.fetch(input, init);
+        if (response.status !== 429 || attempt >= maxRateLimitRetries) return response;
+        attempt += 1;
+        await sleep(5_000);
+      }
+    },
+  };
   return {
     listPlans(): Promise<PlansListResponse> {
       return getJson(transport, "/api/v1/plans", plansListResponseSchema);
@@ -115,6 +146,83 @@ export function createApiClient(transport: ApiTransport) {
     },
     listAdminPromotions(init?: RequestInit): Promise<PromotionAdminListResponse> {
       return getJson(transport, "/api/v1/admin/promotions", promotionAdminListResponseSchema, init);
+    },
+    saveAdminPurchase(input: unknown, init?: RequestInit): Promise<ProcurementResponse> {
+      const payload = procurementPurchaseRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/procurement/purchases",
+        payload,
+        procurementResponseSchema,
+        "PUT",
+        init,
+      );
+    },
+    createAdminShortage(input: unknown, init?: RequestInit): Promise<ProcurementResponse> {
+      const payload = procurementShortageRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/procurement/shortages",
+        payload,
+        procurementResponseSchema,
+        "POST",
+        init,
+      );
+    },
+    createAdminSubstitution(input: unknown, init?: RequestInit): Promise<ProcurementResponse> {
+      const payload = procurementSubstitutionRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/procurement/substitutions",
+        payload,
+        procurementResponseSchema,
+        "POST",
+        init,
+      );
+    },
+    savePackingManifest(input: unknown, init?: RequestInit) {
+      const payload = packingManifestRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/packing/manifests",
+        payload,
+        procurementResponseSchema,
+        "POST",
+        init,
+      );
+    },
+    assignDispatch(input: unknown, init?: RequestInit): Promise<DispatchResponse> {
+      const payload = dispatchAssignmentRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/dispatch",
+        payload,
+        dispatchResponseSchema,
+        "POST",
+        init,
+      );
+    },
+    createAdminPromotion(input: unknown, init?: RequestInit) {
+      const payload = promotionAdminUpsertRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/promotions",
+        payload,
+        promotionAdminResponseSchema,
+        "POST",
+        init,
+      );
+    },
+    updateAdminPromotionStatus(id: string, input: unknown, init?: RequestInit) {
+      const payload = promotionStatusRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        `/api/v1/admin/promotions/${encodeURIComponent(id)}/status`,
+        payload,
+        promotionAdminResponseSchema,
+        "PATCH",
+        init,
+      );
     },
     createSubscription(
       input: SubscriptionCreateRequest,
@@ -294,4 +402,22 @@ async function getJson<T>(
   }
 
   return schema.parse(payload);
+}
+
+async function sendJson<T>(
+  transport: ApiTransport,
+  path: string,
+  payload: unknown,
+  schema: { parse(value: unknown): T },
+  method: string,
+  init?: RequestInit,
+): Promise<T> {
+  const headers = new Headers(init?.headers);
+  headers.set("content-type", "application/json");
+  return getJson(transport, path, schema, {
+    ...init,
+    method,
+    headers,
+    body: JSON.stringify(payload),
+  });
 }
