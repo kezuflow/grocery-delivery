@@ -651,8 +651,14 @@ previous-day reconciliation event and one daily retention event through the dura
 deterministic IDs, so repeated cron runs are safe. Focused API, jobs, DB, notification, storage,
 and application checks pass.
 
-Next resume point: run staging queue retry and dead-letter rehearsal with measured evidence, then
-add provider delivery receipts and notification preference enforcement.
+Completion record: outbox repositories now expose an idempotent dead-letter replay boundary that
+resets only retry state while preserving the original event ID and payload. Jobs coverage verifies
+that replayed events retain their idempotency identity, and the queue retry/dead-letter runbook
+records the required staging evidence. A live rehearsal remains blocked until the configured
+staging Worker and queue are deployed.
+
+Next resume point: deploy staging and run the queue retry/dead-letter rehearsal with measured
+evidence, then add provider delivery receipts and notification preference enforcement.
 
 ### Slice 019: Customer fulfillment, support, and payment history
 

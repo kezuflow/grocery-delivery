@@ -26,6 +26,7 @@ export type OutboxFailureResult = "retry" | "dead_letter" | "ignored";
 
 export interface OutboxRepository {
   schedule?(event: OutboxScheduledEvent): Promise<void>;
+  replayDeadLettered?(id: string, now: string): Promise<boolean>;
   claimPending(input: {
     now: string;
     limit: number;
@@ -68,6 +69,26 @@ export class InMemoryOutboxRepository implements OutboxRepository {
       }),
     );
     return Promise.resolve();
+  }
+
+  replayDeadLettered(id: string, now: string): Promise<boolean> {
+    const event = this.events.get(id);
+    if (!event || event.deadLetteredAt === null || event.publishedAt !== null) {
+      return Promise.resolve(false);
+    }
+    this.events.set(
+      id,
+      Object.freeze({
+        ...event,
+        attempts: 0,
+        claimedAt: null,
+        claimToken: null,
+        nextAttemptAt: now,
+        lastError: null,
+        deadLetteredAt: null,
+      }),
+    );
+    return Promise.resolve(true);
   }
 
   claimPending(input: { now: string; limit: number; leaseSeconds: number; claimToken: string }) {
@@ -151,6 +172,21 @@ export class D1OutboxRepository implements OutboxRepository {
         )
         .bind(event.id, event.eventType, event.aggregateId, event.occurredAt, event.payloadJson),
     ]);
+  }
+
+  async replayDeadLettered(id: string, now: string) {
+    await this.database.batch([
+      this.database
+        .prepare(
+          `UPDATE outbox_events
+           SET attempts = 0, claimed_at = NULL, claim_token = NULL, next_attempt_at = ?,
+               last_error = NULL, dead_lettered_at = NULL
+           WHERE id = ? AND published_at IS NULL AND dead_lettered_at IS NOT NULL`,
+        )
+        .bind(now, id),
+    ]);
+    const event = await this.find(id);
+    return event?.deadLetteredAt === null && event?.attempts === 0;
   }
 
   async claimPending(input: {

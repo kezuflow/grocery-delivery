@@ -147,6 +147,39 @@ describe("outbox job adapter", () => {
     expect(acknowledged).toBe(true);
     expect(retried).toBe(false);
   });
+
+  it("replays a dead-lettered event and preserves its original idempotency identity", async () => {
+    const repository = new InMemoryOutboxRepository([createOutboxEvent()]);
+    await repository.claimPending({
+      now: "2026-08-22T04:00:00.000Z",
+      limit: 1,
+      leaseSeconds: 300,
+      claimToken: "claim-1",
+    });
+    const handler = createOutboxQueueHandler(
+      repository,
+      () => Promise.reject(new Error("provider unavailable")),
+      { now: () => new Date("2026-08-22T04:00:00.000Z"), maxAttempts: 1 },
+    );
+    await handler({
+      messages: [
+        {
+          body: createOutboxMessage("claim-1"),
+          attempts: 1,
+          ack: () => undefined,
+          retry: () => undefined,
+        },
+      ],
+    });
+    await repository.replayDeadLettered("outbox-1", "2026-08-22T04:05:00.000Z");
+    const [replayed] = await repository.claimPending({
+      now: "2026-08-22T04:05:00.000Z",
+      limit: 1,
+      leaseSeconds: 300,
+      claimToken: "claim-2",
+    });
+    expect(replayed?.id).toBe("outbox-1");
+  });
 });
 
 function createOutboxEvent() {

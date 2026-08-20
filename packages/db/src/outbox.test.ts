@@ -88,4 +88,34 @@ describe("outbox repository", () => {
       }),
     ).resolves.toEqual([]);
   });
+
+  it("replays a dead-lettered event with a clean retry budget", async () => {
+    const repository = new InMemoryOutboxRepository([event]);
+    await repository.claimPending({
+      now: "2026-08-22T04:00:00.000Z",
+      limit: 1,
+      leaseSeconds: 300,
+      claimToken: "claim-1",
+    });
+    await expect(
+      repository.markFailed("outbox-1", "claim-1", {
+        now: "2026-08-22T04:00:00.000Z",
+        error: "provider unavailable",
+        maxAttempts: 1,
+        retryDelaySeconds: 30,
+      }),
+    ).resolves.toBe("dead_letter");
+
+    await expect(
+      repository.replayDeadLettered("outbox-1", "2026-08-22T04:05:00.000Z"),
+    ).resolves.toBe(true);
+    await expect(
+      repository.claimPending({
+        now: "2026-08-22T04:05:00.000Z",
+        limit: 1,
+        leaseSeconds: 300,
+        claimToken: "claim-2",
+      }),
+    ).resolves.toHaveLength(1);
+  });
 });
