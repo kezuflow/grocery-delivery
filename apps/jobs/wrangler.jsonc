@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "carbon-food-delivery-jobs",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-08-18",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "carbon-food-delivery-development",
+      "database_id": "7c4d107e-87dc-43ed-9ea2-52f0435aa9aa",
+      "migrations_dir": "../../packages/db/migrations",
+    },
+  ],
+  "queues": {
+    "producers": [{ "binding": "OUTBOX_QUEUE", "queue": "carbon-food-delivery-outbox" }],
+    "consumers": [
+      { "queue": "carbon-food-delivery-outbox", "max_batch_size": 25, "max_retries": 5 },
+    ],
+  },
+  "triggers": { "crons": ["*/5 * * * *"] },
+}

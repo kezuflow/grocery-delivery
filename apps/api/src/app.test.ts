@@ -2144,7 +2144,7 @@ describe("API worker", () => {
     });
     const response = await auditApp.request("/api/v1/admin/audit?limit=1");
     expect(response.status).toBe(200);
-    expect((await response.json()) as unknown).toMatchObject({
+    expect(await response.json()).toMatchObject({
       data: { events: [{ id: "audit-1" }] },
     });
   });

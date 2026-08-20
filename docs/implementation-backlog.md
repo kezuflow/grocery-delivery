@@ -405,6 +405,18 @@ and incident tracing. Focused typechecks, lint, and existing API refund coverage
 Next resume point: add customer/support case workflows and alert projections, then continue Slice
 018 deployable queue/cron/workflow entrypoints.
 
+Current increment: deployable jobs and workflow worker shells
+
+Completion record: `@carbon/jobs` now exports a framework-neutral worker shell that connects the
+existing outbox dispatcher and queue handler to scheduled and queue-triggered entrypoints. Wrangler
+configuration declares the D1 binding, outbox queue producer/consumer, bounded retries, and a
+five-minute dispatch cron. A workflow Wrangler configuration declares the weekly operations binding
+while the existing workflow class retains explicit step retries and correlation-aware input.
+Focused jobs tests and the complete monorepo check pass.
+
+Next resume point: wire real D1/Queue factories and notification/payment processors in deployed
+environments, then add customer support cases and alert projections.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

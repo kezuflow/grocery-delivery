@@ -189,3 +189,5 @@ function failureFor(
 function retryDelay(attempts: number, baseSeconds: number, maxSeconds: number): number {
   return Math.min(maxSeconds, baseSeconds * 2 ** Math.max(0, attempts - 1));
 }
+
+export * from "./worker.js";

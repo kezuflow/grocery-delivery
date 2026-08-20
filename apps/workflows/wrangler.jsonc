@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "carbon-food-delivery-workflows",
+  "main": "dist/index.js",
+  "compatibility_date": "2026-08-18",
+  "workflows": [
+    {
+      "name": "weekly-operations",
+      "binding": "WEEKLY_OPERATIONS",
+      "class_name": "WeeklyOperationsWorkflow",
+    },
+  ],
+}
