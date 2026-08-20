@@ -30,19 +30,24 @@ const checks = {
     const wrangler = await readFile(new URL("apps/api/wrangler.jsonc", root), "utf8");
     for (const environment of ["staging", "production"]) {
       const start = wrangler.indexOf(`"${environment}"`);
-      const end = environment === "staging" ? wrangler.indexOf('"production"', start) : wrangler.length;
-      if (start < 0 || end <= start) throw new Error(`${environment} API environment configuration is missing`);
+      const end =
+        environment === "staging" ? wrangler.indexOf('"production"', start) : wrangler.length;
+      if (start < 0 || end <= start)
+        throw new Error(`${environment} API environment configuration is missing`);
       const value = wrangler.slice(start, end);
       if (!/"PAYMENT_PROVIDER"\s*:\s*"paymongo"/.test(value)) {
         throw new Error(`${environment} must use the PayMongo provider`);
       }
       const fee = value.match(/"DELIVERY_FEE_CENTAVOS"\s*:\s*"(\d+)"/);
-      if (!fee || Number(fee[1]) <= 0) throw new Error(`${environment} delivery fee must be non-zero`);
+      if (!fee || Number(fee[1]) <= 0)
+        throw new Error(`${environment} delivery fee must be non-zero`);
       if (!/"DELIVERY_SERVICE_POSTAL_CODES"\s*:\s*"[^"]+"/.test(value)) {
         throw new Error(`${environment} serviceability postal codes are missing`);
       }
     }
-    console.log("launch configuration rehearsal: staging and production use non-fake payment, pricing, and serviceability settings");
+    console.log(
+      "launch configuration rehearsal: staging and production use non-fake payment, pricing, and serviceability settings",
+    );
   },
   load: async () => {
     await access(new URL("docs/runbooks/load-test.md", root));
