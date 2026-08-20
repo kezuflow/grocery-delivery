@@ -723,6 +723,12 @@ describe("API worker", () => {
     expect(projection.status).toBe(200);
     const projectionBody = operationalProjectionResponseSchema.parse(await projection.json());
     expect(projectionBody.data.cycleId).toBe(cycleId);
+    expect(projectionBody.data.alerts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: `${cycleId}:outbox-stale` }),
+        expect.objectContaining({ id: `${cycleId}:procurement-shortages` }),
+      ]),
+    );
 
     const deniedApp = createApi({
       sink: () => undefined,

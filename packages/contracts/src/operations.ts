@@ -102,6 +102,24 @@ export const operationalProjectionResponseSchema = z.object({
       openShortages: z.number().int().nonnegative(),
       exceptionalManifests: z.number().int().nonnegative(),
     }),
+    alerts: z.array(
+      z.object({
+        id: z.string().min(1),
+        type: z.enum([
+          "outbox-dead-lettered",
+          "outbox-backlog",
+          "outbox-stale",
+          "delivery-failures",
+          "procurement-shortages",
+          "packing-exceptions",
+        ]),
+        severity: z.enum(["warning", "critical"]),
+        cycleId: z.string().min(1),
+        message: z.string().min(1),
+        observedValue: z.number().int().nonnegative(),
+        threshold: z.number().int().positive(),
+      }),
+    ),
   }),
   meta: responseMetaSchema,
 });

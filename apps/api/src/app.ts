@@ -14,6 +14,8 @@ import {
   DefaultSubscriptionCommandService,
   DefaultSubscriptionCreationService,
   InMemoryRequestRateLimiter,
+  createOperationalAlerts,
+  type OperationalAlertThresholds,
   type CartLockService,
   type PlanApprovalService,
   type RateLimitPolicy,
@@ -218,6 +220,12 @@ export type ApiBindings = Readonly<{
   VERSION?: string;
   MEDIA_BASE_URL?: string;
   PROMOTION_MEDIA_BASE_URL?: string;
+  OPERATIONAL_ALERT_PENDING_COUNT?: string;
+  OPERATIONAL_ALERT_PENDING_AGE_SECONDS?: string;
+  OPERATIONAL_ALERT_DEAD_LETTERED_COUNT?: string;
+  OPERATIONAL_ALERT_FAILED_DELIVERY_COUNT?: string;
+  OPERATIONAL_ALERT_OPEN_SHORTAGE_COUNT?: string;
+  OPERATIONAL_ALERT_EXCEPTIONAL_MANIFEST_COUNT?: string;
 }>;
 
 type ApiVariables = {
@@ -253,6 +261,7 @@ export type ApiOptions = Readonly<{
   procurementRepository?: ProcurementRepository;
   dispatchRepository?: DispatchRepository;
   operationalProjectionRepository?: OperationalProjectionRepository;
+  operationalAlertThresholds?: Partial<OperationalAlertThresholds>;
   identityRepository?: AccountIdentityRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
@@ -1713,8 +1722,15 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     }
     const cycleId = assignWeeklyCycle(now()).id;
+    const projection = await repository.get(cycleId, now().toISOString());
     const body = {
-      data: await repository.get(cycleId, now().toISOString()),
+      data: {
+        ...projection,
+        alerts: createOperationalAlerts(projection, {
+          ...readOperationalAlertThresholds(bindings),
+          ...options.operationalAlertThresholds,
+        }),
+      },
       meta: { correlationId: context.get("correlationId") },
     };
     operationalProjectionResponseSchema.parse(body);
@@ -4207,6 +4223,48 @@ function resolveDeliveryFeeCentavos(
   const value =
     configured ?? (bindings.DELIVERY_FEE_CENTAVOS ? Number(bindings.DELIVERY_FEE_CENTAVOS) : 0);
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function readOperationalAlertThresholds(
+  bindings: ApiBindings,
+): Partial<OperationalAlertThresholds> {
+  const thresholds: Partial<OperationalAlertThresholds> = {};
+  addThreshold(thresholds, "pendingOutboxCount", bindings.OPERATIONAL_ALERT_PENDING_COUNT);
+  addThreshold(
+    thresholds,
+    "pendingOutboxAgeSeconds",
+    bindings.OPERATIONAL_ALERT_PENDING_AGE_SECONDS,
+  );
+  addThreshold(
+    thresholds,
+    "deadLetteredOutboxCount",
+    bindings.OPERATIONAL_ALERT_DEAD_LETTERED_COUNT,
+  );
+  addThreshold(thresholds, "failedDeliveryCount", bindings.OPERATIONAL_ALERT_FAILED_DELIVERY_COUNT);
+  addThreshold(thresholds, "openShortageCount", bindings.OPERATIONAL_ALERT_OPEN_SHORTAGE_COUNT);
+  addThreshold(
+    thresholds,
+    "exceptionalManifestCount",
+    bindings.OPERATIONAL_ALERT_EXCEPTIONAL_MANIFEST_COUNT,
+  );
+  return thresholds;
+}
+
+function addThreshold(
+  thresholds: Partial<OperationalAlertThresholds>,
+  key: keyof OperationalAlertThresholds,
+  value: string | undefined,
+): void {
+  const parsed = readPositiveInteger(value);
+  if (parsed !== undefined) {
+    (thresholds as { -readonly [K in keyof OperationalAlertThresholds]?: number })[key] = parsed;
+  }
+}
+
+function readPositiveInteger(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function checkoutQuoteBody(

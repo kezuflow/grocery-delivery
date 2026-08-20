@@ -54,6 +54,29 @@ export default async function AdminPage() {
             title="Assignments"
             value={String(dashboard.projection?.delivery.totalAssignments ?? 0)}
           />
+          {auth.session.adminPermissions.includes("reporting") ? (
+            <section className="account-panel account-panel-wide">
+              <div className="account-panel-heading">
+                <p className="eyebrow">Operational alerts</p>
+                <span>{dashboard.projection?.alerts.length ?? 0} active</span>
+              </div>
+              {dashboard.projection?.alerts.length ? (
+                <ul className="account-history operational-alerts">
+                  {dashboard.projection.alerts.map((alert) => (
+                    <li key={alert.id}>
+                      <span>{alert.message}</span>
+                      <strong data-severity={alert.severity}>{alert.severity}</strong>
+                      <small>
+                        Observed {alert.observedValue}; alert threshold {alert.threshold}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="subscription-note">No operational alerts are active.</p>
+              )}
+            </section>
+          ) : null}
           <section className="account-panel account-panel-wide">
             <div className="account-panel-heading">
               <p className="eyebrow">Packing</p>

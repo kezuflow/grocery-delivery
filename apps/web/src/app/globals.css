@@ -303,6 +303,14 @@ a {
   text-transform: capitalize;
 }
 
+.operational-alerts strong[data-severity="critical"] {
+  color: #a83228;
+}
+
+.operational-alerts strong[data-severity="warning"] {
+  color: #9a6414;
+}
+
 .subscription-actions {
   border-top: 1px solid var(--line);
   margin-top: 22px;
