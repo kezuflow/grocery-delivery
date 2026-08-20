@@ -862,8 +862,8 @@ describe("API worker", () => {
       clientEventId: "client-event-1",
       assignmentId: "assignment-1",
       orderId: "order-1",
-      type: "delivered",
-      occurredAt: "2026-08-22T04:00:00.000Z",
+      type: "picked_up",
+      occurredAt: "2026-08-22T02:00:00.000Z",
     };
     const first = await deliverymanApp.request("/api/v1/deliveryman/events", {
       method: "POST",

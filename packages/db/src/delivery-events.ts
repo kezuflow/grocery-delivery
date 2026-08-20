@@ -50,6 +50,10 @@ export class InMemoryDeliveryEventRepository implements DeliveryEventRepository 
     ) {
       return Promise.reject(new Error("delivery assignment was not found"));
     }
+    validateSequence(
+      [...this.events.values()].filter((item) => item.assignmentId === normalized.assignmentId),
+      normalized,
+    );
     this.events.set(normalized.clientEventId, normalized);
     const latestEvent = [...this.events.values()]
       .filter((item) => item.assignmentId === normalized.assignmentId)
@@ -97,16 +101,24 @@ export class D1DeliveryEventRepository implements DeliveryEventRepository {
     const normalized = createDeliveryEvent(event);
     const existing = await this.database
       .prepare(
-        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note FROM delivery_events WHERE client_event_id = ? LIMIT 1`,
+        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note, failure_reason FROM delivery_events WHERE client_event_id = ? LIMIT 1`,
       )
       .bind(normalized.clientEventId)
       .all<EventRow>();
     if (existing.results[0]) return mapEvent(existing.results[0]);
+    const previous = await this.database
+      .prepare(
+        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note, failure_reason
+         FROM delivery_events WHERE assignment_id = ? ORDER BY occurred_at`,
+      )
+      .bind(normalized.assignmentId)
+      .all<EventRow>();
+    validateSequence(previous.results.map(mapEvent), normalized);
     await this.database.batch([
       this.database
         .prepare(
-          `INSERT INTO delivery_events (id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note)
-           SELECT ?, ?, a.id, a.order_id, a.deliveryman_user_id, ?, ?, ?, ?
+          `INSERT INTO delivery_events (id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note, failure_reason)
+           SELECT ?, ?, a.id, a.order_id, a.deliveryman_user_id, ?, ?, ?, ?, ?
            FROM dispatch_assignments a
            WHERE a.id = ? AND a.order_id = ? AND a.deliveryman_user_id = ?`,
         )
@@ -117,6 +129,7 @@ export class D1DeliveryEventRepository implements DeliveryEventRepository {
           normalized.occurredAt,
           normalized.receivedAt,
           normalized.note,
+          normalized.failureReason,
           normalized.assignmentId,
           normalized.orderId,
           normalized.deliverymanUserId,
@@ -140,7 +153,7 @@ export class D1DeliveryEventRepository implements DeliveryEventRepository {
     ]);
     const saved = await this.database
       .prepare(
-        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note FROM delivery_events WHERE client_event_id = ? LIMIT 1`,
+        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note, failure_reason FROM delivery_events WHERE client_event_id = ? LIMIT 1`,
       )
       .bind(normalized.clientEventId)
       .all<EventRow>();
@@ -151,7 +164,7 @@ export class D1DeliveryEventRepository implements DeliveryEventRepository {
   async listEvents(assignmentId: string, deliverymanUserId: string) {
     const rows = await this.database
       .prepare(
-        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note FROM delivery_events WHERE assignment_id = ? AND deliveryman_user_id = ? ORDER BY occurred_at`,
+        `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note, failure_reason FROM delivery_events WHERE assignment_id = ? AND deliveryman_user_id = ? ORDER BY occurred_at`,
       )
       .bind(assignmentId, deliverymanUserId)
       .all<EventRow>();
@@ -179,6 +192,7 @@ type EventRow = {
   occurred_at: string;
   received_at: string;
   note: string | null;
+  failure_reason: DeliveryEvent["failureReason"];
 };
 const mapAssignment = (row: AssignmentRow): DeliverymanAssignment => ({
   id: row.id,
@@ -201,7 +215,30 @@ const mapEvent = (row: EventRow): DeliveryEvent =>
     occurredAt: row.occurred_at,
     receivedAt: row.received_at,
     note: row.note,
+    failureReason: row.failure_reason,
   });
+
+function validateSequence(events: readonly DeliveryEvent[], next: DeliveryEvent): void {
+  const latest = [...events]
+    .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt))
+    .at(-1);
+  if (!latest) {
+    if (next.type !== "picked_up") throw new Error("delivery must begin with picked_up");
+    return;
+  }
+  if (latest.type === "delivered" || latest.type === "failed") {
+    throw new Error("delivery is already terminal");
+  }
+  const allowed: Record<DeliveryEventType, readonly DeliveryEventType[]> = {
+    picked_up: ["arrived"],
+    arrived: ["delivered", "failed"],
+    delivered: [],
+    failed: [],
+  };
+  if (!allowed[latest.type].includes(next.type)) {
+    throw new Error(`delivery event ${next.type} must follow ${latest.type}`);
+  }
+}
 
 function statusForEvent(type: DeliveryEventType): DeliverymanAssignment["status"] {
   switch (type) {

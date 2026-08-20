@@ -2,6 +2,12 @@ import { z } from "zod";
 import { responseMetaSchema } from "./system";
 
 export const deliveryEventTypeSchema = z.enum(["picked_up", "arrived", "delivered", "failed"]);
+export const deliveryFailureReasonSchema = z.enum([
+  "customer_unavailable",
+  "address_inaccessible",
+  "damaged_order",
+  "other",
+]);
 export const deliverymanAssignmentSchema = z.object({
   id: z.string().min(1),
   cycleId: z.string().min(1),
@@ -22,6 +28,7 @@ export const deliveryEventSchema = z.object({
   occurredAt: z.string().datetime(),
   receivedAt: z.string().datetime(),
   note: z.string().max(500).nullable(),
+  failureReason: deliveryFailureReasonSchema.nullable(),
 });
 export const deliverymanAssignmentsResponseSchema = z.object({
   data: z.object({ cycleId: z.string().min(1), assignments: z.array(deliverymanAssignmentSchema) }),
@@ -37,6 +44,10 @@ export const deliveryEventRequestSchema = z.object({
     .string()
     .trim()
     .max(500)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+  failureReason: deliveryFailureReasonSchema
     .nullable()
     .optional()
     .transform((value) => value ?? null),

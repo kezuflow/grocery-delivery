@@ -461,6 +461,17 @@ pass.
 Next resume point: add concrete provider-backed notification/payment/retention handlers and finish
 delivery-staff production controls.
 
+Current increment: delivery event sequencing and failure reasons
+
+Completion record: delivery events now follow the server-enforced sequence picked-up, arrived, then
+delivered or failed. Terminal assignments reject further events, failed deliveries require one of a
+bounded set of reason codes, and D1 stores the reason in migration `0031`. Offline event IDs remain
+idempotent, while the delivery console exposes only the next valid actions. Focused domain, DB, API,
+contract, and web checks pass.
+
+Next resume point: add route/customer minimum-data projections, real storage retention handlers, and
+the remaining compliance and staging go/no-go evidence.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

@@ -2,6 +2,13 @@ import { DomainValidationError } from "./errors.js";
 
 export const DELIVERY_EVENT_TYPES = ["picked_up", "arrived", "delivered", "failed"] as const;
 export type DeliveryEventType = (typeof DELIVERY_EVENT_TYPES)[number];
+export const DELIVERY_FAILURE_REASONS = [
+  "customer_unavailable",
+  "address_inaccessible",
+  "damaged_order",
+  "other",
+] as const;
+export type DeliveryFailureReason = (typeof DELIVERY_FAILURE_REASONS)[number];
 
 export type DeliveryEvent = Readonly<{
   id: string;
@@ -13,6 +20,7 @@ export type DeliveryEvent = Readonly<{
   occurredAt: string;
   receivedAt: string;
   note: string | null;
+  failureReason: DeliveryFailureReason | null;
 }>;
 
 export function createDeliveryEvent(input: DeliveryEvent): DeliveryEvent {
@@ -29,6 +37,18 @@ export function createDeliveryEvent(input: DeliveryEvent): DeliveryEvent {
   }
   if (!DELIVERY_EVENT_TYPES.includes(input.type)) {
     throw new DomainValidationError("INVALID_DELIVERY_EVENT_TYPE", "invalid delivery event type");
+  }
+  if (input.type === "failed" && !input.failureReason) {
+    throw new DomainValidationError(
+      "MISSING_DELIVERY_FAILURE_REASON",
+      "failed deliveries require a reason",
+    );
+  }
+  if (input.type !== "failed" && input.failureReason !== null) {
+    throw new DomainValidationError(
+      "INVALID_DELIVERY_FAILURE_REASON",
+      "only failed deliveries may include a reason",
+    );
   }
   assertIso(input.occurredAt, "delivery event occurredAt");
   assertIso(input.receivedAt, "delivery event receivedAt");

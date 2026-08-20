@@ -49,7 +49,7 @@ export class D1DeliveryTrackingRepository implements DeliveryTrackingRepository 
     const eventRows = row.assignment_id
       ? await this.database
           .prepare(
-            `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note
+            `SELECT id, client_event_id, assignment_id, order_id, deliveryman_user_id, type, occurred_at, received_at, note, failure_reason
              FROM delivery_events WHERE assignment_id = ? ORDER BY occurred_at ASC`,
           )
           .bind(row.assignment_id)
@@ -66,6 +66,7 @@ export class D1DeliveryTrackingRepository implements DeliveryTrackingRepository 
         occurredAt: event.occurred_at,
         receivedAt: event.received_at,
         note: event.note,
+        failureReason: event.failure_reason,
       }),
     );
     return createDeliveryTracking({
@@ -102,4 +103,5 @@ type EventRow = Pick<DeliveryEvent, "id" | "type" | "note"> & {
   deliveryman_user_id: string;
   occurred_at: string;
   received_at: string;
+  failure_reason: DeliveryEvent["failureReason"];
 };

@@ -2267,6 +2267,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           occurredAt: input.data.occurredAt,
           receivedAt: now().toISOString(),
           note: input.data.note,
+          failureReason: input.data.failureReason,
         }),
       );
       if (options.notificationSender) {

@@ -59,6 +59,7 @@ export function DeliverymanConsole({
       type,
       occurredAt: new Date().toISOString(),
       note: null,
+      failureReason: type === "failed" ? "other" : null,
     };
     setQueued((current) => [...current, event]);
     setMessage(
@@ -117,16 +118,18 @@ export function DeliverymanConsole({
                 <p className="subscription-note">{assignment.lastEventType ?? assignment.status}</p>
               </div>
               <div className="deliveryman-actions">
-                {eventTypes.map((type) => (
-                  <button
-                    className="button button-small"
-                    key={type}
-                    onClick={() => record(assignment, type)}
-                    type="button"
-                  >
-                    {type.replace("_", " ")}
-                  </button>
-                ))}
+                {eventTypes
+                  .filter((type) => isNextEvent(assignment.lastEventType, type))
+                  .map((type) => (
+                    <button
+                      className="button button-small"
+                      key={type}
+                      onClick={() => record(assignment, type)}
+                      type="button"
+                    >
+                      {type.replace("_", " ")}
+                    </button>
+                  ))}
               </div>
             </article>
           ))
@@ -134,4 +137,14 @@ export function DeliverymanConsole({
       </section>
     </main>
   );
+}
+
+function isNextEvent(
+  previous: (typeof eventTypes)[number] | null,
+  next: (typeof eventTypes)[number],
+) {
+  if (previous === null) return next === "picked_up";
+  if (previous === "picked_up") return next === "arrived";
+  if (previous === "arrived") return next === "delivered" || next === "failed";
+  return false;
 }
