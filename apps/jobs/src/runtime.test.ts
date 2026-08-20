@@ -8,8 +8,11 @@ describe("jobs runtime composition", () => {
     const processor = createEventProcessor(
       {
         EVENT_PROCESSOR: {
-          fetch: () => {
+          fetch: (_input, init) => {
             calls += 1;
+            if (calls === 1) {
+              expect(new Headers(init?.headers).get("x-event-processor")).toBe("notification");
+            }
             return Promise.resolve(new Response(null, { status: calls === 1 ? 429 : 204 }));
           },
         },

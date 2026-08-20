@@ -450,6 +450,17 @@ contracts validate every response. Focused DB, API, and web checks pass.
 Next resume point: add explicit notification/payment/retention processors, then complete remaining
 customer fulfillment and delivery-staff production controls.
 
+Current increment: explicit outbox processor lanes
+
+Completion record: jobs now classify order/delivery events into notification, payment, and retention
+processor lanes and send the server-owned lane through the internal event-processor binding. Unknown
+event types fail before acknowledgement, while the existing outbox claim, retry, dead-letter, and
+five-second 429 retry path remains authoritative. Focused jobs tests and the complete monorepo check
+pass.
+
+Next resume point: add concrete provider-backed notification/payment/retention handlers and finish
+delivery-staff production controls.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

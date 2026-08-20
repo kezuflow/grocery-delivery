@@ -1,5 +1,6 @@
 import { D1OutboxRepository, type CatalogDatabase } from "@carbon/db";
 import { createJobsWorker, type OutboxJobMessage } from "./index.js";
+import { resolveEventProcessorKind } from "./processors.js";
 
 export type JobsBindings = Readonly<{
   DB: CatalogDatabase;
@@ -25,6 +26,7 @@ export function createEventProcessor(
         headers: {
           "content-type": "application/json",
           "x-correlation-id": message.correlationId,
+          "x-event-processor": resolveEventProcessorKind(message.eventType),
         },
         body: JSON.stringify(message),
       });
