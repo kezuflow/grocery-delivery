@@ -66,6 +66,13 @@ export const openApiDocument: OpenApiDocument = {
         responses: { "200": jsonResponse(), "400": jsonResponse("Invalid placement") },
       },
     },
+    "/api/v1/promotions/banners/analytics": {
+      post: {
+        tags: ["customer"],
+        summary: "Record a bounded promotion banner event",
+        responses: { "202": jsonResponse(), "400": jsonResponse("Invalid analytics event") },
+      },
+    },
     "/api/v1/me": protectedOperation("Read the current session", "get"),
     "/api/v1/account/export": protectedOperation("Export the current account", "get"),
     "/api/v1/account/profile": protectedOperation("Correct the account profile", "put"),

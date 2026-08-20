@@ -104,6 +104,8 @@ import {
   bannerPlacementSchema,
   promotionMediaUploadRequestSchema,
   promotionMediaUploadResponseSchema,
+  promotionBannerAnalyticsRequestSchema,
+  promotionBannerAnalyticsResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -136,6 +138,8 @@ import {
   D1PromotionRepository,
   D1PromotionBannerRepository,
   type PromotionBannerRepository,
+  D1PromotionBannerAnalyticsRepository,
+  type PromotionBannerAnalyticsRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -255,6 +259,7 @@ export type ApiOptions = Readonly<{
   mediaSigner?: DeliveryMediaSigner;
   promotionMediaSigner?: PromotionMediaSigner;
   promotionBannerRepository?: PromotionBannerRepository;
+  promotionBannerAnalyticsRepository?: PromotionBannerAnalyticsRepository;
   serviceablePostalCodes?: readonly string[];
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
@@ -600,6 +605,43 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     context.header("cache-control", "public, max-age=60, stale-while-revalidate=300");
     context.header("etag", `W/"banners-${body.data.cacheVersion}"`);
     return context.json(body, 200);
+  });
+
+  app.post("/api/v1/promotions/banners/analytics", async (context) => {
+    const input = promotionBannerAnalyticsRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_BANNER_ANALYTICS",
+          "banner analytics input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const repository =
+      options.promotionBannerAnalyticsRepository ??
+      (context.env?.DB ? new D1PromotionBannerAnalyticsRepository(context.env.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "BANNER_ANALYTICS_UNAVAILABLE",
+          "banner analytics are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const result = await repository.saveIfActive({
+      ...input.data,
+      occurredAt: now().toISOString(),
+    });
+    const body = {
+      data: { accepted: result !== "ignored", duplicate: result === "duplicate" },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    promotionBannerAnalyticsResponseSchema.parse(body);
+    return context.json(body, 202);
   });
 
   app.post("/api/v1/admin/identity/roles", async (context) => {

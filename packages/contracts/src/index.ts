@@ -13,3 +13,4 @@ export * from "./tracking";
 export * from "./media";
 export * from "./openapi";
 export * from "./banners";
+export * from "./banner-analytics";

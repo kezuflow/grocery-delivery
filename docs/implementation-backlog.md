@@ -382,6 +382,17 @@ checks pass.
 Next resume point: add durable impression/click analytics, then continue admin customer/support,
 refund, audit, and alert surfaces.
 
+Current increment: bounded promotion banner analytics
+
+Completion record: impression and click events now cross a dedicated analytics repository boundary.
+The API accepts only a bounded banner ID, event ID, and event type, records events only while the
+banner is active, deduplicates retries by client event ID, and returns accepted/duplicate state
+without exposing campaign pricing or status controls. Migration `0029` adds the durable event table
+and focused contract/repository coverage protects inactive and duplicate behavior.
+
+Next resume point: add customer/support/refund/audit admin surfaces, then continue deployable
+workers and launch observability.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete
