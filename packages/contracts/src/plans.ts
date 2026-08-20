@@ -169,6 +169,11 @@ export const orderResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const orderListResponseSchema = z.object({
+  data: z.object({ orders: z.array(orderSchema) }),
+  meta: responseMetaSchema,
+});
+
 export const subscriptionStatusSchema = z.enum(["active", "paused", "canceled"]);
 export const subscriptionActionSchema = z.enum([
   "pause",
@@ -217,6 +222,7 @@ export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema
 export type PlanChangeRequestResponse = z.infer<typeof planChangeRequestResponseSchema>;
 export type OrderCreateRequest = z.infer<typeof orderCreateRequestSchema>;
 export type OrderResponse = z.infer<typeof orderResponseSchema>;
+export type OrderListResponse = z.infer<typeof orderListResponseSchema>;
 export type CartResponse = z.infer<typeof cartResponseSchema>;
 export type CartUpdateRequest = z.infer<typeof cartUpdateRequestSchema>;
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;

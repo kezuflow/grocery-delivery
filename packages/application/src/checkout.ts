@@ -6,7 +6,6 @@ import {
   type AppliedPromotionSnapshot,
   type Money,
   type Plan,
-  type PromotionResult,
 } from "@carbon/domain";
 
 import { PromotionRedemptionService, type PromotionRepository } from "./promotions.js";

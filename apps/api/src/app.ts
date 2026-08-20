@@ -65,6 +65,7 @@ import {
   plansListResponseSchema,
   orderCreateRequestSchema,
   orderResponseSchema,
+  orderListResponseSchema,
   couponRequestSchema,
   checkoutQuoteResponseSchema,
   paymentAttemptResponseSchema,
@@ -241,7 +242,7 @@ export type ApiOptions = Readonly<{
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
   promotionRepository?: PromotionRepository;
-  orderReader?: Pick<OrderRepository, "findById" | "updatePaymentState">;
+  orderReader?: Pick<OrderRepository, "findById" | "updatePaymentState" | "listByCustomer">;
   paymentProvider?: PaymentProvider;
   paymentService?: PaymentService;
   deliveryFeeCentavos?: number;
@@ -1729,6 +1730,24 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           409,
         );
       }
+      const procurementRepository =
+        options.procurementRepository ??
+        (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+      if (procurementRepository) {
+        const manifest = (await procurementRepository.listManifests(order.cycleId)).find(
+          (candidate) => candidate.orderId === order.id,
+        );
+        if (!manifest || manifest.status !== "packed") {
+          return context.json(
+            errorResponse(
+              "ORDER_NOT_PACKED",
+              "a packed order is required for dispatch",
+              context.get("correlationId"),
+            ),
+            409,
+          );
+        }
+      }
     }
     const assignment = createDispatchAssignment({
       id: crypto.randomUUID(),
@@ -1928,6 +1947,74 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     const body = { data: tracking, meta: { correlationId: context.get("correlationId") } };
     deliveryTrackingResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/orders", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.orderReader ?? (bindings.DB ? new D1OrderRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    if (!repository?.listByCustomer)
+      return context.json(
+        errorResponse(
+          "ORDERS_UNAVAILABLE",
+          "order history is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const orders = await repository.listByCustomer(session.customerId);
+    const body = {
+      data: {
+        orders: orders.map((order) => ({
+          id: order.id,
+          subscriptionId: order.subscriptionId,
+          planId: order.planId,
+          cycleId: order.cycleId,
+          lines: order.cart.lines,
+          weeklyCredit: order.weeklyCredit,
+          totals: order.totals,
+          appliedPromotion: order.appliedPromotion ?? null,
+          deliveryAddress: order.deliveryAddress
+            ? {
+                recipientName: order.deliveryAddress.recipientName,
+                phone: order.deliveryAddress.phone,
+                line1: order.deliveryAddress.line1,
+                line2: order.deliveryAddress.line2,
+                barangay: order.deliveryAddress.barangay,
+                city: order.deliveryAddress.city,
+                province: order.deliveryAddress.province,
+                postalCode: order.deliveryAddress.postalCode,
+                instructions: order.deliveryAddress.instructions,
+              }
+            : null,
+          deliveryWindow: order.deliveryWindow
+            ? {
+                id: order.deliveryWindow.id,
+                cycleId: order.deliveryWindow.cycleId,
+                label: order.deliveryWindow.label,
+                startsAt: order.deliveryWindow.startsAt,
+                endsAt: order.deliveryWindow.endsAt,
+              }
+            : null,
+          paymentState: order.paymentState ?? "unpaid",
+          status: order.status,
+          lockedAt: order.lockedAt,
+        })),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    orderListResponseSchema.parse(body);
     return context.json(body, 200);
   });
 

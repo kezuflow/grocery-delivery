@@ -20,6 +20,7 @@ export type OrderOutboxEvent = Readonly<{
 
 export interface OrderRepository {
   findById(id: string): Promise<LockedOrder | null>;
+  listByCustomer(customerId: string): Promise<readonly LockedOrder[]>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
   saveAndPublish(order: LockedOrder, event: OrderOutboxEvent): Promise<void>;
@@ -64,6 +65,19 @@ export class D1OrderRepository implements OrderRepository {
       .bind(order.id)
       .all<OrderLineRow>();
     return mapOrder(order, lines.results);
+  }
+
+  async listByCustomer(customerId: string): Promise<readonly LockedOrder[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT id FROM orders
+         WHERE customer_id = ? AND status = 'locked'
+         ORDER BY locked_at DESC`,
+      )
+      .bind(customerId)
+      .all<{ id: string }>();
+    const orders = await Promise.all(rows.results.map((row) => this.findById(row.id)));
+    return orders.filter((order): order is LockedOrder => order !== null);
   }
 
   async findByIdempotencyKey(

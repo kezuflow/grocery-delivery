@@ -13,6 +13,7 @@ import {
 
 export type OrderRepository = Readonly<{
   findById(id: string): Promise<LockedOrder | null>;
+  listByCustomer?(customerId: string): Promise<readonly LockedOrder[]>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
   updatePaymentState?(
@@ -64,6 +65,14 @@ export class InMemoryOrderRepository implements OrderRepository {
 
   findById(id: string): Promise<LockedOrder | null> {
     return Promise.resolve([...this.orders.values()].find((order) => order.id === id) ?? null);
+  }
+
+  listByCustomer(customerId: string): Promise<readonly LockedOrder[]> {
+    return Promise.resolve(
+      [...this.orders.values()]
+        .filter((order) => order.customerId === customerId)
+        .sort((left, right) => right.lockedAt.localeCompare(left.lockedAt)),
+    );
   }
 
   save(order: LockedOrder): Promise<void> {
