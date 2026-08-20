@@ -9,6 +9,7 @@ import type {
   PaymentHistoryResponse,
   SubscriptionResponse,
   SupportCasesResponse,
+  NotificationPreferencesResponse,
 } from "@carbon/contracts";
 
 import { ApiClientError, createApiClient, type ApiTransport } from "./api/client";
@@ -22,6 +23,7 @@ export type CustomerAccountData = Readonly<{
   plans: PlansListResponse["data"]["plans"];
   paymentHistory: PaymentHistoryResponse["data"]["entries"];
   supportCases: SupportCasesResponse["data"]["cases"];
+  notificationPreferences: NotificationPreferencesResponse["data"];
   catalog: CatalogListResponse["data"];
   error: string | null;
 }>;
@@ -54,6 +56,7 @@ export async function resolveCustomerAccount(
       catalog,
       paymentHistory,
       supportCases,
+      notificationPreferences,
     ] = await Promise.all([
       client.getCurrentSubscription(init).catch((error: unknown) => {
         if (error instanceof ApiClientError && error.status === 404) return null;
@@ -66,6 +69,14 @@ export async function resolveCustomerAccount(
       client.listCatalog(100),
       client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
       client.getSupportCases(init).catch(() => ({ data: { cases: [] } })),
+      client.getNotificationPreferences(init).catch(() => ({
+        data: {
+          customerId: "",
+          deliveryUpdates: true,
+          marketing: false,
+          updatedAt: new Date(0).toISOString(),
+        },
+      })),
     ]);
     return {
       subscription: subscription?.data ?? null,
@@ -76,6 +87,7 @@ export async function resolveCustomerAccount(
       catalog: catalog.data,
       paymentHistory: paymentHistory.data.entries,
       supportCases: supportCases.data.cases,
+      notificationPreferences: notificationPreferences.data,
       error: null,
     };
   } catch {
@@ -88,6 +100,12 @@ export async function resolveCustomerAccount(
       catalog: { categories: [], items: [], nextCursor: null },
       paymentHistory: [],
       supportCases: [],
+      notificationPreferences: {
+        customerId: "",
+        deliveryUpdates: true,
+        marketing: false,
+        updatedAt: new Date(0).toISOString(),
+      },
       error: "We could not load your account right now. Please try again shortly.",
     };
   }

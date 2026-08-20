@@ -28,6 +28,7 @@ import {
   activePromotionBannersResponseSchema,
   promotionBannerResponseSchema,
   promotionMediaUploadResponseSchema,
+  notificationPreferencesResponseSchema,
   supportCaseResponseSchema,
   supportCasesResponseSchema,
 } from "@carbon/contracts";
@@ -71,6 +72,7 @@ import {
   InMemoryOperationalProjectionRepository,
   InMemoryPromotionBannerRepository,
   InMemorySupportCaseRepository,
+  InMemoryNotificationPreferencesRepository,
 } from "@carbon/db";
 import { createApi } from "./app.js";
 import { createInMemoryMetricsSink } from "@carbon/observability";
@@ -821,6 +823,44 @@ describe("API worker", () => {
       },
     );
     expect(supportCaseResponseSchema.parse(await updated.json()).data.status).toBe("resolved");
+  });
+
+  it("reads and updates customer-owned notification preferences", async () => {
+    const repository = new InMemoryNotificationPreferencesRepository();
+    const app = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      sink: () => undefined,
+      notificationPreferencesRepository: repository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-customer",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2026-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const defaults = await app.request("/api/v1/notification-preferences");
+    expect(notificationPreferencesResponseSchema.parse(await defaults.json()).data).toMatchObject({
+      deliveryUpdates: true,
+      marketing: false,
+    });
+    const updated = await app.request("/api/v1/notification-preferences", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ deliveryUpdates: false, marketing: true }),
+    });
+    expect(notificationPreferencesResponseSchema.parse(await updated.json()).data).toMatchObject({
+      customerId: "customer-1",
+      deliveryUpdates: false,
+      marketing: true,
+    });
   });
 
   it("scopes deliveryman assignments and deduplicates event retries", async () => {

@@ -5,6 +5,7 @@ export * from "./delivery";
 export * from "./delivery-windows";
 export * from "./operations";
 export * from "./support";
+export * from "./notification-preferences";
 export * from "./deliveryman";
 export * from "./identity";
 export * from "./plans";

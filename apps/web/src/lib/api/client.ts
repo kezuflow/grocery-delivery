@@ -37,6 +37,8 @@ import {
   supportCaseResponseSchema,
   supportCaseStatusRequestSchema,
   supportCasesResponseSchema,
+  notificationPreferencesRequestSchema,
+  notificationPreferencesResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   plansListResponseSchema,
@@ -72,6 +74,7 @@ import {
   type AdminAuditResponse,
   type SupportCaseResponse,
   type SupportCasesResponse,
+  type NotificationPreferencesResponse,
   type PaymentRefundResponse,
 } from "@carbon/contracts";
 
@@ -169,6 +172,28 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getSupportCases(init?: RequestInit): Promise<SupportCasesResponse> {
       return getJson(transport, "/api/v1/support/cases", supportCasesResponseSchema, init);
+    },
+    getNotificationPreferences(init?: RequestInit): Promise<NotificationPreferencesResponse> {
+      return getJson(
+        transport,
+        "/api/v1/notification-preferences",
+        notificationPreferencesResponseSchema,
+        init,
+      );
+    },
+    updateNotificationPreferences(
+      input: unknown,
+      init?: RequestInit,
+    ): Promise<NotificationPreferencesResponse> {
+      const payload = notificationPreferencesRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/notification-preferences",
+        payload,
+        notificationPreferencesResponseSchema,
+        "PUT",
+        init,
+      );
     },
     createSupportCase(
       input: unknown,

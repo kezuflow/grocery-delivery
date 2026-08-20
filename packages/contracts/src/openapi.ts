@@ -146,6 +146,10 @@ export const openApiDocument: OpenApiDocument = {
       ...protectedOperation("List customer support cases", "get"),
       ...protectedOperation("Create a customer support case", "post", "201"),
     },
+    "/api/v1/notification-preferences": {
+      ...protectedOperation("Read notification preferences", "get"),
+      ...protectedOperation("Update notification preferences", "put"),
+    },
     "/api/v1/admin/support/cases": protectedOperation("List support cases", "get"),
     "/api/v1/admin/support/cases/{id}/status": protectedOperation(
       "Update support case status",

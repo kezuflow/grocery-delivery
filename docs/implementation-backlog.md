@@ -472,6 +472,16 @@ contract, and web checks pass.
 Next resume point: add route/customer minimum-data projections, real storage retention handlers, and
 the remaining compliance and staging go/no-go evidence.
 
+Current increment: persisted notification preferences
+
+Completion record: customers now have server-owned delivery-update and marketing notification
+preferences behind protected GET/PUT contracts. Migration `0032` adds one preference record per
+customer, with delivery updates enabled and marketing disabled by default. Repository and API tests
+cover customer isolation and validated updates.
+
+Next resume point: surface preferences in the account UI, then complete provider-backed processors,
+storage retention, compliance evidence, and staging rehearsal.
+
 Completion record: D1 now has forward-only promotion campaign and redemption tables, with server-owned
 rule snapshots, normalized code lookup, customer redemption counts, idempotency restoration, and an
 atomic redemption budget/count update path. Focused repository/application coverage and the complete

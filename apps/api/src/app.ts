@@ -113,6 +113,8 @@ import {
   supportCaseResponseSchema,
   supportCaseStatusRequestSchema,
   supportCasesResponseSchema,
+  notificationPreferencesRequestSchema,
+  notificationPreferencesResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -147,9 +149,11 @@ import {
   type PromotionBannerRepository,
   D1PromotionBannerAnalyticsRepository,
   D1SupportCaseRepository,
+  D1NotificationPreferencesRepository,
   type PromotionBannerAnalyticsRepository,
   type SupportCaseRepository,
   type SupportCase,
+  type NotificationPreferencesRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -270,6 +274,7 @@ export type ApiOptions = Readonly<{
   operationalProjectionRepository?: OperationalProjectionRepository;
   operationalAlertThresholds?: Partial<OperationalAlertThresholds>;
   supportCaseRepository?: SupportCaseRepository;
+  notificationPreferencesRepository?: NotificationPreferencesRepository;
   identityRepository?: AccountIdentityRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
@@ -464,6 +469,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path.startsWith("/api/v1/admin/dispatch") ||
       context.req.path === "/api/v1/admin/operations/projection" ||
       context.req.path.startsWith("/api/v1/support") ||
+      context.req.path === "/api/v1/notification-preferences" ||
       context.req.path.startsWith("/api/v1/deliveryman/") ||
       context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
@@ -1704,6 +1710,87 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       200,
     );
   });
+  app.get("/api/v1/notification-preferences", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.notificationPreferencesRepository ??
+      (bindings.DB ? new D1NotificationPreferencesRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session?.customerId)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "NOTIFICATIONS_UNAVAILABLE",
+          "notification preferences are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const value = (await repository.get(session.customerId)) ?? {
+      customerId: session.customerId,
+      deliveryUpdates: true,
+      marketing: false,
+      updatedAt: now().toISOString(),
+    };
+    const body = { data: value, meta: { correlationId: context.get("correlationId") } };
+    notificationPreferencesResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.put("/api/v1/notification-preferences", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.notificationPreferencesRepository ??
+      (bindings.DB ? new D1NotificationPreferencesRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session?.customerId)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "NOTIFICATIONS_UNAVAILABLE",
+          "notification preferences are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const input = notificationPreferencesRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success)
+      return context.json(
+        errorResponse(
+          "INVALID_NOTIFICATION_PREFERENCES",
+          "notification preferences are invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    const value = await repository.save({
+      customerId: session.customerId,
+      ...input.data,
+      updatedAt: now().toISOString(),
+    });
+    const body = { data: value, meta: { correlationId: context.get("correlationId") } };
+    notificationPreferencesResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
   app.get("/api/v1/support/cases", async (context) => {
     const bindings = context.env ?? {};
     const repository =

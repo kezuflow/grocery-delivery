@@ -11,6 +11,7 @@ import { PlaceOrderButton } from "./place-order-button";
 import { SubscriptionActions } from "./subscription-actions";
 import { PlanSelector } from "./plan-selector";
 import { SupportCaseForm } from "./support-case-form";
+import { NotificationPreferencesForm } from "./notification-preferences-form";
 
 export const dynamic = "force-dynamic";
 
@@ -173,6 +174,12 @@ export default async function AccountPage() {
               </span>
             </div>
             <DeliveryAddressEditor initialAddress={account.deliveryAddress} />
+          </article>
+          <article className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
+              <p className="eyebrow">Notifications</p>
+            </div>
+            <NotificationPreferencesForm initial={account.notificationPreferences} />
           </article>
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">

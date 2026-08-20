@@ -20,3 +20,4 @@ export * from "./subscriptions.js";
 export * from "./promotion-banners.js";
 export * from "./promotion-banner-analytics.js";
 export * from "./support.js";
+export * from "./notification-preferences.js";
