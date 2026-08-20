@@ -1,4 +1,5 @@
 import type { BetterAuthApi } from "@carbon/auth";
+import type { EventProcessor } from "@carbon/application";
 import { FakePaymentProvider, PayMongoPaymentProvider } from "@carbon/billing";
 import type { PaymentProvider } from "@carbon/billing";
 import {
@@ -23,6 +24,10 @@ export type ApiRuntimeFactories = Readonly<{
     configuration: ApiRuntimeConfiguration,
   ) => PaymentProvider;
   createIdentityEmailSender?: () => IdentityEmailSender;
+  createEventProcessor?: (
+    bindings: ApiBindings,
+    configuration: ApiRuntimeConfiguration,
+  ) => EventProcessor;
 }>;
 
 export type ApiWorker = ExportedHandler<ApiBindings>;
@@ -70,10 +75,15 @@ export function createConfiguredApi(
   const configuration = parseApiRuntimeConfiguration(bindings);
   const betterAuthApi = resolveBetterAuthApi(bindings, configuration, factories);
   const paymentProvider = resolvePaymentProvider(bindings, configuration, factories);
+  const eventProcessor = factories.createEventProcessor?.(bindings, configuration);
 
   return createApi({
     ...(betterAuthApi ? { betterAuthApi } : {}),
     ...(paymentProvider ? { paymentProvider } : {}),
+    ...(eventProcessor ? { eventProcessor } : {}),
+    ...(bindings.EVENT_PROCESSOR_TOKEN
+      ? { eventProcessorToken: bindings.EVENT_PROCESSOR_TOKEN }
+      : {}),
   });
 }
 

@@ -66,6 +66,39 @@ describe("API runtime composition", () => {
     await expect(response.text()).resolves.toBe("auth-ok");
   });
 
+  it("composes an injected internal event processor", async () => {
+    const calls: string[] = [];
+    const app = createConfiguredApi(
+      { APP_ENV: "test", EVENT_PROCESSOR_TOKEN: "processor-token" },
+      {
+        createEventProcessor: () => (kind, message) => {
+          calls.push(`${kind}:${message.outboxEventId}`);
+          return Promise.resolve();
+        },
+      },
+    );
+    const response = await app.request("/internal/events/outbox", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-event-processor": "notification",
+        "x-event-processor-token": "processor-token",
+      },
+      body: JSON.stringify({
+        outboxEventId: "event-1",
+        eventType: "order.locked",
+        aggregateId: "order-1",
+        occurredAt: "2026-08-20T00:00:00.000Z",
+        payloadJson: "{}",
+        claimToken: "claim-1",
+        correlationId: "correlation-1",
+      }),
+    });
+
+    expect(response.status).toBe(202);
+    expect(calls).toEqual(["notification:event-1"]);
+  });
+
   it("requires deployed Better Auth to provide identity email delivery", async () => {
     const worker = createApiWorker({
       createBetterAuthApi: () => ({ getSession: () => Promise.resolve(null) }),

@@ -1,13 +1,7 @@
 import type { OutboxJobMessage } from "./index.js";
+import { resolveEventProcessorKind, type EventProcessorKind } from "@carbon/application";
 
-export type EventProcessorKind = "notification" | "payment" | "retention";
-
-export function resolveEventProcessorKind(eventType: string): EventProcessorKind {
-  if (eventType === "order.locked" || eventType.startsWith("delivery.")) return "notification";
-  if (eventType.startsWith("payment.")) return "payment";
-  if (eventType.startsWith("retention.")) return "retention";
-  throw new Error(`unsupported outbox event type: ${eventType}`);
-}
+export { resolveEventProcessorKind, type EventProcessorKind };
 
 export type EventProcessorHandler = (message: OutboxJobMessage) => Promise<void>;
 

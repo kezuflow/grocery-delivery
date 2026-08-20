@@ -15,6 +15,8 @@ import {
   DefaultSubscriptionCreationService,
   InMemoryRequestRateLimiter,
   createOperationalAlerts,
+  parseOutboxProcessingMessage,
+  resolveEventProcessorKind,
   type OperationalAlertThresholds,
   type CartLockService,
   type PlanApprovalService,
@@ -23,6 +25,7 @@ import {
   type SubscriptionCommandService,
   type SubscriptionCreationService,
   type PromotionRepository,
+  type EventProcessor,
 } from "@carbon/application";
 import {
   parseAllowedOrigins,
@@ -229,6 +232,7 @@ export type ApiBindings = Readonly<{
   PAYMONGO_SECRET_KEY?: string;
   PAYMONGO_API_URL?: string;
   VERSION?: string;
+  EVENT_PROCESSOR_TOKEN?: string;
   MEDIA_BASE_URL?: string;
   PROMOTION_MEDIA_BASE_URL?: string;
   OPERATIONAL_ALERT_PENDING_COUNT?: string;
@@ -303,6 +307,8 @@ export type ApiOptions = Readonly<{
   subscriptionService?: SubscriptionCommandService;
   subscriptionCreationService?: SubscriptionCreationService;
   version?: string;
+  eventProcessor?: EventProcessor;
+  eventProcessorToken?: string;
 }>;
 
 export function createApi(options: ApiOptions = {}): ApiApp {
@@ -549,6 +555,105 @@ export function createApi(options: ApiOptions = {}): ApiApp {
 
   app.get("/health", healthHandler);
   app.get("/api/v1/health", healthHandler);
+  app.post("/internal/events/outbox", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const expectedToken = options.eventProcessorToken ?? bindings.EVENT_PROCESSOR_TOKEN;
+    const environment = parseRuntimeEnvironment(bindings.APP_ENV);
+    if (
+      (environment === "staging" || environment === "production") &&
+      (!expectedToken || context.req.header("x-event-processor-token") !== expectedToken)
+    ) {
+      return context.json(
+        errorResponse(
+          "INTERNAL_UNAUTHORIZED",
+          "a valid event processor token is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (expectedToken && context.req.header("x-event-processor-token") !== expectedToken) {
+      return context.json(
+        errorResponse(
+          "INTERNAL_UNAUTHORIZED",
+          "a valid event processor token is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!options.eventProcessor) {
+      return context.json(
+        errorResponse(
+          "EVENT_PROCESSOR_UNAVAILABLE",
+          "event processing is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const requestedKind = context.req.header("x-event-processor");
+    if (!requestedKind) {
+      return context.json(
+        errorResponse(
+          "INVALID_EVENT_PROCESSOR",
+          "event processor lane is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const message = parseOutboxProcessingMessage(await context.req.json().catch(() => null));
+    if (!message) {
+      return context.json(
+        errorResponse(
+          "INVALID_OUTBOX_MESSAGE",
+          "outbox message is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    let kind;
+    try {
+      kind = resolveEventProcessorKind(message.eventType);
+    } catch {
+      return context.json(
+        errorResponse(
+          "INVALID_EVENT_PROCESSOR",
+          "event type is not supported",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    if (requestedKind !== kind) {
+      return context.json(
+        errorResponse(
+          "INVALID_EVENT_PROCESSOR",
+          "event processor lane does not match the event type",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      await options.eventProcessor(kind, message);
+      return context.json(
+        { data: { accepted: true }, meta: { correlationId: context.get("correlationId") } },
+        202,
+      );
+    } catch (error) {
+      return context.json(
+        errorResponse(
+          "EVENT_PROCESSOR_FAILED",
+          error instanceof Error ? error.message : "event processing failed",
+          context.get("correlationId"),
+        ),
+        500,
+      );
+    }
+  });
   app.get("/openapi.json", (context) => {
     context.header("cache-control", "public, max-age=300");
     return context.json(openApiDocument, 200);

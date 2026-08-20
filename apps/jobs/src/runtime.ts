@@ -6,6 +6,7 @@ export type JobsBindings = Readonly<{
   DB: CatalogDatabase;
   OUTBOX_QUEUE: { send(message: OutboxJobMessage): Promise<void> };
   EVENT_PROCESSOR: { fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> };
+  EVENT_PROCESSOR_TOKEN?: string;
 }>;
 
 export type JobsRuntimeOptions = Readonly<{
@@ -13,7 +14,7 @@ export type JobsRuntimeOptions = Readonly<{
 }>;
 
 export function createEventProcessor(
-  bindings: Pick<JobsBindings, "EVENT_PROCESSOR">,
+  bindings: Pick<JobsBindings, "EVENT_PROCESSOR" | "EVENT_PROCESSOR_TOKEN">,
   options: JobsRuntimeOptions = {},
 ) {
   const sleep =
@@ -27,6 +28,9 @@ export function createEventProcessor(
           "content-type": "application/json",
           "x-correlation-id": message.correlationId,
           "x-event-processor": resolveEventProcessorKind(message.eventType),
+          ...(bindings.EVENT_PROCESSOR_TOKEN
+            ? { "x-event-processor-token": bindings.EVENT_PROCESSOR_TOKEN }
+            : {}),
         },
         body: JSON.stringify(message),
       });

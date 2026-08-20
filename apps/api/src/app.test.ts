@@ -78,6 +78,103 @@ import { createApi } from "./app.js";
 import { createInMemoryMetricsSink } from "@carbon/observability";
 
 describe("API worker", () => {
+  it("authenticates and dispatches internal outbox messages by lane", async () => {
+    const calls: string[] = [];
+    const app = createApi({
+      eventProcessorToken: "processor-token",
+      eventProcessor: (kind, message) => {
+        calls.push(`${kind}:${message.outboxEventId}`);
+        return Promise.resolve();
+      },
+    });
+    const request = {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-event-processor": "notification",
+        "x-event-processor-token": "processor-token",
+      },
+      body: JSON.stringify({
+        outboxEventId: "event-1",
+        eventType: "order.locked",
+        aggregateId: "order-1",
+        occurredAt: "2026-08-20T00:00:00.000Z",
+        payloadJson: "{}",
+        claimToken: "claim-1",
+        correlationId: "correlation-1",
+      }),
+    } as const;
+
+    const response = await app.request("/internal/events/outbox", request);
+    expect(response.status).toBe(202);
+    expect(calls).toEqual(["notification:event-1"]);
+  });
+
+  it("rejects internal processor requests with a missing or invalid token", async () => {
+    const app = createApi({
+      eventProcessorToken: "processor-token",
+      eventProcessor: () => Promise.resolve(),
+    });
+    const response = await app.request(
+      "/internal/events/outbox",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-event-processor": "notification",
+        },
+        body: "{}",
+      },
+      { APP_ENV: "staging" },
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("returns actionable validation errors before invoking the handler", async () => {
+    let called = false;
+    const app = createApi({
+      eventProcessor: () => {
+        called = true;
+        return Promise.resolve();
+      },
+    });
+    const response = await app.request("/internal/events/outbox", {
+      method: "POST",
+      headers: { "x-event-processor": "unknown" },
+      body: "{}",
+    });
+    expect(response.status).toBe(400);
+    expect(called).toBe(false);
+  });
+
+  it("rejects lane mismatches and returns processor failures", async () => {
+    const app = createApi({
+      eventProcessor: () => Promise.reject(new Error("provider unavailable")),
+    });
+    const body = JSON.stringify({
+      outboxEventId: "event-1",
+      eventType: "payment.reconcile",
+      aggregateId: "payment-1",
+      occurredAt: "2026-08-20T00:00:00.000Z",
+      payloadJson: "{}",
+      claimToken: "claim-1",
+      correlationId: "correlation-1",
+    });
+    const mismatch = await app.request("/internal/events/outbox", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-event-processor": "notification" },
+      body,
+    });
+    expect(mismatch.status).toBe(400);
+
+    const failed = await app.request("/internal/events/outbox", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-event-processor": "payment" },
+      body,
+    });
+    expect(failed.status).toBe(500);
+  });
+
   it("keeps account lifecycle operations scoped to the active user", async () => {
     const calls: string[] = [];
     const identityRepository = {

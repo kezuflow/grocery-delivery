@@ -102,6 +102,9 @@ importers:
 
   apps/jobs:
     dependencies:
+      '@carbon/application':
+        specifier: workspace:*
+        version: link:../../packages/application
       '@carbon/billing':
         specifier: workspace:*
         version: link:../../packages/billing

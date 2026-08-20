@@ -46,8 +46,8 @@ conversation history or temporary handoff files.
 | 014   | Subscription onboarding and plan selection                      | complete    | Onboarding, effective-cycle lifecycle, and confirmation UX complete                               |
 | 015   | Real payments and customer checkout                             | complete    | `a5469f2` checkout pricing; campaign administration complete                                      |
 | 016   | Immutable order fulfillment and cutoff enforcement              | complete    | `b7fde24`; immutable snapshots, payable/packed dispatch, and order history complete               |
-| 017   | Admin operations console                                        | in progress | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete |
-| 018   | Deployable jobs, queues, workflows, and notifications           | planned     | Depends on outbox and operational workflows                                                       |
+| 017   | Admin operations console                                        | complete    | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete |
+| 018   | Deployable jobs, queues, workflows, and notifications           | in progress | Worker shells and authenticated event-processor handoff complete                                  |
 | 019   | Customer fulfillment, support, and payment history              | planned     | Depends on orders, payments, tracking, and notifications                                          |
 | 020   | Delivery staff production workflow                              | planned     | Depends on immutable orders, dispatch, storage, and offline sync                                  |
 | 021   | Privacy, audit, compliance, and launch observability            | planned     | Depends on identity, payments, admin, and operational events                                      |
@@ -632,6 +632,19 @@ Acceptance checks:
 - Staging can publish, consume, retry, dead-letter, and replay an outbox event without duplication.
 - Cron starts the weekly workflow and every step preserves correlation and idempotency.
 - Failed payment, notification, and retention jobs are observable with bounded retries and alerts.
+
+Current increment: authenticated event-processor handoff
+
+Completion record: jobs now propagate a server-owned event-processor token to the API service
+binding, and the API exposes a framework-independent internal outbox endpoint that validates the
+processor lane and complete message shape before dispatching to an injected handler. Deployed
+staging and production environments must provision `EVENT_PROCESSOR_TOKEN` through Wrangler
+secrets; local and test environments may omit it. Invalid, missing, unavailable, and failed
+processor requests return correlation-aware errors, while successful dispatches return `202`.
+Focused API/jobs tests, typechecks, lint, and the retention test lint correction pass.
+
+Next resume point: compose concrete notification, payment, and R2 retention handlers behind this
+boundary, then run staging queue retry and dead-letter rehearsal with measured evidence.
 
 ### Slice 019: Customer fulfillment, support, and payment history
 
