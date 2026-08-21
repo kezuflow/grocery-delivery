@@ -594,6 +594,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         correlationId: context.get("correlationId"),
       },
     };
+    context.header("cache-control", "no-store");
 
     return context.json(body, 200);
   };

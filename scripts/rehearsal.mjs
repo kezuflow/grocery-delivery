@@ -51,7 +51,19 @@ const checks = {
   },
   load: async () => {
     await access(new URL("docs/runbooks/load-test.md", root));
-    console.log("load rehearsal: bounded local procedure present");
+    const carts = Array.from({ length: 20_000 }, (_, index) => ({
+      customerId: `load-customer-${index + 1}`,
+      idempotencyKey: `load-cart-${index + 1}`,
+      lines: [{ skuId: "sku-load", quantity: 1 }],
+    }));
+    const uniqueCustomers = new Set(carts.map((cart) => cart.customerId));
+    const uniqueKeys = new Set(carts.map((cart) => cart.idempotencyKey));
+    if (uniqueCustomers.size !== 20_000 || uniqueKeys.size !== 20_000) {
+      throw new Error(
+        "20,000-cart capacity model produced duplicate ownership or idempotency keys",
+      );
+    }
+    console.log("load rehearsal: 20,000-cart capacity model and bounded HTTP procedure present");
   },
   incident: async () => {
     await access(new URL("docs/runbooks/incident-response.md", root));

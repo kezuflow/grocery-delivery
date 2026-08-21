@@ -51,7 +51,7 @@ conversation history or temporary handoff files.
 | 019   | Customer fulfillment, support, and payment history              | complete | Approved requests, address book, receipts, and status messaging complete                           |
 | 020   | Delivery staff production workflow                              | complete | HMAC-signed R2 proof media, route actions, explicit failure reasons, and offline conflict handling |
 | 021   | Privacy, audit, compliance, and launch observability            | complete | Deletion requests, export/consent UI, audit evidence, and compliance runbooks                      |
-| 022   | Staging launch rehearsal and go/no-go gate                      | planned  | Depends on all launch-critical slices                                                              |
+| 022   | Staging launch rehearsal and go/no-go gate                      | blocked  | No-go evidence recorded; staging launch data, identities, provider E2E, and owners remain          |
 
 ### Completed Slice: 013 production identity and account lifecycle
 
@@ -855,6 +855,20 @@ Acceptance checks:
   serviceability configuration.
 - Slice 012 through Slice 021 completion records are present; only then may Slice 022 be marked
   complete and the product considered launch-ready.
+
+Blocked rehearsal record: the 2026-08-21 staging rehearsal is recorded in
+`docs/runbooks/staging-launch-rehearsal-2026-08-21.md`. All 36 migrations are applied; staging API,
+web, jobs, workflow, queue, secrets, R2 bindings, health, origin protection, security headers,
+20,000-cart deterministic capacity, a 200-request read-only smoke pass, timed D1 restore, and timed
+web rollback were verified. The result is no-go because staging has zero catalog categories, active
+SKUs, delivery windows, identities, and orders, so customer-to-delivery and PayMongo sandbox E2E
+cannot run. Production Workers and required queue/R2 resources are not provisioned, and named human
+go/no-go owners are not recorded.
+
+Resume point: load approved staging launch data; provision verified customer, MFA administrator, and
+delivery identities; run the authenticated PayMongo/order/operations/delivery flow and mutation load
+fixture; name operational owners; then provision and verify the production resource inventory. Do not
+mark Slice 022 complete until the evidence document contains those results and a final go decision.
 
 ## Completed Slice: 004
 

@@ -389,6 +389,7 @@ describe("API worker", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-correlation-id")).toBe("health-request");
+    expect(response.headers.get("cache-control")).toBe("no-store");
     healthResponseSchema.parse(await response.json());
   });
 
@@ -404,6 +405,7 @@ describe("API worker", () => {
 
     expect(body.data.version).toBe("worker-test");
     expect(body.meta.correlationId).toBe("api-request");
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
   it("serves the generated OpenAPI document", async () => {
