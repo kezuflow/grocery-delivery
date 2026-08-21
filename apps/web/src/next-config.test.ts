@@ -7,8 +7,14 @@ describe("web response configuration", () => {
     const routes = await nextConfig.headers?.();
 
     expect(routes).toEqual([{ source: "/:path*", headers: securityHeaders }]);
+    const contentSecurityPolicy = securityHeaders.find(
+      (header) => header.key === "Content-Security-Policy",
+    );
+
+    expect(contentSecurityPolicy?.value).toContain("default-src 'self'");
     expect(securityHeaders).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ key: "Content-Security-Policy" }),
         { key: "Strict-Transport-Security", value: "max-age=15552000; includeSubDomains" },
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "DENY" },

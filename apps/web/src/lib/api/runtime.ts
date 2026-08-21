@@ -7,7 +7,12 @@ type WebRuntimeEnv = CloudflareEnv & {
   API_BASE_URL?: string;
 };
 
+const fixtureApiBaseUrl = "http://localhost:8790";
+
 export function createRuntimeApiTransport(): ApiTransport {
+  if (process.env.WEB_E2E_FIXTURES === "1") {
+    return createHttpApiTransport(fixtureApiBaseUrl);
+  }
   const environment = getCloudflareContext().env as WebRuntimeEnv;
   if (environment.API) {
     return environment.API;

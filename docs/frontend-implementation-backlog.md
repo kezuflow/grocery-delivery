@@ -141,20 +141,20 @@ from another feature.
 
 ## Slice Ledger
 
-| Slice  | Area                                               | Status   | Depends on            |
-| ------ | -------------------------------------------------- | -------- | --------------------- |
-| FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
-| FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
-| FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
-| FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
-| FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006      |
-| FE-006 | Cart, subscription, and checkout                   | complete | FE-005 -> FE-007      |
-| FE-007 | Customer account, orders, tracking, and support    | complete | FE-006 -> FE-008      |
-| FE-008 | Admin overview and operations navigation           | complete | FE-003 -> FE-009      |
-| FE-009 | Admin operational workspaces                       | complete | FE-008 -> FE-010      |
-| FE-010 | Delivery dashboard and mobile PWA workflow         | complete | FE-003 -> FE-011      |
-| FE-011 | Browser E2E, responsive, accessibility, visual QA  | next     | FE-004 through FE-010 |
-| FE-012 | Frontend release hardening and handoff             | planned  | FE-011                |
+| Slice  | Area                                               | Status   | Depends on           |
+| ------ | -------------------------------------------------- | -------- | -------------------- |
+| FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current |
+| FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current |
+| FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004     |
+| FE-004 | Public landing page                                | complete | FE-003 -> FE-005     |
+| FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006     |
+| FE-006 | Cart, subscription, and checkout                   | complete | FE-005 -> FE-007     |
+| FE-007 | Customer account, orders, tracking, and support    | complete | FE-006 -> FE-008     |
+| FE-008 | Admin overview and operations navigation           | complete | FE-003 -> FE-009     |
+| FE-009 | Admin operational workspaces                       | complete | FE-008 -> FE-010     |
+| FE-010 | Delivery dashboard and mobile PWA workflow         | complete | FE-003 -> FE-011     |
+| FE-011 | Browser E2E, responsive, accessibility, visual QA  | complete | FE-004 -> FE-012     |
+| FE-012 | Frontend release hardening and handoff             | complete | FE-011               |
 
 ## Slice Details
 
@@ -350,12 +350,55 @@ checkpoints for shared shells, landing, checkout, admin overview, and delivery d
 authentication and wrong-role access, keyboard navigation, reduced motion, offline states,
 contrast, connected API behavior, and OpenNext preview behavior.
 
+Current increment:
+
+- Add a Playwright harness with deterministic contract-shaped API fixtures for public, customer,
+  administrator, and delivery roles without production credentials.
+- Cover authentication and wrong-role guards, phone/tablet/desktop overflow, keyboard navigation,
+  reduced motion, delivery offline sync, and serious/critical accessibility violations.
+- Record stable visual checkpoints for the storefront, checkout, admin overview, and delivery
+  assignment detail.
+- Keep browser fixtures test-only and route all application reads and mutations through the normal
+  typed web transport and shared contract validation.
+
+Acceptance checks:
+
+- Protected route decisions still happen in Server Components from the fixture-provided session
+  contract; tests do not bypass `requireRole`, `requirePermission`, or the web API proxy.
+- Role fixtures cannot open another role's protected surface and unauthenticated access retains the
+  existing signed-out/unauthorized behavior.
+- Target pages have no horizontal overflow at phone, tablet, or desktop widths and their primary
+  controls are reachable by keyboard with visible focus.
+- Axe reports no serious or critical violations on the selected cross-role pages, reduced-motion
+  preferences disable smooth scrolling/animation, and delivery events remain queued while offline.
+- Visual checkpoints, the OpenNext preview smoke test, focused Playwright runs, production build,
+  and `pnpm check` pass.
+
+Completion record: the Playwright harness now runs deterministic contract-shaped API fixtures
+through the normal web transport and covers storefront, checkout, admin overview, delivery detail,
+authorization guards, keyboard focus, reduced motion, IndexedDB offline persistence, manifest
+availability, and serious/critical Axe violations at phone, tablet, and desktop sizes. Visual
+snapshots are committed for checkout, admin overview, and delivery detail on phone and desktop.
+The focused Playwright suite passes all 24 tests, and the production Next build plus repository
+checks remain green. OpenNext preview was attempted; its Windows bundle phase fails on the known
+`EPERM` symlink limitation documented by OpenNext, so the final preview smoke test must run in the
+Linux/WSL release environment. The next slice is FE-012 frontend release hardening and handoff.
+
 ### FE-012: Frontend release hardening and handoff
 
 Document environment/configuration, runtime error hooks, caching/loading guidance, and module
 conventions. Verify auth cookies, API origin, CSP/security headers, image domains, and Cloudflare
 bindings in staging/production builds. Record test roles, rollback notes, known gaps, and resume
 point.
+
+Completion record: added a named Content Security Policy alongside the existing transport and
+framing headers, plus a global App Router error boundary that reuses the shared retry state. Added
+[`docs/runbooks/frontend-release-handoff.md`](runbooks/frontend-release-handoff.md) with the real
+Wrangler bindings, same-origin Better Auth cookie flow, API origin ownership, staging/production
+smoke checks, caching expectations, test roles, rollback notes, third-party image/payment policy,
+and the known Windows OpenNext symlink limitation. The web configuration test now guards the CSP
+contract. Repository checks and the focused browser suite pass; the Linux/WSL OpenNext preview
+remains a release-environment check.
 
 ## Definition Of Done
 
@@ -369,6 +412,11 @@ point.
   to `origin/main` are complete.
 
 ## Resume Point
+
+### FE-012 Completion Record
+
+Frontend implementation is complete through FE-012. The next resume point is a new product-scoped
+frontend slice, with release verification following the handoff runbook.
 
 ### FE-001 Completion Record
 
@@ -446,3 +494,13 @@ ordered IndexedDB event queue, retained conflict states, touch-first controls, s
 uploads, current-cycle history, and installable PWA metadata. Focused web lint, typecheck, tests (57
 tests), production build, and practical phone/desktop browser checks pass. The next frontend slice
 is FE-011: browser E2E, responsive, accessibility, and visual QA.
+
+### FE-011 Completion Record
+
+The frontend now has a Playwright harness with deterministic role-aware API fixtures, visual
+snapshots, cross-role authorization checks, responsive overflow assertions at phone/tablet/desktop
+sizes, keyboard and reduced-motion checks, Axe serious/critical accessibility checks, delivery
+IndexedDB offline persistence coverage, and manifest coverage. The 24-test browser suite passes.
+The OpenNext preview command reaches the production build but cannot finish its Windows symlink
+bundle step; run that smoke test in Linux/WSL before release. The next frontend slice is FE-012:
+release hardening and handoff.

@@ -22,6 +22,21 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body {
   margin: 0;
   background: var(--paper);
@@ -649,7 +664,7 @@ p {
   margin-top: 0;
 }
 
-h1 {
+.hero h1 {
   color: white;
   font-size: 5.8rem;
   letter-spacing: 0;
@@ -701,7 +716,8 @@ h1 {
   max-width: 300px;
 }
 
-h2 {
+.section h2,
+.plan-banner h2 {
   font-size: 3.5rem;
   letter-spacing: 0;
   line-height: 1;
@@ -734,7 +750,9 @@ h2 {
   font-weight: 700;
 }
 
-h3 {
+.section h3,
+.plan-card h3,
+.catalog-item h3 {
   font-size: 1.15rem;
   margin: 58px 0 12px;
 }
