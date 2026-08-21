@@ -149,8 +149,8 @@ from another feature.
 | FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
 | FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006      |
 | FE-006 | Cart, subscription, and checkout                   | complete | FE-005 -> FE-007      |
-| FE-007 | Customer account, orders, tracking, and support    | next     | FE-006                |
-| FE-008 | Admin overview and operations navigation           | planned  | FE-003                |
+| FE-007 | Customer account, orders, tracking, and support    | complete | FE-006 -> FE-008      |
+| FE-008 | Admin overview and operations navigation           | next     | FE-003                |
 | FE-009 | Admin operational workspaces                       | planned  | FE-008                |
 | FE-010 | Delivery dashboard and mobile PWA workflow         | planned  | FE-003                |
 | FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned  | FE-004 through FE-010 |
@@ -239,6 +239,21 @@ Split the existing API-connected account page and its components into account, o
 history/detail, tracking, receipts, privacy, notification, and support feature modules and routes.
 Preserve their current mutations and server ownership checks. Add fulfillment/delivery timelines
 plus loading, not-found, unauthorized, empty-history, and submission states.
+
+Current increment:
+
+- Add dedicated customer order history, order detail, tracking, receipt, proof-media, and support
+  routes using the existing protected API client and shared contracts.
+- Resolve order ownership before requesting tracking or media, and preserve idempotent support and
+  order-request mutations.
+- Cover customer-owned detail hydration, missing-order behavior, empty history, and support states.
+
+Completion record: customer navigation now includes dedicated order history, order detail, and
+support routes. Order detail resolves the customer-owned order before loading tracking or signed
+proof media, then presents immutable delivery events and server-confirmed receipt totals. The
+support workspace preserves both general cases and idempotent cancellation/refund requests without
+duplicating backend ownership rules. Empty history, not-found, loading/error boundary inheritance,
+responsive tables/cards, and keyboard-focus states use the shared UI and shell layers.
 
 ### FE-008: Admin overview and operations navigation
 
@@ -352,3 +367,10 @@ Cart and checkout are now split into route-level experiences backed by feature m
 server loader. All commerce decisions continue to come from shared contracts and protected API
 routes. Focused web tests, lint, typecheck, production build, and all 55 repository checks pass. The
 next frontend slice is FE-007: customer account, orders, tracking, and support.
+
+### FE-007 Completion Record
+
+Customer order history, order detail, tracking, receipts, signed proof media, general support, and
+order cancellation/refund requests are now route-level experiences backed by feature modules and a
+customer-owned detail loader. Focused web tests, lint, typecheck, production build, and all 55
+repository checks pass. The next frontend slice is FE-008: admin overview and operations navigation.
