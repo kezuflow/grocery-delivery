@@ -55,7 +55,7 @@
         "VERSION": "0.0.0-staging",
         "API_PUBLIC_ORIGIN": "https://api-staging.getscenepass.com",
         "AUTH_MODE": "better-auth",
-        "ADMIN_BOOTSTRAP_EMAILS": "no-reply@getscenepass.com",
+        "ADMIN_BOOTSTRAP_EMAILS": "ilyreggie+carbon-admin@gmail.com",
         "BETTER_AUTH_URL": "https://api-staging.getscenepass.com",
         "CORS_ORIGINS": "https://app-staging.getscenepass.com",
         "DELIVERY_FEE_CENTAVOS": "990",
