@@ -19,6 +19,31 @@ platform/API ledger; this file is its frontend companion.
   transport/session/permission concerns in `lib`.
 - Prefer readable named functions and small modules over clever generic abstractions.
 - Use semantic HTML, keyboard-accessible controls, and WCAG 2.2 AA targets.
+- Build and refactor the complete UI first. Defer the Playwright harness and cross-role browser E2E
+  suite to FE-011; continue focused tests, builds, and `pnpm check` for every preceding slice.
+
+## Implemented Baseline To Preserve
+
+This frontend plan starts from an implemented, API-connected product rather than a greenfield UI.
+Future slices must inspect and preserve the existing behavior instead of interpreting the backlog as
+a request to recreate backend or integration work.
+
+Already implemented:
+
+- the Hono Cloudflare API, D1 persistence boundaries, application services, and domain rules;
+- Better Auth session handling plus server-owned customer, deliveryman, admin, and superadmin
+  authorization behavior;
+- shared Zod contracts in `@carbon/contracts` and the correlation-aware API error envelope;
+- a typed web API client covering the main customer, admin, and delivery workflows;
+- API-backed public, customer account, admin console, and delivery console pages;
+- backend unit and D1 integration coverage for authentication, authorization, idempotency,
+  persistence, and server-resolved commerce values.
+
+The remaining frontend slices primarily reorganize existing connected behavior into maintainable
+layouts, feature modules, and routes; complete missing presentation and interaction states; and
+deliver the intended responsive visual design. They may add a typed client method when an existing
+server endpoint is not yet exposed, but must not invent parallel endpoints, DTOs, roles, prices, or
+business rules.
 
 ## Validated Stack Decision
 
@@ -128,7 +153,7 @@ from another feature.
 | FE-008 | Admin overview and operations navigation           | planned  | FE-003                |
 | FE-009 | Admin operational workspaces                       | planned  | FE-008                |
 | FE-010 | Delivery dashboard and mobile PWA workflow         | planned  | FE-003                |
-| FE-011 | Responsive, accessibility, and visual QA           | planned  | FE-004 through FE-010 |
+| FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned  | FE-004 through FE-010 |
 | FE-012 | Frontend release hardening and handoff             | planned  | FE-011                |
 
 ## Slice Details
@@ -160,65 +185,74 @@ contract changed. Focused web lint, typecheck, 26 tests, and production build pa
 
 ### FE-003: Shared shells, session states, and RBAC navigation
 
-Add public, customer, admin, and delivery layouts with shared headers, responsive containers,
-desktop sidebar, mobile navigation, breadcrumbs, and account menu. Centralize `requireSession`,
-`requireRole`, and `can(permission)` around the existing session contract. Derive admin
-navigation from server-provided permissions. Add route-level loading, error, unauthorized,
-forbidden, and offline states.
+Refactor the existing API-connected public, customer, admin, and delivery routes into layouts with
+shared headers, responsive containers, desktop sidebar, mobile navigation, breadcrumbs, and account
+menu. Centralize `requireSession`, `requireRole`, and `can(permission)` around the existing session
+contract and Better Auth flow. Derive admin navigation from server-provided permissions. Add
+route-level loading, error, unauthorized, forbidden, and offline states. Do not replace the current
+authentication routes, session transport, API client, or connected workflow components.
 
 Acceptance: wrong-role access is blocked; superadmin inheritance works; navigation has no horizontal
 overflow; guard and navigation tests cover missing session, wrong role, and missing permission.
 
 ### FE-004: Public landing page
 
-Build the actual `/` experience from server-owned storefront banners, plans, and catalog preview.
-Use Figma and `E:\grocery\web` for visual direction only. Include accessible navigation, hero,
-value proposition, plans, catalog preview, account calls to action, footer/legal links, image
-loading, alt text, and empty/error states.
+Redesign the existing `/` experience around its server-owned storefront banners, plans, catalog
+preview, session state, and authentication controls. Use Figma and `E:\grocery\web` for visual
+direction only. Include accessible navigation, hero, value proposition, plans, catalog preview,
+account calls to action, footer/legal links, image loading, alt text, and empty/error states.
 
 ### FE-005: Customer catalog and mobile shopping
 
-Create a mobile-first catalog with category filters, search, product cards, availability, quantity
-controls, and cart summary. Keep prices and availability typed and server-backed. Add loading,
-empty, error, retry, and URL-filter states.
+Expand the existing catalog and cart integration into a mobile-first shopping experience with
+category filters, search, product cards, availability, quantity controls, and cart summary. Keep
+prices and availability typed and server-backed. Add loading, empty, error, retry, and URL-filter
+states.
 
 ### FE-006: Cart, subscription, and checkout
 
-Build cart editing, plan selection, address/window selection, payment method, review, and
-confirmation screens. Use React Hook Form/Zod for complex forms. Show server totals, fees,
-credits, cutoffs, and payment states. Preserve idempotency and correlation-aware errors.
+Refactor and complete the existing connected cart editing, plan selection, address/window
+selection, payment, review, and confirmation workflows as focused feature modules and routes. Use
+React Hook Form/Zod where forms are complex enough to benefit. Show server totals, fees, credits,
+cutoffs, and payment states. Preserve the current idempotency and correlation-aware error behavior.
 
 ### FE-007: Customer account, orders, tracking, and support
 
-Split the existing account page into account, order history/detail, tracking, receipts, privacy,
-and support modules. Add fulfillment/delivery timelines plus loading, not-found, unauthorized,
-empty-history, and submission states. Enforce customer ownership through the API.
+Split the existing API-connected account page and its components into account, order
+history/detail, tracking, receipts, privacy, notification, and support feature modules and routes.
+Preserve their current mutations and server ownership checks. Add fulfillment/delivery timelines
+plus loading, not-found, unauthorized, empty-history, and submission states.
 
 ### FE-008: Admin overview and operations navigation
 
-Replace the single-page admin console with an operations shell and dashboard overview: KPI cards,
-cycle summary, outbox/delivery/procurement alerts, recent activity, and permission-aware quick
-actions. Use dense desktop comparison and prioritized mobile summaries.
+Decompose the existing API-connected single-page admin console into an operations shell and
+dashboard overview without losing its working actions: KPI cards, cycle summary,
+outbox/delivery/procurement alerts, recent activity, and permission-aware quick actions. Use dense
+desktop comparison and prioritized mobile summaries.
 
 ### FE-009: Admin operational workspaces
 
-Implement catalog/pricing, orders, procurement, packing, dispatch, support, reporting, promotions,
-audit, and staff as separate feature modules. Use responsive tables, drawers/dialogs for focused
-edits, explicit destructive-action confirmation, server validation, and permission-aware controls.
+Move the existing admin procurement, packing, dispatch, support, reporting, promotions, audit,
+refund, order-request, and configuration integrations into separate feature modules and routes;
+complete catalog/pricing and staff surfaces against implemented contracts and endpoints. Use
+responsive tables, drawers/dialogs for focused edits, explicit destructive-action confirmation,
+server validation, and permission-aware controls.
 
 ### FE-010: Delivery dashboard and mobile PWA workflow
 
-Build a touch-first delivery shell with assignment queue/detail, route view, proof-of-delivery,
-failure reasons, history, and sync status. Add IndexedDB-backed ordered/idempotent event queue,
-retry/conflict messaging, online/offline banners, and server-issued media URLs. Keep a useful
-desktop dispatch view.
+Refactor the existing API-connected delivery console into a touch-first delivery shell with
+assignment queue/detail, route view, proof-of-delivery, failure reasons, history, and sync status.
+Preserve assignment scoping, idempotent event submission, and server-issued media URLs. Add the
+IndexedDB-backed ordered event queue, retry/conflict messaging, online/offline banners, and a useful
+desktop view.
 
-### FE-011: Responsive, accessibility, and visual QA
+### FE-011: Browser E2E, responsive, accessibility, and visual QA
 
-Add Playwright coverage for public, customer, admin, and delivery journeys at phone, tablet, and
-desktop widths. Add visual checkpoints for shared shells, landing, checkout, admin overview, and
-delivery detail. Check keyboard navigation, reduced motion, offline states, contrast, and
-OpenNext preview behavior.
+After FE-004 through FE-010 have completed the planned UI, add the Playwright harness and coverage
+for public, customer, admin, and delivery journeys at phone, tablet, and desktop widths. Add visual
+checkpoints for shared shells, landing, checkout, admin overview, and delivery detail. Check
+authentication and wrong-role access, keyboard navigation, reduced motion, offline states,
+contrast, connected API behavior, and OpenNext preview behavior.
 
 ### FE-012: Frontend release hardening and handoff
 

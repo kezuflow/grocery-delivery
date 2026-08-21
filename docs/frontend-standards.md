@@ -4,6 +4,23 @@ These rules are the source of truth for frontend structure and styling in `apps/
 intentionally concise so engineers and coding agents can make consistent decisions without
 repeating architecture discussions.
 
+## Existing Product Baseline
+
+Frontend work is not starting from an unimplemented backend. The repository already provides the
+working product boundaries that the UI must consume and preserve:
+
+- the Hono API and D1 repositories implement the customer, administrator, and delivery workflows;
+- Better Auth provides persistent sessions, while the server resolves roles and administrator
+  permissions;
+- `@carbon/contracts` owns the shared Zod request and response contracts;
+- `apps/web/src/lib/api/client.ts` is the typed web transport surface;
+- the existing public, account, admin, and delivery routes already exercise API-backed behavior.
+
+Before changing a workflow, inspect its current route/component, API-client method, shared contract,
+and server endpoint. Refactor connected behavior into the modular structure; do not create a second
+API layer, parallel DTOs, mock business rules, or replacement authentication flow. A visual redesign
+must preserve working behavior unless the slice explicitly changes a product requirement.
+
 ## Dependency Direction
 
 ```text
@@ -79,11 +96,23 @@ component with many boolean props.
 
 - Server Components perform initial reads and protected route decisions where practical.
 - Use the existing typed API client and `@carbon/contracts`; do not redefine API DTOs.
+- Extend the existing client only when an implemented server endpoint is not represented; do not
+  introduce feature-local fetch wrappers for routes the client already supports.
 - Prices, totals, fees, credits, roles, permissions, statuses, and availability remain server-owned.
 - Hiding a control is not authorization. Protected pages and mutations must enforce permissions on
   the server.
 - Do not add global state for server data. Add TanStack Query only when caching, invalidation,
   polling, or interactive mutation workflows require it.
+
+## Verification Sequence
+
+- During FE-003 through FE-010, run focused unit/component checks, lint, typecheck, production web
+  build, and the repository `pnpm check` for each completed slice.
+- Perform practical manual responsive checks while building each UI slice.
+- Defer the Playwright harness, cross-role browser journeys, and formal visual regression suite to
+  FE-011, after the planned UI surfaces are complete.
+- Deferring browser E2E does not permit replacing server-backed behavior with placeholders or
+  skipping the normal per-slice verification above.
 
 ## Required UI States
 

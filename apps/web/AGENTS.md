@@ -12,6 +12,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Before changing frontend structure or styling, read `../../docs/frontend-standards.md`.
 
+- Treat the implemented API, shared contracts, typed web client, authentication, RBAC, and
+  connected customer/admin/delivery workflows as the existing product baseline. Inspect and
+  preserve them; do not recreate or replace them from the frontend backlog.
 - Follow this dependency order: tokens -> UI primitives -> layouts -> features -> routes.
 - Reuse an existing token, primitive, or feature component before creating another one.
 - Keep route files focused on data loading, authorization, metadata, and composition.
@@ -20,3 +23,5 @@ Before changing frontend structure or styling, read `../../docs/frontend-standar
 - Keep Tailwind classes local when they describe one-off layout; extract repeated visual behavior.
 - Preserve server ownership of prices, totals, roles, permissions, statuses, and availability.
 - Include responsive, keyboard, focus, loading, empty, error, disabled, and success states.
+- Defer Playwright and full browser E2E work to FE-011. Continue focused unit/component checks,
+  production builds, and the repository `pnpm check` for every earlier slice.
