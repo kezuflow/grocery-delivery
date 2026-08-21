@@ -12,7 +12,7 @@ go/no-go owners have not been named.
 
 | Component       | Verified version or state                                                      |
 | --------------- | ------------------------------------------------------------------------------ |
-| API Worker      | `d31908ee-b6d0-441f-b6c6-3806598fa8de`                                         |
+| API Worker      | `0083fbf0-5a21-4065-97da-f8cbbd3c967c`                                         |
 | Web Worker      | `cb188806-7f27-4f00-b00a-47dd79b4552f`                                         |
 | Jobs Worker     | `e547906a-a346-4b51-9b07-cf1e9f405116`                                         |
 | Workflow Worker | `0c647a09-383a-4b3b-b6b8-9289749594bd`                                         |
@@ -34,8 +34,22 @@ one-year immutable cache policy.
   unique customer/cart idempotency fixtures.
 - The read-only staging HTTP smoke pass sent exactly 200 health/catalog requests: 200 succeeded,
   error rate was 0%, p95 was 1307.9 ms, and every response included a correlation ID.
-- The authenticated mutation portion was not run because staging has no customer identity or launch
-  catalog/window fixture.
+- The authenticated mutation portion remains incomplete. Three clearly labelled mock identities
+  were created through the deployed Better Auth signup endpoint on 2026-08-21: a superadmin,
+  customer, and delivery-staff candidate. All are Gmail plus-address aliases owned by the
+  rehearsal operator, and all are unverified. The API accepted the requests with `200`, and D1
+  confirms the server-owned assignments: the superadmin has only `superadmin` and requires MFA;
+  the other two accounts are customers. No production identities or data were created.
+- Cloudflare Email Sending accepted the verification sends from
+  `no-reply@getscenepass.com`, but delivery cannot be proved from Worker/D1 state. Inbox delivery,
+  email verification, and administrator TOTP enrollment must be completed interactively before
+  protected mutations can run. After that, the superadmin must assign the delivery candidate the
+  audited `deliveryman` role through `POST /api/v1/admin/identity/roles`.
+- A staging-only OpenNext web deployment was attempted from Ubuntu WSL because Windows cannot
+  package its symlinks. Node 22 and pnpm 11 were installed, dependencies were restored in a
+  temporary Linux workspace, then `next build` remained in its build worker for more than 12
+  minutes without generating `.next` output or starting a deployment. The temporary process was
+  terminated. The deployed web Worker is still `cb188806-7f27-4f00-b00a-47dd79b4552f`.
 - The staging D1 export completed in 4.66 seconds. The 33,645-byte export had SHA-256
   `8DF09944C4E3A0169D3F3B23969EBD25ECA6CEF6568DD506D129D1C15EB7DA8E`.
 - Import into disposable D1 database `carbon-food-delivery-restore-rehearsal-20260821` completed in
@@ -68,16 +82,20 @@ must be provisioned and verified before a launch-ready decision.
 
 ## Blocking requirements
 
-1. Load approved staging catalog categories/SKUs and at least one future delivery window with usable
-   capacity, without inventing operational values.
-2. Provision verified staging identities for a customer, an MFA-capable administrator, and delivery
-   staff, then run the full signup, subscription, cart, PayMongo sandbox payment, order lock,
+1. Verify the three mock-account email messages in the rehearsal inbox. Enroll TOTP for the mock
+   superadmin, then use that session to give the delivery candidate the audited `deliveryman` role.
+2. Import an explicitly labelled mock-only catalog and delivery-window manifest through the
+   protected launch-configuration endpoint. The manifest must use procurement costs and markup
+   basis points only; the server must derive final prices.
+3. Run the full signup, subscription, cart, PayMongo sandbox payment, order lock,
    procurement, packing, dispatch, proof, and customer-tracking flow.
-3. Complete the authenticated 200-request smoke fixture and verify rate-limit headers plus duplicate
+4. Complete the authenticated 200-request smoke fixture and verify rate-limit headers plus duplicate
    idempotency behavior.
-4. Name the human finance, platform, operations, dispatch, security, incident-command, and rollback
+5. Repair and rerun the Ubuntu OpenNext staging deployment, then confirm the updated web Worker
+   version and protected UI flow.
+6. Name the human finance, platform, operations, dispatch, security, incident-command, and rollback
    owners for the go/no-go record.
-5. Provision production Workers, secrets, queue, R2 buckets, migrations, catalog, windows, zones,
+7. Provision production Workers, secrets, queue, R2 buckets, migrations, catalog, windows, zones,
    alerts, and custom domains; then repeat configuration and rollback verification without using
    fake providers or zero-value operational defaults.
 
