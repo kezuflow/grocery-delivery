@@ -49,34 +49,19 @@ describe("web API client", () => {
     });
   });
 
-  it("retries a rate-limited request once after five seconds", async () => {
-    let calls = 0;
-    const waits: number[] = [];
-    const client = createApiClient(
-      {
-        fetch: () => {
-          calls += 1;
-          return Promise.resolve(
-            calls === 1
-              ? Response.json(
-                  { error: { code: "RATE_LIMITED", message: "try later" }, meta },
-                  { status: 429 },
-                )
-              : Response.json({ data: { plans: [] }, meta }),
-          );
-        },
+  it("returns a rate-limit error without adding an artificial delay", async () => {
+    const client = createApiClient({
+      fetch: () => {
+        return Promise.resolve(
+          Response.json(
+            { error: { code: "RATE_LIMITED", message: "try later" }, meta },
+            { status: 429 },
+          ),
+        );
       },
-      {
-        sleep: (milliseconds) => {
-          waits.push(milliseconds);
-          return Promise.resolve();
-        },
-      },
-    );
+    });
 
-    await expect(client.listPlans()).resolves.toMatchObject({ data: { plans: [] } });
-    expect(calls).toBe(2);
-    expect(waits).toEqual([5000]);
+    await expect(client.listPlans()).rejects.toMatchObject({ status: 429, code: "RATE_LIMITED" });
   });
 
   it("rejects malformed successful payloads before the UI can use them", async () => {

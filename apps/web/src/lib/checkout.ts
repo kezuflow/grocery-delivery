@@ -1,41 +1,56 @@
 import { cookies } from "next/headers";
 
-import type { CheckoutQuoteResponse, PaymentMethodListResponse } from "@carbon/contracts";
+import type {
+  CartResponse,
+  CheckoutQuoteResponse,
+  DeliveryAddressResponse,
+  DeliveryWindowsResponse,
+  PaymentMethodListResponse,
+  SubscriptionResponse,
+} from "@carbon/contracts";
 
-import { createApiClient, type ApiTransport } from "./api/client";
+import { ApiClientError, createApiClient, type ApiTransport } from "./api/client";
 import { createRuntimeApiTransport } from "./api/runtime";
-import { loadCustomerAccount, type CustomerAccountData } from "./account";
-import { loadCustomerCatalog, type CustomerCatalogData } from "./catalog";
 
 export type CheckoutData = Readonly<{
-  account: CustomerAccountData;
-  catalog: CustomerCatalogData;
+  subscription: SubscriptionResponse["data"] | null;
+  cart: CartResponse["data"];
+  deliveryAddress: DeliveryAddressResponse["data"];
+  deliveryWindows: DeliveryWindowsResponse["data"];
   paymentMethods: PaymentMethodListResponse["data"]["methods"];
   quote: CheckoutQuoteResponse["data"] | null;
   error: string | null;
 }>;
 
 export async function loadCheckoutData(): Promise<CheckoutData> {
-  const [account, catalog] = await Promise.all([loadCustomerAccount(), loadCustomerCatalog()]);
   const cookieHeader = (await cookies()).toString();
-  return resolveCheckoutData(createRuntimeApiTransport(), cookieHeader, account, catalog);
+  return resolveCheckoutData(createRuntimeApiTransport(), cookieHeader);
 }
 
 export async function resolveCheckoutData(
   transport: ApiTransport,
   cookieHeader: string,
-  account: CustomerAccountData,
-  catalog: CustomerCatalogData,
 ): Promise<CheckoutData> {
   const client = createApiClient(transport);
   const init = { headers: { cookie: cookieHeader } };
-  const [paymentMethods, quote] = await Promise.all([
-    client.getPaymentMethods(init).catch(() => null),
-    client.removeCoupon(init).catch(() => null),
-  ]);
+  const [subscription, cart, deliveryAddress, deliveryWindows, paymentMethods, quote] =
+    await Promise.all([
+      client.getCurrentSubscription(init).catch((error: unknown) => {
+        if (error instanceof ApiClientError && error.status === 404) return null;
+        throw error;
+      }),
+      client.getCart(init),
+      client.getDeliveryAddress(init),
+      client.getDeliveryWindows(init),
+      client.getPaymentMethods(init).catch(() => null),
+      client.getCheckoutQuote(init).catch(() => null),
+    ]);
+
   return {
-    account,
-    catalog,
+    subscription: subscription?.data ?? null,
+    cart: cart.data,
+    deliveryAddress: deliveryAddress.data,
+    deliveryWindows: deliveryWindows.data,
     paymentMethods: paymentMethods?.data.methods ?? [],
     quote: quote?.data ?? null,
     error: paymentMethods

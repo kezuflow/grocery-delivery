@@ -87,6 +87,16 @@ export default async function AccountPage() {
                     {account.subscription.effectiveCycleId.replace("cycle-", "")}.
                   </p>
                 ) : null}
+                {account.subscription.trialEndsAt ? (
+                  <p className="subscription-note">
+                    Free trial ends{" "}
+                    {new Intl.DateTimeFormat("en-PH", {
+                      dateStyle: "long",
+                      timeZone: "UTC",
+                    }).format(new Date(account.subscription.trialEndsAt))}
+                    .
+                  </p>
+                ) : null}
                 <SubscriptionActions
                   billingStatus={account.subscription.billingStatus}
                   skippedCycleId={account.subscription.skippedCycleId}
@@ -108,7 +118,7 @@ export default async function AccountPage() {
                 <a className="button button-small" href="/#plans">
                   View plans
                 </a>
-                <PlanSelector mode="create" plans={account.plans} />
+                <PlanSelector mode="create" plans={account.plans} trialEligible />
               </div>
             )}
           </article>
@@ -124,7 +134,7 @@ export default async function AccountPage() {
                   <span>Subtotal</span>
                   <strong>{formatPrice(account.cart.subtotal.centavos)}</strong>
                 </div>
-                <a className="button button-small button-outline" href="/account/catalog">
+                <a className="button button-small button-outline" href="/shop">
                   Edit saved cart
                 </a>
               </>
@@ -132,7 +142,7 @@ export default async function AccountPage() {
               <div className="account-empty">
                 <h2>Your cart is empty</h2>
                 <p>Choose active catalog items to begin your weekly order.</p>
-                <a className="button button-small" href="/account/catalog">
+                <a className="button button-small" href="/shop">
                   Shop catalog
                 </a>
               </div>

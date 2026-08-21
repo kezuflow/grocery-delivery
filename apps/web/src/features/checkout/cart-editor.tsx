@@ -74,7 +74,7 @@ export function CartEditor({
     return (
       <EmptyState
         action={
-          <Button onClick={() => router.push("/account/catalog")} size="sm">
+          <Button onClick={() => router.push("/shop")} size="sm">
             Browse catalog
           </Button>
         }

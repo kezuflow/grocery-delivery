@@ -79,6 +79,7 @@ export function PublicAuthControls({ session }: Readonly<{ session: SessionSumma
       return;
     }
     setOpen(false);
+    router.replace("/shop");
     router.refresh();
   }
 

@@ -74,7 +74,7 @@ export function CustomerCatalog({
     if (nextFilters.search) params.set("search", nextFilters.search);
     if (nextFilters.category) params.set("category", nextFilters.category);
     const query = params.toString();
-    window.history.pushState(null, "", `/account/catalog${query ? `?${query}` : ""}`);
+    window.history.pushState(null, "", `/shop${query ? `?${query}` : ""}`);
     setActiveFilters(nextFilters);
   }
 

@@ -41,7 +41,7 @@ describe("role navigation", () => {
 
     expect(getNavigation(customer).map((item) => item.href)).toEqual([
       "/account",
-      "/account/catalog",
+      "/shop",
       "/account/cart",
       "/account/checkout",
       "/account/orders",

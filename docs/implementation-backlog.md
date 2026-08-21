@@ -342,14 +342,14 @@ render explicit states, while dashboard values remain server-derived. Focused we
 Next resume point: add admin mutation controls for packing, procurement, dispatch, campaign approval,
 and emergency pause with audit feedback.
 
-Current increment: admin operations mutation controls and shared 429 retry behavior
+Current increment: admin operations mutation controls and shared 429 handling
 
 Completion record: the authenticated admin console now exposes permission-scoped controls for
 procurement purchases, shortages, substitutions, packing manifests, dispatch assignments, and
 campaign pause/resume/archive actions. Each mutation sends only validated command fields through
 the same-origin API client, refreshes server-owned state after success, and surfaces stable API
-errors without optimistic operational state. The web API client and PayMongo provider retry one
-rate-limited request after a five-second delay, with injectable sleeps for deterministic tests.
+errors without optimistic operational state. Rate-limited API and payment-provider responses are
+surfaced immediately; durable queue retries remain owned by the queue adapter.
 Focused web and billing tests, typechecks, lint, and the production web build pass.
 
 Next resume point: add campaign draft creation/finance approval UX, banner content and media
@@ -420,8 +420,8 @@ environments, then add customer support cases and alert projections.
 Current increment: concrete D1, Queue, service-binding, and 429-aware job runtime
 
 Completion record: the jobs runtime now composes D1 outbox claims, Cloudflare Queue scheduled and
-batch handlers, and an internal event-processor service binding. Event processing retries one 429
-response after five seconds before handing failure back to the outbox retry/dead-letter adapter.
+batch handlers, and an internal event-processor service binding. Event processing surfaces a 429
+immediately and hands retry ownership back to the outbox retry/dead-letter adapter.
 Cloudflare worker types, runtime composition tests, and the jobs package checks pass.
 
 Next resume point: add notification/payment/retention processors and operational alert projections,
@@ -454,8 +454,8 @@ Current increment: explicit outbox processor lanes
 
 Completion record: jobs now classify order/delivery events into notification, payment, and retention
 processor lanes and send the server-owned lane through the internal event-processor binding. Unknown
-event types fail before acknowledgement, while the existing outbox claim, retry, dead-letter, and
-five-second 429 retry path remains authoritative. Focused jobs tests and the complete monorepo check
+event types fail before acknowledgement, while the existing outbox claim, retry, and dead-letter
+path remains authoritative. Focused jobs tests and the complete monorepo check
 pass.
 
 Next resume point: add concrete provider-backed notification/payment/retention handlers and finish

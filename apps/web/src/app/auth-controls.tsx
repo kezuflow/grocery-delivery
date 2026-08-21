@@ -90,6 +90,7 @@ export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
               setPending(false);
               return;
             }
+            router.replace("/shop");
             router.refresh();
           })();
         }}

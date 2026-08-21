@@ -76,7 +76,7 @@ describe("PayMongo payment provider", () => {
     ).rejects.toMatchObject({ code: "PROVIDER_HTTP_429" });
   });
 
-  it("retries a rate-limited provider request after five seconds", async () => {
+  it("returns a rate-limit error immediately", async () => {
     let calls = 0;
     const waits: number[] = [];
     const provider = new PayMongoPaymentProvider({
@@ -101,9 +101,9 @@ describe("PayMongo payment provider", () => {
         email: "a@example.com",
         idempotencyKey: "customer-1",
       }),
-    ).resolves.toMatchObject({ reference: "cus_123" });
-    expect(calls).toBe(2);
-    expect(waits).toEqual([5000]);
+    ).rejects.toMatchObject({ code: "PROVIDER_HTTP_429" });
+    expect(calls).toBe(1);
+    expect(waits).toEqual([]);
   });
 
   it("invokes the platform fetch without rebinding its receiver", async () => {

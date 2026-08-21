@@ -4,6 +4,7 @@ import { createSubscription } from "@carbon/domain";
 import {
   DefaultSubscriptionCommandService,
   DefaultSubscriptionCreationService,
+  DefaultSubscriptionTrialService,
   DefaultSubscriptionBillingService,
   InMemoryIdempotencyStore,
   InMemorySubscriptionRepository,
@@ -134,6 +135,41 @@ describe("subscription command application", () => {
         now: "2026-08-20T10:00:00.000Z",
       }),
     ).rejects.toThrow("plan is unavailable");
+  });
+
+  it("activates one calendar-month trial and rejects a second trial", async () => {
+    const trials = new Set<string>();
+    const service = new DefaultSubscriptionTrialService(
+      new InMemorySubscriptionRepository(),
+      new InMemoryIdempotencyStore(),
+      { findActiveById: (planId) => Promise.resolve({ id: planId }) },
+      {
+        hasUsedTrial: (customerId) => Promise.resolve(trials.has(customerId)),
+        recordTrial: ({ customerId }) => {
+          trials.add(customerId);
+          return Promise.resolve();
+        },
+      },
+      () => "trial-subscription-1",
+    );
+
+    const trial = await service.execute({
+      customerId: "trial-customer",
+      planId: "plan-small",
+      idempotencyKey: "trial-1",
+      now: "2026-01-31T10:00:00.000Z",
+    });
+
+    expect(trial.trialStartedAt).toBe("2026-01-31T10:00:00.000Z");
+    expect(trial.trialEndsAt).toBe("2026-02-28T10:00:00.000Z");
+    await expect(
+      service.execute({
+        customerId: "trial-customer",
+        planId: "plan-small",
+        idempotencyKey: "trial-2",
+        now: "2026-01-31T10:00:00.000Z",
+      }),
+    ).rejects.toThrow("already used");
   });
 
   it("changes plans only after resolving the active server-owned plan", async () => {

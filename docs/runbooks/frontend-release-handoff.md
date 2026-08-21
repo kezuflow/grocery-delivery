@@ -12,6 +12,8 @@ server-rendered Next.js application deployed through OpenNext on Cloudflare.
   deterministic fixture API on `http://127.0.0.1:8790`; this is test-only and must never be deployed.
 - Authentication remains same-origin through `/api/auth/*`. Better Auth session cookies are
   HTTP-only and are forwarded by the web API proxy; do not read or recreate them in client code.
+- Customer authentication redirects to the protected `/shop` marketplace. `/account` is the
+  account workspace; `/account/catalog` is retained only as a compatibility redirect.
 - The API Worker owns `API_PUBLIC_ORIGIN` and `CORS_ORIGINS`. Set the application origin to
   `https://app-staging.getscenepass.com` or `https://app.getscenepass.com` before deployment.
 
@@ -20,7 +22,7 @@ server-rendered Next.js application deployed through OpenNext on Cloudflare.
 1. Run `pnpm check` and `pnpm --filter @carbon/web test:e2e`.
 2. Run `pnpm --filter @carbon/web build` and inspect the output for unexpected warnings.
 3. In the Linux/WSL release environment, run `pnpm --filter @carbon/web preview` and smoke-test
-   `/`, `/account/catalog`, `/admin`, and `/deliveryman` with customer, admin, and deliveryman
+   `/`, `/shop`, `/account`, `/admin`, and `/deliveryman` with customer, admin, and deliveryman
    fixtures. OpenNext's Windows bundle step can fail with `EPERM` while creating symlinks.
 4. Verify `https://<origin>/`, `/manifest.webmanifest`, and `/_next/static/*` return successfully.
 
@@ -31,6 +33,16 @@ Confirm every deployed web response includes the CSP, HSTS, `X-Content-Type-Opti
 assets retain immutable one-year caching, while authenticated HTML and API responses are not cached
 by a shared intermediary. Run the checks in `docs/runbooks/security-headers.md` against both web
 and API origins.
+
+The public storefront payload is cached by the Next server for 60 seconds and never includes
+session-dependent data. Checkout uses a read-only quote request and does not clear coupons during
+initial hydration. The web client surfaces API rate limits immediately; payment-provider and queue
+retry policies remain separate operational concerns.
+
+The trial migration must be applied before the API Worker is deployed. Trial activation is
+`POST /api/v1/subscription/trial` with an active server-provided `planId` and an `Idempotency-Key`.
+The API stores the one-time customer eligibility and trial end date; verify a replay returns the
+same subscription and a second trial attempt is rejected.
 
 ## Rollback and known gaps
 

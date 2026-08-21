@@ -400,6 +400,25 @@ and the known Windows OpenNext symlink limitation. The web configuration test no
 contract. Repository checks and the focused browser suite pass; the Linux/WSL OpenNext preview
 remains a release-environment check.
 
+### FE-013: Marketplace destination, faster hydration, and trial activation
+
+The customer shopping surface is now the protected `/shop` marketplace. Successful customer sign-in
+and sign-up redirect there, while `/account` remains the profile, subscription, support, and order
+history workspace. The legacy `/account/catalog` path redirects for compatibility.
+
+Public storefront reads use a short server cache, checkout loads only its required resources in
+parallel, and the web API client returns `429` responses immediately instead of sleeping for five
+seconds and retrying. The landing hero fallback is requested as a smaller WebP image.
+
+Customers without a subscription can activate one server-owned one-calendar-month free trial for an
+active plan. Trial dates and one-time eligibility are persisted in D1, every activation requires an
+idempotency key, and recurring billing skips charges while the trial is active. The browser never
+sends prices, trial dates, or billing status.
+
+Acceptance checks: focused web/API/domain/application/DB tests, `pnpm check`, Playwright smoke tests,
+the API migration, and staging smoke tests all pass. Resume point: monitor staging marketplace and
+trial activation timings, then tune cache revalidation from observed data.
+
 ## Definition Of Done
 
 - Clear route/component owner and feature-oriented boundary.

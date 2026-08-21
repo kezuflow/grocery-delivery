@@ -65,6 +65,7 @@ import {
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
   subscriptionCreateRequestSchema,
+  subscriptionTrialRequestSchema,
   subscriptionResponseSchema,
   type CartResponse,
   type CartUpdateRequest,
@@ -116,11 +117,6 @@ export type ApiTransport = Readonly<{
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }>;
 
-export type ApiClientOptions = Readonly<{
-  sleep?: (milliseconds: number) => Promise<void>;
-  maxRateLimitRetries?: number;
-}>;
-
 export function createSameOriginApiTransport(
   fetchImplementation: typeof fetch = fetch,
 ): ApiTransport {
@@ -148,25 +144,8 @@ export class ApiClientError extends Error {
   }
 }
 
-export function createApiClient(baseTransport: ApiTransport, options: ApiClientOptions = {}) {
-  const sleep =
-    options.sleep ??
-    ((milliseconds: number) =>
-      new Promise<void>((resolve) => {
-        setTimeout(resolve, milliseconds);
-      }));
-  const maxRateLimitRetries = options.maxRateLimitRetries ?? 1;
-  const transport: ApiTransport = {
-    fetch: async (input, init) => {
-      let attempt = 0;
-      while (true) {
-        const response = await baseTransport.fetch(input, init);
-        if (response.status !== 429 || attempt >= maxRateLimitRetries) return response;
-        attempt += 1;
-        await sleep(5_000);
-      }
-    },
-  };
+export function createApiClient(baseTransport: ApiTransport) {
+  const transport = baseTransport;
   return {
     listPlans(): Promise<PlansListResponse> {
       return getJson(transport, "/api/v1/plans", plansListResponseSchema);
@@ -517,6 +496,22 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
         body: JSON.stringify(payload),
       });
     },
+    activateFreeTrial(
+      input: SubscriptionCreateRequest,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<SubscriptionResponse> {
+      const payload = subscriptionTrialRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      headers.set("idempotency-key", idempotencyKey);
+      return getJson(transport, "/api/v1/subscription/trial", subscriptionResponseSchema, {
+        ...init,
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    },
     getCart(init?: RequestInit): Promise<CartResponse> {
       return getJson(transport, "/api/v1/cart", cartResponseSchema, init);
     },
@@ -702,6 +697,9 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
         ...init,
         method: "DELETE",
       });
+    },
+    getCheckoutQuote(init?: RequestInit): Promise<CheckoutQuoteResponse> {
+      return getJson(transport, "/api/v1/checkout/quote", checkoutQuoteResponseSchema, init);
     },
   };
 }

@@ -15,10 +15,12 @@ export function PlanSelector({
   plans,
   currentPlanId,
   mode,
+  trialEligible = false,
 }: Readonly<{
   plans: readonly PlanResponse["data"][];
   currentPlanId?: string;
   mode: "create" | "change";
+  trialEligible?: boolean;
 }>) {
   const router = useRouter();
   const request = useRef<Readonly<{ planId: string; idempotencyKey: string }> | null>(null);
@@ -44,7 +46,11 @@ export function PlanSelector({
           request.current.idempotencyKey,
         );
       } else {
-        await client.createSubscription({ planId }, request.current.idempotencyKey);
+        if (trialEligible) {
+          await client.activateFreeTrial({ planId }, request.current.idempotencyKey);
+        } else {
+          await client.createSubscription({ planId }, request.current.idempotencyKey);
+        }
       }
       request.current = null;
       setSelectedPlanId(null);
@@ -84,12 +90,13 @@ export function PlanSelector({
       {selectedPlan ? (
         <div className="subscription-actions" role="status">
           <p className="subscription-note">
-            Confirm {mode === "change" ? "switching to" : "starting"} {selectedPlan.name} at{" "}
+            Confirm {mode === "change" ? "switching to" : "starting"} {selectedPlan.name}.{" "}
+            {trialEligible ? "Your first calendar month is free, then " : ""}
             {new Intl.NumberFormat("en-PH", {
               style: "currency",
               currency: "PHP",
             }).format(selectedPlan.weeklyFee.centavos / 100)}{" "}
-            per week.
+            per week applies.
           </p>
           <div className="subscription-action-buttons">
             <button
@@ -98,7 +105,11 @@ export function PlanSelector({
               onClick={() => void choose(selectedPlan.id)}
               type="button"
             >
-              {pending === selectedPlan.id ? "Saving..." : "Confirm plan"}
+              {pending === selectedPlan.id
+                ? "Saving..."
+                : trialEligible
+                  ? "Activate 1-month free trial"
+                  : "Confirm plan"}
             </button>
             <button
               className="button button-small button-outline"

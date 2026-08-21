@@ -12,6 +12,18 @@ export interface SubscriptionRepository extends SubscriptionReader {
   save(subscription: Subscription): Promise<void>;
 }
 
+export interface SubscriptionTrialRepository {
+  hasUsedTrial(customerId: string): Promise<boolean>;
+  recordTrial(
+    input: Readonly<{
+      customerId: string;
+      subscriptionId: string;
+      startedAt: string;
+      endsAt: string;
+    }>,
+  ): Promise<void>;
+}
+
 export type SubscriptionIdempotencyRecord = Readonly<{
   key: string;
   fingerprint: string;
@@ -42,6 +54,61 @@ export class InMemorySubscriptionReader implements SubscriptionRepository {
   }
 }
 
+export class InMemorySubscriptionTrialRepository implements SubscriptionTrialRepository {
+  private readonly trials = new Set<string>();
+
+  hasUsedTrial(customerId: string): Promise<boolean> {
+    return Promise.resolve(this.trials.has(customerId));
+  }
+
+  recordTrial(
+    input: Readonly<{
+      customerId: string;
+      subscriptionId: string;
+      startedAt: string;
+      endsAt: string;
+    }>,
+  ): Promise<void> {
+    this.trials.add(input.customerId);
+    return Promise.resolve();
+  }
+}
+
+export class D1SubscriptionTrialRepository implements SubscriptionTrialRepository {
+  constructor(private readonly database: SubscriptionDatabase) {}
+
+  async hasUsedTrial(customerId: string): Promise<boolean> {
+    const result = await this.database
+      .prepare("SELECT 1 FROM customer_trials WHERE customer_id = ? LIMIT 1")
+      .bind(customerId)
+      .all();
+    return result.results.length > 0;
+  }
+
+  async recordTrial(
+    input: Readonly<{
+      customerId: string;
+      subscriptionId: string;
+      startedAt: string;
+      endsAt: string;
+    }>,
+  ): Promise<void> {
+    await this.database.batch([
+      this.database
+        .prepare(
+          "INSERT INTO customer_trials (customer_id, subscription_id, started_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          input.customerId,
+          input.subscriptionId,
+          input.startedAt,
+          input.endsAt,
+          input.startedAt,
+        ),
+    ]);
+  }
+}
+
 export class D1SubscriptionRepository implements SubscriptionRepository {
   constructor(private readonly database: SubscriptionDatabase) {}
 
@@ -49,7 +116,7 @@ export class D1SubscriptionRepository implements SubscriptionRepository {
     const rows = await this.database
       .prepare(
         `SELECT id, customer_id, plan_id, status, billing_status, effective_cycle_id,
-                skipped_cycle_id, last_action,
+                skipped_cycle_id, last_action, trial_started_at, trial_ends_at,
                 created_at, updated_at
          FROM subscriptions
          WHERE customer_id = ?
@@ -87,6 +154,53 @@ export class D1SubscriptionRepository implements SubscriptionRepository {
         ),
     ]);
   }
+
+  async saveTrialAndRecord(
+    subscription: Subscription,
+    record: SubscriptionIdempotencyRecord,
+    trial: Readonly<{
+      customerId: string;
+      subscriptionId: string;
+      startedAt: string;
+      endsAt: string;
+    }>,
+  ): Promise<void> {
+    await this.database.batch([
+      subscriptionStatement(this.database, subscription),
+      subscriptionIdempotencyStatement(this.database, record),
+      this.database
+        .prepare(
+          "INSERT INTO customer_trials (customer_id, subscription_id, started_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          trial.customerId,
+          trial.subscriptionId,
+          trial.startedAt,
+          trial.endsAt,
+          trial.startedAt,
+        ),
+    ]);
+  }
+}
+
+function subscriptionIdempotencyStatement(
+  database: SubscriptionDatabase,
+  record: SubscriptionIdempotencyRecord,
+) {
+  return database
+    .prepare(
+      `INSERT INTO subscription_idempotency (
+         idempotency_key, customer_id, fingerprint, subscription_id, result_json, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      record.key,
+      record.subscription.customerId,
+      record.fingerprint,
+      record.subscription.id,
+      JSON.stringify(record.subscription),
+      record.subscription.updatedAt,
+    );
 }
 
 function subscriptionStatement(database: SubscriptionDatabase, subscription: Subscription) {
@@ -94,8 +208,8 @@ function subscriptionStatement(database: SubscriptionDatabase, subscription: Sub
     .prepare(
       `INSERT INTO subscriptions (
            id, customer_id, plan_id, status, billing_status, effective_cycle_id,
-           skipped_cycle_id, last_action, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           skipped_cycle_id, last_action, trial_started_at, trial_ends_at, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(customer_id) DO UPDATE SET
            plan_id = excluded.plan_id,
            status = excluded.status,
@@ -103,6 +217,8 @@ function subscriptionStatement(database: SubscriptionDatabase, subscription: Sub
            effective_cycle_id = excluded.effective_cycle_id,
            skipped_cycle_id = excluded.skipped_cycle_id,
            last_action = excluded.last_action,
+           trial_started_at = excluded.trial_started_at,
+           trial_ends_at = excluded.trial_ends_at,
            updated_at = excluded.updated_at`,
     )
     .bind(
@@ -114,6 +230,8 @@ function subscriptionStatement(database: SubscriptionDatabase, subscription: Sub
       subscription.effectiveCycleId,
       subscription.skippedCycleId,
       subscription.lastAction,
+      subscription.trialStartedAt,
+      subscription.trialEndsAt,
       subscription.createdAt,
       subscription.updatedAt,
     );
@@ -171,6 +289,8 @@ type SubscriptionRow = Record<string, unknown> & {
   effective_cycle_id: string | null;
   skipped_cycle_id: string | null;
   last_action: Subscription["lastAction"];
+  trial_started_at: string | null;
+  trial_ends_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -191,6 +311,8 @@ function mapSubscription(row: SubscriptionRow): Subscription {
     effectiveCycleId: row.effective_cycle_id,
     skippedCycleId: row.skipped_cycle_id,
     lastAction: row.last_action,
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });

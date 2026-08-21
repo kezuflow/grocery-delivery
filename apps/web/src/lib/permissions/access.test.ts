@@ -64,7 +64,7 @@ describe("frontend access predicates", () => {
   });
 
   it("maps every role to its protected home", () => {
-    expect(getRoleHome("customer")).toBe("/account");
+    expect(getRoleHome("customer")).toBe("/shop");
     expect(getRoleHome("admin")).toBe("/admin");
     expect(getRoleHome("deliveryman")).toBe("/deliveryman");
   });

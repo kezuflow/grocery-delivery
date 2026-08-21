@@ -193,6 +193,8 @@ export const subscriptionSchema = z.object({
   effectiveCycleId: z.string().min(1).nullable().default(null),
   skippedCycleId: z.string().min(1).nullable(),
   lastAction: subscriptionActionSchema.nullable(),
+  trialStartedAt: z.string().datetime().nullable().default(null),
+  trialEndsAt: z.string().datetime().nullable().default(null),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -216,6 +218,8 @@ export const subscriptionCreateRequestSchema = z.object({
   planId: z.string().trim().min(1).max(128),
 });
 
+export const subscriptionTrialRequestSchema = subscriptionCreateRequestSchema;
+
 export type PlansListResponse = z.infer<typeof plansListResponseSchema>;
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 export type PlanAdminUpsertRequest = z.infer<typeof planAdminUpsertRequestSchema>;
@@ -229,3 +233,4 @@ export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;
 export type SubscriptionActionRequest = z.infer<typeof subscriptionActionRequestSchema>;
 export type SubscriptionCreateRequest = z.infer<typeof subscriptionCreateRequestSchema>;
+export type SubscriptionTrialRequest = z.infer<typeof subscriptionTrialRequestSchema>;

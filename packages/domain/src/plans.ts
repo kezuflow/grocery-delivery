@@ -41,6 +41,8 @@ export type Subscription = Readonly<{
   effectiveCycleId: string | null;
   skippedCycleId: string | null;
   lastAction: SubscriptionAction | null;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -164,8 +166,13 @@ export function decidePlanChangeRequest(
 }
 
 export function createSubscription(
-  input: Omit<Subscription, "billingStatus" | "effectiveCycleId"> &
-    Partial<Pick<Subscription, "billingStatus" | "effectiveCycleId">>,
+  input: Omit<
+    Subscription,
+    "billingStatus" | "effectiveCycleId" | "trialStartedAt" | "trialEndsAt"
+  > &
+    Partial<
+      Pick<Subscription, "billingStatus" | "effectiveCycleId" | "trialStartedAt" | "trialEndsAt">
+    >,
 ): Subscription {
   assertText(input.id, "subscription id");
   assertText(input.customerId, "subscription customer id");
@@ -180,10 +187,33 @@ export function createSubscription(
   if (input.skippedCycleId !== null) {
     assertText(input.skippedCycleId, "subscription skipped cycle id");
   }
+  const trialStartedAt = input.trialStartedAt ?? null;
+  const trialEndsAt = input.trialEndsAt ?? null;
+  if ((trialStartedAt === null) !== (trialEndsAt === null)) {
+    throw new DomainValidationError(
+      "INVALID_SUBSCRIPTION_TRIAL",
+      "trial dates must be provided together",
+    );
+  }
+  if (trialStartedAt !== null) {
+    assertIsoTimestamp(trialStartedAt, "subscription trialStartedAt");
+    assertIsoTimestamp(trialEndsAt as string, "subscription trialEndsAt");
+    if ((trialEndsAt as string) <= trialStartedAt) {
+      throw new DomainValidationError(
+        "INVALID_SUBSCRIPTION_TRIAL",
+        "trial end must be after trial start",
+      );
+    }
+  }
   assertIsoTimestamp(input.createdAt, "subscription createdAt");
   assertIsoTimestamp(input.updatedAt, "subscription updatedAt");
 
-  return Object.freeze({ ...input, billingStatus, effectiveCycleId });
+  return Object.freeze({ ...input, billingStatus, effectiveCycleId, trialStartedAt, trialEndsAt });
+}
+
+export function isSubscriptionTrialActive(subscription: Subscription, now: string): boolean {
+  assertIsoTimestamp(now, "subscription trial check time");
+  return subscription.trialEndsAt !== null && now < subscription.trialEndsAt;
 }
 
 export function applySubscriptionCommand(

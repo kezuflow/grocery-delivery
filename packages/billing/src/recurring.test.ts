@@ -58,6 +58,29 @@ describe("recurring billing", () => {
     expect(statuses).toEqual(["past_due"]);
   });
 
+  it("does not charge while the free trial is active", async () => {
+    let charged = false;
+    let statusUpdated = false;
+    const service = new RecurringBillingService(
+      {
+        charge: () => {
+          charged = true;
+          throw new Error("trial must not charge");
+        },
+      } as never,
+      () => {
+        statusUpdated = true;
+        return Promise.resolve();
+      },
+    );
+
+    await expect(
+      service.charge({ ...input, trialEndsAt: "2026-09-20T10:00:00.000Z" }),
+    ).resolves.toEqual({ attempt: null, billingStatus: "current", retryable: false });
+    expect(charged).toBe(false);
+    expect(statusUpdated).toBe(false);
+  });
+
   it("uses bounded exponential retry delays", () => {
     expect(retryDelaySeconds(1)).toBe(300);
     expect(retryDelaySeconds(3)).toBe(1200);

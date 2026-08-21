@@ -186,7 +186,7 @@ export function StorefrontContent({
             </h2>
           </div>
           {session ? (
-            <LinkButton href={session.role === "customer" ? "/account/catalog" : "/"}>
+            <LinkButton href={session.role === "customer" ? "/shop" : "/"}>
               {session.role === "customer" ? "Shop this week" : "Return home"}
             </LinkButton>
           ) : (
@@ -239,7 +239,7 @@ function CatalogPreview({
           </h2>
         </div>
         {session?.role === "customer" ? (
-          <LinkButton href="/account/catalog" tone="secondary">
+          <LinkButton href="/shop" tone="secondary">
             Shop the full catalog
           </LinkButton>
         ) : null}

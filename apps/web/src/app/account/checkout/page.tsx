@@ -11,14 +11,12 @@ export const metadata: Metadata = { title: "Checkout" };
 export default async function CheckoutPage() {
   const session = await requireCustomerSession();
   const data = await loadCheckoutData();
-  const { account } = data;
-  const selectedAddress =
-    account.deliveryAddresses.find((address) => address.selected) ?? account.deliveryAddress;
+  const selectedAddress = data.deliveryAddress;
   const addressLabel = selectedAddress
     ? `${selectedAddress.recipientName}, ${selectedAddress.line1}, ${selectedAddress.city} ${selectedAddress.postalCode}`
     : "Missing delivery address";
   const subscriptionActive =
-    account.subscription?.status === "active" && account.subscription.billingStatus === "current";
+    data.subscription?.status === "active" && data.subscription.billingStatus === "current";
 
   return (
     <AppShell
@@ -36,11 +34,11 @@ export default async function CheckoutPage() {
       <div className="grid gap-8">
         <CheckoutReview
           addressLabel={addressLabel}
-          cartLines={account.cart.lines.length}
-          cutoffAt={account.deliveryWindows.cutoffAt}
+          cartLines={data.cart.lines.length}
+          cutoffAt={data.deliveryWindows.cutoffAt}
           initialQuote={data.quote}
           subscriptionActive={subscriptionActive}
-          windows={account.deliveryWindows}
+          windows={data.deliveryWindows}
         />
         <section aria-labelledby="payment-methods-heading" className="grid gap-4">
           <div>

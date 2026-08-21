@@ -37,7 +37,7 @@ for (const target of visualPages) {
 }
 
 test("protected routes enforce session and role guards", async ({ openAs, page }) => {
-  await openAs(null, "/account/catalog");
+  await openAs(null, "/shop");
   await expect(page).toHaveURL(/\/unauthorized$/);
 
   await openAs("customer", "/admin");

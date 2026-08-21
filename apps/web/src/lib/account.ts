@@ -114,7 +114,7 @@ export async function resolveCustomerAccount(
       deliveryAddress: deliveryAddress.data,
       deliveryAddresses: deliveryAddresses.data.addresses,
       deliveryWindows: deliveryWindows.data,
-      cart: cart.data,
+      cart: cart?.data ?? emptyCart,
       plans: plans.data.plans,
       paymentHistory: paymentHistory.data.entries,
       orderHistory: orderData.orders,

@@ -46,8 +46,6 @@ export class PayMongoPaymentProvider implements PaymentProvider {
   private readonly fetcher: typeof fetch;
   private readonly now: () => Date;
   private readonly secretKey: string;
-  private readonly sleep: (milliseconds: number) => Promise<void>;
-  private readonly maxRateLimitRetries: number;
 
   constructor(options: PayMongoPaymentProviderOptions) {
     if (!options.secretKey.trim()) {
@@ -57,10 +55,6 @@ export class PayMongoPaymentProvider implements PaymentProvider {
     this.fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init));
     this.now = options.now ?? (() => new Date());
     this.secretKey = options.secretKey;
-    this.sleep =
-      options.sleep ??
-      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
-    this.maxRateLimitRetries = options.maxRateLimitRetries ?? 1;
   }
 
   capabilities(): PaymentCapabilities {
@@ -224,15 +218,7 @@ export class PayMongoPaymentProvider implements PaymentProvider {
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
 
-    let response = await request();
-    for (
-      let attempt = 0;
-      response.status === 429 && attempt < this.maxRateLimitRetries;
-      attempt += 1
-    ) {
-      await this.sleep(5_000);
-      response = await request();
-    }
+    const response = await request();
     const payload = await response.json().catch(() => ({}));
     if (!response.ok)
       throw new PaymentProviderError(

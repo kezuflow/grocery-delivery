@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createEventProcessor } from "./runtime.js";
 
 describe("jobs runtime composition", () => {
-  it("retries an internal 429 after five seconds", async () => {
+  it("returns an internal 429 immediately", async () => {
     const waits: number[] = [];
     let calls = 0;
     const processor = createEventProcessor(
@@ -31,17 +31,19 @@ describe("jobs runtime composition", () => {
         },
       },
     );
-    await processor({
-      outboxEventId: "outbox-1",
-      eventType: "order.locked",
-      aggregateId: "order-1",
-      occurredAt: "2026-08-20T00:00:00.000Z",
-      payloadJson: "{}",
-      claimToken: "claim-1",
-      correlationId: "correlation-1",
-    });
-    expect(calls).toBe(2);
-    expect(waits).toEqual([5000]);
+    await expect(
+      processor({
+        outboxEventId: "outbox-1",
+        eventType: "order.locked",
+        aggregateId: "order-1",
+        occurredAt: "2026-08-20T00:00:00.000Z",
+        payloadJson: "{}",
+        claimToken: "claim-1",
+        correlationId: "correlation-1",
+      }),
+    ).rejects.toThrow("status 429");
+    expect(calls).toBe(1);
+    expect(waits).toEqual([]);
   });
 
   it("forwards the configured internal processor token", async () => {

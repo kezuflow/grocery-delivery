@@ -10,6 +10,7 @@ export type RecurringBillingInput = Readonly<{
   amount: Parameters<PaymentService["charge"]>[0]["amount"];
   idempotencyKey: string;
   now: string;
+  trialEndsAt?: string | null;
 }>;
 
 export type RecurringBillingResult = Readonly<{
@@ -35,6 +36,9 @@ export class RecurringBillingService {
   ) {}
 
   async charge(input: RecurringBillingInput): Promise<RecurringBillingResult> {
+    if (input.trialEndsAt && input.now < input.trialEndsAt) {
+      return { attempt: null, billingStatus: "current", retryable: false };
+    }
     try {
       const attempt = await this.payments.charge(input);
       if (attempt.status === "succeeded") {

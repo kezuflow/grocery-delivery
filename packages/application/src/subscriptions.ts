@@ -15,6 +15,16 @@ export type SubscriptionRepository = Readonly<{
 export type AtomicSubscriptionRepository = SubscriptionRepository &
   Readonly<{
     saveAndRecord(subscription: Subscription, record: IdempotencyRecord): Promise<void>;
+    saveTrialAndRecord?(
+      subscription: Subscription,
+      record: IdempotencyRecord,
+      trial: Readonly<{
+        customerId: string;
+        subscriptionId: string;
+        startedAt: string;
+        endsAt: string;
+      }>,
+    ): Promise<void>;
   }>;
 
 export type IdempotencyRecord = Readonly<{
@@ -37,6 +47,28 @@ export type SubscriptionCommandService = Readonly<{
 }>;
 
 export type SubscriptionCreationService = Readonly<{
+  execute(input: {
+    customerId: string;
+    planId: string;
+    idempotencyKey: string;
+    now: string;
+    cycleId?: string;
+  }): Promise<Subscription>;
+}>;
+
+export type SubscriptionTrialStore = Readonly<{
+  hasUsedTrial(customerId: string): Promise<boolean>;
+  recordTrial(
+    input: Readonly<{
+      customerId: string;
+      subscriptionId: string;
+      startedAt: string;
+      endsAt: string;
+    }>,
+  ): Promise<void>;
+}>;
+
+export type SubscriptionTrialService = Readonly<{
   execute(input: {
     customerId: string;
     planId: string;
@@ -208,6 +240,89 @@ export class DefaultSubscriptionCreationService implements SubscriptionCreationS
     }
     return subscription;
   }
+}
+
+export class DefaultSubscriptionTrialService implements SubscriptionTrialService {
+  constructor(
+    private readonly subscriptions: SubscriptionRepository,
+    private readonly idempotency: IdempotencyStore,
+    private readonly plans: SubscriptionPlanLookup,
+    private readonly trials: SubscriptionTrialStore,
+    private readonly generateId: () => string = () => crypto.randomUUID(),
+  ) {}
+
+  async execute(input: {
+    customerId: string;
+    planId: string;
+    idempotencyKey: string;
+    now: string;
+    cycleId?: string;
+  }): Promise<Subscription> {
+    const key = input.idempotencyKey.trim();
+    if (!key || key.length > 128) {
+      throw new Error("idempotency key must be between 1 and 128 characters");
+    }
+    const fingerprint = JSON.stringify({
+      customerId: input.customerId,
+      planId: input.planId,
+      trial: true,
+    });
+    const existing = await this.idempotency.get(key);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint)
+        throw new Error("idempotency key was already used for a different command");
+      return existing.subscription;
+    }
+    if (await this.trials.hasUsedTrial(input.customerId))
+      throw new Error("customer already used the free trial");
+    if (await this.subscriptions.findByCustomerId(input.customerId))
+      throw new Error("customer already has a subscription");
+    const plan = await this.plans.findActiveById(input.planId);
+    if (!plan) throw new Error("selected plan is unavailable");
+
+    const trialEndsAt = addCalendarMonth(input.now);
+    const subscription = createSubscription({
+      id: this.generateId(),
+      customerId: input.customerId,
+      planId: plan.id,
+      status: "active",
+      billingStatus: "current",
+      effectiveCycleId: input.cycleId ?? null,
+      skippedCycleId: null,
+      lastAction: null,
+      trialStartedAt: input.now,
+      trialEndsAt,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+    const record = { key, fingerprint, subscription };
+    const trial = {
+      customerId: input.customerId,
+      subscriptionId: subscription.id,
+      startedAt: input.now,
+      endsAt: trialEndsAt,
+    };
+    const atomicRepository = this.subscriptions as Partial<AtomicSubscriptionRepository>;
+    if (atomicRepository.saveTrialAndRecord) {
+      await atomicRepository.saveTrialAndRecord(subscription, record, trial);
+    } else {
+      await this.subscriptions.save(subscription);
+      await this.idempotency.put(record);
+      await this.trials.recordTrial(trial);
+    }
+    return subscription;
+  }
+}
+
+function addCalendarMonth(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) throw new Error("trial start must be an ISO timestamp");
+  const day = date.getUTCDate();
+  const targetYear = date.getUTCFullYear() + (date.getUTCMonth() === 11 ? 1 : 0);
+  const targetMonth = (date.getUTCMonth() + 1) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  date.setUTCFullYear(targetYear, targetMonth, Math.min(day, lastDay));
+  return date.toISOString();
 }
 
 export class DefaultSubscriptionBillingService implements SubscriptionBillingService {

@@ -13,6 +13,7 @@ import {
   DefaultPlanApprovalService,
   DefaultSubscriptionCommandService,
   DefaultSubscriptionCreationService,
+  DefaultSubscriptionTrialService,
   InMemoryRequestRateLimiter,
   createOperationalAlerts,
   parseOutboxProcessingMessage,
@@ -24,6 +25,7 @@ import {
   type RequestRateLimiter,
   type SubscriptionCommandService,
   type SubscriptionCreationService,
+  type SubscriptionTrialService,
   type PromotionRepository,
   type EventProcessor,
   LaunchConfigurationConflictError,
@@ -163,6 +165,7 @@ import {
   D1PlanRepository,
   D1SubscriptionIdempotencyStore,
   D1SubscriptionRepository,
+  D1SubscriptionTrialRepository,
   D1PromotionRepository,
   D1PromotionBannerRepository,
   type PromotionBannerRepository,
@@ -353,6 +356,7 @@ export type ApiOptions = Readonly<{
   rateLimitPolicies?: readonly ApiRateLimitPolicy[];
   subscriptionService?: SubscriptionCommandService;
   subscriptionCreationService?: SubscriptionCreationService;
+  subscriptionTrialService?: SubscriptionTrialService;
   version?: string;
   eventProcessor?: EventProcessor;
   eventProcessorToken?: string;
@@ -1207,6 +1211,95 @@ export function createApi(options: ApiOptions = {}): ApiApp {
           : message.includes("already has")
             ? "SUBSCRIPTION_ALREADY_EXISTS"
             : "INVALID_PLAN_SELECTION";
+      return context.json(errorResponse(code, message, context.get("correlationId")), 409);
+    }
+  });
+
+  app.post("/api/v1/subscription/trial", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const planLookup =
+      options.planLookup ?? (bindings.DB ? new D1PlanReader(bindings.DB) : undefined);
+    const trialService =
+      options.subscriptionTrialService ??
+      (bindings.DB && planLookup
+        ? new DefaultSubscriptionTrialService(
+            new D1SubscriptionRepository(bindings.DB),
+            new D1SubscriptionIdempotencyStore(bindings.DB),
+            planLookup,
+            new D1SubscriptionTrialRepository(bindings.DB),
+          )
+        : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!trialService) {
+      return context.json(
+        errorResponse(
+          "SUBSCRIPTION_UNAVAILABLE",
+          "free trial activation is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const input = subscriptionCreateRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_PLAN_SELECTION",
+          "plan selection is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    try {
+      const commandTime = now();
+      const subscription = await trialService.execute({
+        customerId: session.customerId,
+        planId: input.data.planId,
+        idempotencyKey,
+        now: commandTime.toISOString(),
+        cycleId: assignWeeklyCycle(commandTime).id,
+      });
+      const body: SubscriptionResponse = {
+        data: subscription,
+        meta: { correlationId: context.get("correlationId") },
+      };
+      subscriptionResponseSchema.parse(body);
+      return context.json(body, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "free trial activation failed";
+      const code = message.includes("idempotency")
+        ? "IDEMPOTENCY_KEY_REUSED"
+        : message.includes("already used")
+          ? "FREE_TRIAL_ALREADY_USED"
+          : message.includes("already has")
+            ? "SUBSCRIPTION_ALREADY_EXISTS"
+            : message.includes("unavailable")
+              ? "PLAN_UNAVAILABLE"
+              : "FREE_TRIAL_REJECTED";
       return context.json(errorResponse(code, message, context.get("correlationId")), 409);
     }
   });
@@ -4071,6 +4164,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }
     return quoteSavedCart(context, input.data.code);
   });
+
+  app.get("/api/v1/checkout/quote", (context) => quoteSavedCart(context));
 
   app.delete("/api/v1/checkout/coupon", (context) => quoteSavedCart(context));
 

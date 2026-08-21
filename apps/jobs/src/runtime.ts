@@ -18,9 +18,7 @@ export function createEventProcessor(
   bindings: Pick<JobsBindings, "EVENT_PROCESSOR" | "EVENT_PROCESSOR_TOKEN">,
   options: JobsRuntimeOptions = {},
 ) {
-  const sleep =
-    options.sleep ??
-    ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  void options;
   return async (message: OutboxJobMessage) => {
     const request = () =>
       bindings.EVENT_PROCESSOR.fetch("https://event-processor.internal/internal/events/outbox", {
@@ -35,11 +33,7 @@ export function createEventProcessor(
         },
         body: JSON.stringify(message),
       });
-    let response = await request();
-    if (response.status === 429) {
-      await sleep(5_000);
-      response = await request();
-    }
+    const response = await request();
     if (!response.ok) {
       const providerMessage = await readProcessorError(response);
       throw new Error(

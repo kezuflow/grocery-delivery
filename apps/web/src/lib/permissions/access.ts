@@ -32,7 +32,7 @@ export function can(session: SessionSummary, permission: AdminPermission): boole
 export function getRoleHome(role: UserRole): string {
   if (role === "admin") return "/admin";
   if (role === "deliveryman") return "/deliveryman";
-  return "/account";
+  return "/shop";
 }
 
 export function getEffectiveAdminPermissions(session: SessionSummary): readonly AdminPermission[] {

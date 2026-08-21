@@ -9,7 +9,7 @@ export type NavigationItem = Readonly<{
 
 const customerNavigation: readonly NavigationItem[] = [
   { href: "/account", label: "Account overview" },
-  { href: "/account/catalog", label: "Shop catalog" },
+  { href: "/shop", label: "Marketplace" },
   { href: "/account/cart", label: "Your cart" },
   { href: "/account/checkout", label: "Checkout" },
   { href: "/account/orders", label: "Order history" },
