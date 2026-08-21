@@ -1310,3 +1310,13 @@ subscriptions, carts and idempotent order locking, provider-neutral billing with
 payment methods, protected API routes, correlation-aware errors, and Wrangler development/staging/
 production database environments. See the slice commits above and the architecture document for
 the boundary rationale.
+
+## Frontend Backlog
+
+The frontend plan is maintained in
+[`docs/frontend-implementation-backlog.md`](frontend-implementation-backlog.md). It covers the
+Tailwind migration, shared UI primitives and role shells, public landing page, customer shopping
+and checkout, admin operations workspaces, delivery staff mobile workflow, cross-role visual and
+accessibility QA, and frontend release hardening. `FE-001` is the next frontend resume point; the
+platform/API launch gate in Slice 022 remains independently blocked until its documented staging
+evidence exists.
