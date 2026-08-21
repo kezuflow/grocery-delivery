@@ -71,8 +71,8 @@ export function CartSummary({
         <Button disabled={!hasUnsavedChanges} loading={pending} onClick={onSave} type="button">
           Save cart changes
         </Button>
-        <LinkButton href="/account" size="sm" tone="secondary">
-          Account overview
+        <LinkButton href="/account/cart" size="sm" tone="secondary">
+          Review cart
         </LinkButton>
         {message ? (
           <p className="text-sm text-muted" role="status">

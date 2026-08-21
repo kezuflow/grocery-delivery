@@ -60,6 +60,7 @@ import {
   launchConfigurationResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
+  paymentMethodListResponseSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
   subscriptionActionRequestSchema,
@@ -102,6 +103,7 @@ import {
   type SupportCasesResponse,
   type NotificationPreferencesResponse,
   type PaymentRefundResponse,
+  type PaymentMethodListResponse,
   type CustomerOrderRequestResponse,
   type CustomerOrderRequestsResponse,
   type AdminOrderRequestsResponse,
@@ -229,6 +231,9 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getPaymentHistory(init?: RequestInit): Promise<PaymentHistoryResponse> {
       return getJson(transport, "/api/v1/payments/history", paymentHistoryResponseSchema, init);
+    },
+    getPaymentMethods(init?: RequestInit): Promise<PaymentMethodListResponse> {
+      return getJson(transport, "/api/v1/payments/methods", paymentMethodListResponseSchema, init);
     },
     getOrderHistory(init?: RequestInit): Promise<OrderListResponse> {
       return getJson(transport, "/api/v1/orders", orderListResponseSchema, init);

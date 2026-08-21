@@ -148,8 +148,8 @@ from another feature.
 | FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
 | FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
 | FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006      |
-| FE-006 | Cart, subscription, and checkout                   | planned  | FE-005                |
-| FE-007 | Customer account, orders, tracking, and support    | planned  | FE-006                |
+| FE-006 | Cart, subscription, and checkout                   | complete | FE-005 -> FE-007      |
+| FE-007 | Customer account, orders, tracking, and support    | next     | FE-006                |
 | FE-008 | Admin overview and operations navigation           | planned  | FE-003                |
 | FE-009 | Admin operational workspaces                       | planned  | FE-008                |
 | FE-010 | Delivery dashboard and mobile PWA workflow         | planned  | FE-003                |
@@ -215,6 +215,23 @@ Refactor and complete the existing connected cart editing, plan selection, addre
 selection, payment, review, and confirmation workflows as focused feature modules and routes. Use
 React Hook Form/Zod where forms are complex enough to benefit. Show server totals, fees, credits,
 cutoffs, and payment states. Preserve the current idempotency and correlation-aware error behavior.
+
+Current increment:
+
+- Add focused cart and checkout routes backed by the existing customer APIs and contracts.
+- Move subscription, delivery address/window, coupon, review, and order confirmation behavior into
+  feature-owned modules while keeping route files limited to guards, data loading, and composition.
+- Show server-confirmed totals and readiness blockers without calculating commerce values in the
+  browser.
+- Cover checkout readiness, cart presentation, and idempotent order submission with focused tests.
+
+Completion record: the protected customer flow now has focused `/account/cart` and
+`/account/checkout` routes. Feature-owned modules handle cart editing, delivery-window selection,
+coupon preview/removal, payment-method readiness, server quote presentation, and idempotent order
+locking. The browser submits only SKU quantities, a delivery-window identifier, an optional coupon
+code, and an idempotency key; prices, fees, credits, availability, eligibility, and final totals
+remain server-owned. Provider payment setup remains intentionally hosted/provider-tokenized rather
+than collecting raw payment credentials in the application.
 
 ### FE-007: Customer account, orders, tracking, and support
 
@@ -328,3 +345,10 @@ server-owned. The next frontend slice is FE-006: cart, subscription, and checkou
 
 Focused web lint, typecheck, tests (48 tests), production build, and the full repository `pnpm check`
 pass.
+
+### FE-006 Completion Record
+
+Cart and checkout are now split into route-level experiences backed by feature modules and a small
+server loader. All commerce decisions continue to come from shared contracts and protected API
+routes. Focused web tests, lint, typecheck, production build, and all 55 repository checks pass. The
+next frontend slice is FE-007: customer account, orders, tracking, and support.

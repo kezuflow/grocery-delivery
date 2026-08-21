@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|order-substitutions|admin)/,
+        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|order-substitutions|payments|admin)/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -442,6 +442,30 @@ describe("web API client", () => {
         "launch-2",
       ),
     ).toThrow();
+  });
+
+  it("lists customer payment methods without exposing provider tokens", async () => {
+    const client = createApiClient(
+      transport({
+        data: {
+          methods: [
+            {
+              id: "method-1",
+              providerReference: "provider-1",
+              type: "ewallet",
+              status: "active",
+              createdAt: "2026-08-20T00:00:00.000Z",
+              updatedAt: "2026-08-20T00:00:00.000Z",
+            },
+          ],
+        },
+        meta,
+      }),
+    );
+
+    await expect(client.getPaymentMethods()).resolves.toMatchObject({
+      data: { methods: [{ id: "method-1", type: "ewallet", status: "active" }] },
+    });
   });
 });
 
