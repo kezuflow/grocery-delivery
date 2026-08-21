@@ -702,6 +702,16 @@ without a duplicate row. The Friday 18:05 Asia/Manila cron is deployed, and a st
 instance completed all five durable steps in order while preserving cycle and correlation metadata.
 Focused checks and the complete `pnpm check` pass all 55 tasks.
 
+Post-completion review note: Slice 018 remains complete against its deployable queue, retry,
+dead-letter, replay, scheduling, correlation, and idempotency acceptance checks. Live delivery SMS,
+push, or email is intentionally not configured through `NOTIFICATION_ENDPOINT`; the current
+operating model may use driver phone calls, and an outbound provider can be selected later without
+changing the durable notification boundary. Non-blocking follow-ups are to connect the five weekly
+Workflow steps to concrete operational actions when those actions are ready for automation, add
+pagination to PayMongo reconciliation before a daily window can exceed 100 provider payments, and
+make API test-session expiry fixtures independent of the wall clock so fresh direct test runs do not
+eventually fail after their fixed expiration dates.
+
 Next resume point: begin Slice 019 with customer fulfillment and payment history. Prioritize
 customer-visible payment records and receipts, substitution decisions, cancellation/refund requests,
 and proof-of-delivery media reads while preserving customer isolation and server-owned statuses.
