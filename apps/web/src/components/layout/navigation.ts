@@ -22,11 +22,13 @@ const deliveryNavigation: readonly NavigationItem[] = [
 
 const adminNavigation: readonly NavigationItem[] = [
   { href: "/admin", label: "Overview" },
-  { href: "/admin#packing", label: "Packing", permission: "packing" },
-  { href: "/admin#actions", label: "Actions", permission: "procurement" },
-  { href: "/admin#support", label: "Support", permission: "support" },
-  { href: "/admin#audit", label: "Reporting", permission: "reporting" },
-  { href: "/admin#launch-configuration", label: "Configuration", permission: "superadmin" },
+  { href: "/admin/procurement", label: "Procurement", permission: "procurement" },
+  { href: "/admin/packing", label: "Packing", permission: "packing" },
+  { href: "/admin/dispatch", label: "Dispatch", permission: "dispatch" },
+  { href: "/admin/support", label: "Support", permission: "support" },
+  { href: "/admin/promotions", label: "Promotions", permission: "marketing" },
+  { href: "/admin/reporting", label: "Reporting", permission: "reporting" },
+  { href: "/admin/configuration", label: "Configuration", permission: "superadmin" },
 ];
 
 export function getNavigation(session: SessionSummary): readonly NavigationItem[] {

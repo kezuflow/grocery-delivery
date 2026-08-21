@@ -25,9 +25,11 @@ describe("role navigation", () => {
   it("shows inherited destinations to superadmins", () => {
     expect(getNavigation(adminSession(["superadmin"])).map((item) => item.label)).toEqual([
       "Overview",
+      "Procurement",
       "Packing",
-      "Actions",
+      "Dispatch",
       "Support",
+      "Promotions",
       "Reporting",
       "Configuration",
     ]);

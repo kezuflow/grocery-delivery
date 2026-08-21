@@ -141,20 +141,20 @@ from another feature.
 
 ## Slice Ledger
 
-| Slice  | Area                                               | Status   | Depends on            |
-| ------ | -------------------------------------------------- | -------- | --------------------- |
-| FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
-| FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
-| FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
-| FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
-| FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006      |
-| FE-006 | Cart, subscription, and checkout                   | complete | FE-005 -> FE-007      |
-| FE-007 | Customer account, orders, tracking, and support    | complete | FE-006 -> FE-008      |
-| FE-008 | Admin overview and operations navigation           | next     | FE-003                |
-| FE-009 | Admin operational workspaces                       | planned  | FE-008                |
-| FE-010 | Delivery dashboard and mobile PWA workflow         | planned  | FE-003                |
-| FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned  | FE-004 through FE-010 |
-| FE-012 | Frontend release hardening and handoff             | planned  | FE-011                |
+| Slice  | Area                                               | Status      | Depends on            |
+| ------ | -------------------------------------------------- | ----------- | --------------------- |
+| FE-001 | Tailwind baseline and CSS migration                | complete    | `da3e311` -> current  |
+| FE-002 | Tokens and accessible UI primitives                | complete    | `b0b575a` -> current  |
+| FE-003 | Shared shells, session states, and RBAC navigation | complete    | FE-002 -> FE-004      |
+| FE-004 | Public landing page                                | complete    | FE-003 -> FE-005      |
+| FE-005 | Customer catalog and mobile shopping               | complete    | FE-004 -> FE-006      |
+| FE-006 | Cart, subscription, and checkout                   | complete    | FE-005 -> FE-007      |
+| FE-007 | Customer account, orders, tracking, and support    | complete    | FE-006 -> FE-008      |
+| FE-008 | Admin overview and operations navigation           | in progress | FE-003                |
+| FE-009 | Admin operational workspaces                       | planned     | FE-008                |
+| FE-010 | Delivery dashboard and mobile PWA workflow         | planned     | FE-003                |
+| FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned     | FE-004 through FE-010 |
+| FE-012 | Frontend release hardening and handoff             | planned     | FE-011                |
 
 ## Slice Details
 
@@ -261,6 +261,14 @@ Decompose the existing API-connected single-page admin console into an operation
 dashboard overview without losing its working actions: KPI cards, cycle summary,
 outbox/delivery/procurement alerts, recent activity, and permission-aware quick actions. Use dense
 desktop comparison and prioritized mobile summaries.
+
+Current increment:
+
+- Move the weekly operations summary into an admin-owned feature module with KPI cards, prioritized
+  alerts, recent audit activity, and permission-aware workflow links.
+- Keep the existing connected operational actions available while FE-009 splits them into dedicated
+  workspaces.
+- Centralize readable admin navigation definitions and cover permission filtering in focused tests.
 
 ### FE-009: Admin operational workspaces
 
