@@ -1,20 +1,20 @@
 # Frontend Implementation Backlog
 
-This is the delivery plan for the Carbon Food Delivery web application in \`apps/web\`.
+This is the delivery plan for the Carbon Food Delivery web application in `apps/web`.
 It covers the public landing page, customer food-delivery experience, admin operations console,
-and delivery staff mobile workflow. The existing \`docs/implementation-backlog.md\` remains the
+and delivery staff mobile workflow. The existing `docs/implementation-backlog.md` remains the
 platform/API ledger; this file is its frontend companion.
 
 ## Working Rules
 
-- Work directly on \`main\`; keep each slice independently reviewable.
-- Before starting a slice, mark it \`in progress\` and record scope and acceptance checks.
+- Work directly on `main`; keep each slice independently reviewable.
+- Before starting a slice, mark it `in progress` and record scope and acceptance checks.
 - Update this backlog in the same commit as the implementation that completes a slice.
-- Run focused checks and the repository-mandated \`pnpm check\` before completion.
+- Run focused checks and the repository-mandated `pnpm check` before completion.
 - Preserve domain/application/contracts boundaries. The frontend consumes server-owned values and
   never becomes a second business-rules implementation.
-- Keep route files thin. Put reusable UI in \`components\`, feature behavior in \`features\`, and
-  transport/session/permission concerns in \`lib\`.
+- Keep route files thin. Put reusable UI in `components`, feature behavior in `features`, and
+  transport/session/permission concerns in `lib`.
 - Prefer readable named functions and small modules over clever generic abstractions.
 - Use semantic HTML, keyboard-accessible controls, and WCAG 2.2 AA targets.
 
@@ -22,13 +22,13 @@ platform/API ledger; this file is its frontend companion.
 
 The current screens are placeholders and the existing styling is one global CSS layer. Adopting
 Tailwind now is sound because it avoids preserving a styling system that has not yet become a
-product contract. \`E:\grocery\web\` is a visual reference only; its Bootstrap, jQuery, and
+product contract. `E:\grocery\web` is a visual reference only; its Bootstrap, jQuery, and
 template CSS/JavaScript should not be copied into this Next.js application.
 
 ### Application
 
 - Keep Next.js 16 App Router, React 19, TypeScript, and Cloudflare OpenNext.
-- Keep \`@carbon/contracts\` and the existing typed API client as the API contract source.
+- Keep `@carbon/contracts` and the existing typed API client as the API contract source.
 - Use Server Components for initial reads and protected route decisions.
 - Use Client Components only for interaction, polling, offline sync, and browser APIs.
 
@@ -36,10 +36,10 @@ template CSS/JavaScript should not be copied into this Next.js application.
 
 - Tailwind CSS is the primary styling system.
 - CSS custom properties define semantic design tokens consumed by Tailwind utilities.
-- Use \`clsx\` and a small \`cn\` helper; use \`class-variance-authority\` only where variants
+- Use `clsx` and a small `cn` helper; use `class-variance-authority` only where variants
   remove real duplication.
 - Use Radix primitives selectively for dialogs, menus, popovers, tabs, and tooltips. Wrap them in
-  local \`components/ui\` components so feature code does not depend on Radix details.
+  local `components/ui` components so feature code does not depend on Radix details.
 - Use Lucide icons for interface actions.
 - Do not add Bootstrap, styled-components, or a parallel design system.
 
@@ -48,7 +48,7 @@ template CSS/JavaScript should not be copied into this Next.js application.
 - Use existing API transport and shared Zod contracts; do not duplicate DTOs in the web app.
 - Use TanStack Query only for client caching, invalidation, polling, or mutations that need it.
 - Use React Hook Form plus shared Zod schemas for complex forms.
-- Use IndexedDB through \`idb\` for the delivery event queue.
+- Use IndexedDB through `idb` for the delivery event queue.
 - Use Vitest for utilities/components and Playwright for cross-role, responsive, and visual checks.
 
 ## Target Routes and Role Model
@@ -86,7 +86,7 @@ src/app/
 ```
 
 The server owns role and permission decisions. The UI may hide unavailable navigation items, but
-every protected page and mutation must enforce authorization on the server. \`superadmin\`
+every protected page and mutation must enforce authorization on the server. `superadmin`
 inherits applicable admin capabilities. Missing sessions redirect to sign-in; authenticated
 users without a required role receive a consistent forbidden state.
 
@@ -134,7 +134,7 @@ from another feature.
 ### FE-001: Tailwind baseline and CSS migration
 
 Add the supported Tailwind integration for Next.js 16/OpenNext, Tailwind entrypoint/source
-configuration, semantic token CSS, and a small \`cn\` helper. Incrementally migrate the current
+configuration, semantic token CSS, and a small `cn` helper. Incrementally migrate the current
 placeholder landing, account, admin, and delivery screens so the old page-wide styling dependency
 can be removed without behavior changes.
 
@@ -144,16 +144,16 @@ added; current API behavior is preserved; mobile/desktop layouts have visible ke
 ### FE-002: Tokens and accessible UI primitives
 
 Define surface, text, muted, border, action, success, warning, danger, and delivery-status tokens.
-Add typed \`Button\`, \`LinkButton\`, \`Input\`, \`Select\`, \`Textarea\`, \`Badge\`, \`Card\`,
-\`Table\`, \`Dialog\`, \`Sheet\`, \`Tabs\`, \`EmptyState\`, \`ErrorState\`, \`Skeleton\`, and
-\`StatusPill\` primitives. Test default, hover, focus-visible, disabled, loading, error, and
+Add typed `Button`, `LinkButton`, `Input`, `Select`, `Textarea`, `Badge`, `Card`,
+`Table`, `Dialog`, `Sheet`, `Tabs`, `EmptyState`, `ErrorState`, `Skeleton`, and
+`StatusPill` primitives. Test default, hover, focus-visible, disabled, loading, error, and
 selected states.
 
 ### FE-003: Shared shells, session states, and RBAC navigation
 
 Add public, customer, admin, and delivery layouts with shared headers, responsive containers,
-desktop sidebar, mobile navigation, breadcrumbs, and account menu. Centralize \`requireSession\`,
-\`requireRole\`, and \`can(permission)\` around the existing session contract. Derive admin
+desktop sidebar, mobile navigation, breadcrumbs, and account menu. Centralize `requireSession`,
+`requireRole`, and `can(permission)` around the existing session contract. Derive admin
 navigation from server-provided permissions. Add route-level loading, error, unauthorized,
 forbidden, and offline states.
 
@@ -162,8 +162,8 @@ overflow; guard and navigation tests cover missing session, wrong role, and miss
 
 ### FE-004: Public landing page
 
-Build the actual \`/\` experience from server-owned storefront banners, plans, and catalog preview.
-Use Figma and \`E:\grocery\web\` for visual direction only. Include accessible navigation, hero,
+Build the actual `/` experience from server-owned storefront banners, plans, and catalog preview.
+Use Figma and `E:\grocery\web` for visual direction only. Include accessible navigation, hero,
 value proposition, plans, catalog preview, account calls to action, footer/legal links, image
 loading, alt text, and empty/error states.
 
@@ -225,9 +225,9 @@ point.
 - Responsive phone and desktop behavior is intentional.
 - Loading, empty, error, unauthorized/forbidden, disabled, and success states exist.
 - Semantic HTML, labels, focus-visible styles, keyboard behavior, and contrast are checked.
-- Focused tests pass, followed by \`pnpm check\`.
-- \`git diff --check\`, staged diff review, backlog completion record, conventional commit, and push
-  to \`origin/main\` are complete.
+- Focused tests pass, followed by `pnpm check`.
+- `git diff --check`, staged diff review, backlog completion record, conventional commit, and push
+  to `origin/main` are complete.
 
 ## Resume Point
 
