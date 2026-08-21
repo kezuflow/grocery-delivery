@@ -7,3 +7,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Frontend Architecture Rules
+
+Before changing frontend structure or styling, read `../../docs/frontend-standards.md`.
+
+- Follow this dependency order: tokens -> UI primitives -> layouts -> features -> routes.
+- Reuse an existing token, primitive, or feature component before creating another one.
+- Keep route files focused on data loading, authorization, metadata, and composition.
+- Keep generic UI components free of API calls, sessions, permissions, and business rules.
+- Use semantic design tokens and named component variants instead of repeated arbitrary values.
+- Keep Tailwind classes local when they describe one-off layout; extract repeated visual behavior.
+- Preserve server ownership of prices, totals, roles, permissions, statuses, and availability.
+- Include responsive, keyboard, focus, loading, empty, error, disabled, and success states.

@@ -7,6 +7,8 @@ platform/API ledger; this file is its frontend companion.
 
 ## Working Rules
 
+- Follow [`docs/frontend-standards.md`](frontend-standards.md) for component ownership, reuse,
+  Tailwind, token, accessibility, and route-composition decisions.
 - Work directly on `main`; keep each slice independently reviewable.
 - Before starting a slice, mark it `in progress` and record scope and acceptance checks.
 - Update this backlog in the same commit as the implementation that completes a slice.
