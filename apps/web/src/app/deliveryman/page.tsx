@@ -4,7 +4,7 @@ import { createApiClient } from "../../lib/api/client";
 import { createRuntimeApiTransport } from "../../lib/api/runtime";
 import { requireRole } from "../../lib/auth";
 import { AppShell } from "../../components/layout";
-import { DeliverymanConsole } from "./console";
+import { DeliveryDashboard } from "../../features/delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export default async function DeliverymanPage() {
       status={<span className="account-status">{assignments.data.cycleId}</span>}
       title="Assignments"
     >
-      <DeliverymanConsole initial={assignments.data} />
+      <DeliveryDashboard initial={assignments.data} />
     </AppShell>
   );
 }

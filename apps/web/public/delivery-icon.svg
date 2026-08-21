@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Carbon Food Delivery">
+  <rect width="512" height="512" rx="112" fill="#244d3e"/>
+  <path d="M118 286h220l38-112H173l-21-53h-48" fill="none" stroke="#c6e46b" stroke-linecap="round" stroke-linejoin="round" stroke-width="34"/>
+  <circle cx="190" cy="356" r="31" fill="#f6f7f2"/>
+  <circle cx="330" cy="356" r="31" fill="#f6f7f2"/>
+  <path d="M260 111c-8 43-34 71-78 82 7-48 33-75 78-82Z" fill="#c6e46b"/>
+  <path d="M264 111c43 8 71 34 82 78-48-7-75-33-82-78Z" fill="#f6f7f2"/>
+</svg>

@@ -76,4 +76,5 @@ export const deliverymanEventsResponseSchema = z.object({
 });
 
 export type DeliveryEventRequest = z.infer<typeof deliveryEventRequestSchema>;
+export type DeliveryEvent = z.infer<typeof deliveryEventSchema>;
 export type DeliverymanAssignmentsResponse = z.infer<typeof deliverymanAssignmentsResponseSchema>;

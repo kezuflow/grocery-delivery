@@ -47,6 +47,12 @@ describe("role navigation", () => {
       "/account/orders",
       "/account/support",
     ]);
-    expect(getNavigation(deliveryman).map((item) => item.href)).toEqual(["/deliveryman"]);
+    expect(getNavigation(deliveryman).map((item) => item.href)).toEqual([
+      "/deliveryman",
+      "/deliveryman/assignments",
+      "/deliveryman/route",
+      "/deliveryman/sync",
+      "/deliveryman/history",
+    ]);
   });
 });

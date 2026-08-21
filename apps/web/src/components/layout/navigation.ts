@@ -17,7 +17,11 @@ const customerNavigation: readonly NavigationItem[] = [
 ];
 
 const deliveryNavigation: readonly NavigationItem[] = [
-  { href: "/deliveryman", label: "Assignments" },
+  { href: "/deliveryman", label: "Dashboard" },
+  { href: "/deliveryman/assignments", label: "Assignments" },
+  { href: "/deliveryman/route", label: "Route" },
+  { href: "/deliveryman/sync", label: "Sync" },
+  { href: "/deliveryman/history", label: "History" },
 ];
 
 const adminNavigation: readonly NavigationItem[] = [

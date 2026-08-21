@@ -152,8 +152,8 @@ from another feature.
 | FE-007 | Customer account, orders, tracking, and support    | complete | FE-006 -> FE-008      |
 | FE-008 | Admin overview and operations navigation           | complete | FE-003 -> FE-009      |
 | FE-009 | Admin operational workspaces                       | complete | FE-008 -> FE-010      |
-| FE-010 | Delivery dashboard and mobile PWA workflow         | next     | FE-003                |
-| FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned  | FE-004 through FE-010 |
+| FE-010 | Delivery dashboard and mobile PWA workflow         | complete | FE-003 -> FE-011      |
+| FE-011 | Browser E2E, responsive, accessibility, visual QA  | next     | FE-004 through FE-010 |
 | FE-012 | Frontend release hardening and handoff             | planned  | FE-011                |
 
 ## Slice Details
@@ -309,6 +309,39 @@ Preserve assignment scoping, idempotent event submission, and server-issued medi
 IndexedDB-backed ordered event queue, retry/conflict messaging, online/offline banners, and a useful
 desktop view.
 
+Current increment:
+
+- Split the connected delivery console into dashboard, assignment queue/detail, route, sync, and
+  current-cycle history routes with feature-owned presentation and workflow modules.
+- Replace the local-storage event queue with an ordered IndexedDB queue that preserves stable client
+  event IDs, retries transient failures, and retains actionable conflict details.
+- Keep proof uploads on server-issued URLs and expose explicit online, offline, pending, syncing,
+  conflict, empty, disabled, and success states on touch-first controls.
+- Add installable PWA metadata and focused tests for event progression, route ordering, queue state,
+  and delivery navigation.
+
+Acceptance checks:
+
+- Route files contain guards, server reads, and composition rather than reusable workflow logic.
+- The browser queues only contract-valid delivery events; assignment, order, and deliveryman scope
+  continue to be verified by the protected API.
+- Events flush in queued order, reuse their original client event IDs, stop on transient failures,
+  and retain rejected events for staff review instead of silently deleting them.
+- Proof uploads accept only the shared bounded image types and use the server-issued upload URL.
+- Phone controls meet touch and keyboard needs, desktop layouts remain useful, and focused web
+  checks, the production build, and `pnpm check` pass.
+
+Completion record: the delivery workflow now lives under a focused `features/delivery` boundary and
+has protected dashboard, assignment queue/detail, route, sync, and history routes. Delivery events
+are stored in an ordered IndexedDB queue with stable client event IDs, online retry, retained
+conflicts, explicit retry/removal controls, and no client-owned assignment or deliveryman scope.
+Proof uploads remain bounded to the shared image contract and use server-issued upload URLs. A
+Next.js manifest and delivery icon make the delivery surface installable. Focused delivery and
+navigation tests, lint, typecheck, production build, and practical 390 px/1440 px browser checks
+pass; the local browser correctly rendered the session-unavailable guard without horizontal
+overflow when the API Worker was not running. The next slice is FE-011 browser E2E and formal
+cross-role responsive/accessibility/visual QA.
+
 ### FE-011: Browser E2E, responsive, accessibility, and visual QA
 
 After FE-004 through FE-010 have completed the planned UI, add the Playwright harness and coverage
@@ -405,3 +438,11 @@ Customer order history, order detail, tracking, receipts, signed proof media, ge
 order cancellation/refund requests are now route-level experiences backed by feature modules and a
 customer-owned detail loader. Focused web tests, lint, typecheck, production build, and all 55
 repository checks pass. The next frontend slice is FE-008: admin overview and operations navigation.
+
+### FE-010 Completion Record
+
+The delivery staff experience now uses modular feature components, dedicated protected routes, an
+ordered IndexedDB event queue, retained conflict states, touch-first controls, server-issued media
+uploads, current-cycle history, and installable PWA metadata. Focused web lint, typecheck, tests (57
+tests), production build, and practical phone/desktop browser checks pass. The next frontend slice
+is FE-011: browser E2E, responsive, accessibility, and visual QA.
