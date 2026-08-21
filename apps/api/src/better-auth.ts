@@ -20,10 +20,11 @@ export function createConfiguredBetterAuthApi(
       "Better Auth requires BETTER_AUTH_SECRET and BETTER_AUTH_URL",
     );
   }
+  const betterAuthUrl = configuration.betterAuthUrl;
   const auth = betterAuth({
     database: bindings.DB,
     secret: configuration.betterAuthSecret,
-    baseURL: configuration.betterAuthUrl,
+    baseURL: betterAuthUrl,
     basePath: "/api/auth",
     trustedOrigins: [...configuration.betterAuthTrustedOrigins],
     emailAndPassword: {
@@ -33,11 +34,15 @@ export function createConfiguredBetterAuthApi(
       ...(identityEmailSender
         ? {
             sendResetPassword: async ({ user, url, token }) => {
+              const actionUrl = ensurePasswordResetCallback(
+                url,
+                configuration.betterAuthTrustedOrigins[0] ?? betterAuthUrl,
+              );
               await identityEmailSender.send({
                 idempotencyKey: `password-reset:${user.id}:${token}`,
                 recipient: user.email,
                 type: "password_reset",
-                actionUrl: url,
+                actionUrl,
               });
             },
           }
@@ -207,6 +212,14 @@ export function createConfiguredBetterAuthApi(
       };
     },
   };
+}
+
+function ensurePasswordResetCallback(url: string, webOrigin: string): string {
+  const actionUrl = new URL(url);
+  if (actionUrl.searchParams.get("callbackURL")) return actionUrl.toString();
+
+  actionUrl.searchParams.set("callbackURL", `${webOrigin}/reset-password`);
+  return actionUrl.toString();
 }
 
 function isTrustedOrigin(origin: string, configuration: ApiRuntimeConfiguration): boolean {

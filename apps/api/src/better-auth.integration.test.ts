@@ -256,6 +256,7 @@ describe("Better Auth D1 integration", () => {
       AUTH_MODE: "better-auth",
       BETTER_AUTH_SECRET: "delivery-secret-that-is-at-least-32-characters",
       BETTER_AUTH_URL: "https://api.example.test",
+      CORS_ORIGINS: "https://app.example.test",
       DB: database,
     } as const;
     const app = createConfiguredApi(bindings, {
@@ -300,7 +301,15 @@ describe("Better Auth D1 integration", () => {
     const resetMessage = emailSender.messages.find(
       (message) => message.type === "password_reset" && message.recipient === "reset@example.com",
     );
+    expect(resetMessage?.actionUrl).toContain(
+      "callbackURL=https%3A%2F%2Fapp.example.test%2Freset-password",
+    );
     const token = new URL(resetMessage!.actionUrl).pathname.split("/").at(-1);
+    const resetCallback = await app.request(resetMessage!.actionUrl, undefined, bindings);
+    expect(resetCallback.status).toBe(302);
+    expect(resetCallback.headers.get("location")).toBe(
+      `https://app.example.test/reset-password?token=${token}`,
+    );
     const reset = await app.request(
       "/api/auth/reset-password",
       {

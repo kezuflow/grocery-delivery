@@ -861,11 +861,12 @@ Blocked rehearsal record: the 2026-08-21 staging rehearsal is recorded in
 web, jobs, workflow, queue, secrets, R2 bindings, health, origin protection, security headers,
 20,000-cart deterministic capacity, a 200-request read-only smoke pass, timed D1 restore, and timed
 web rollback were verified. A mock superadmin, customer, and delivery-staff candidate now exist in
-staging, but none has completed email verification or administrator TOTP enrollment. The result is
-still no-go because staging has zero catalog categories, active SKUs, delivery windows, and orders,
-so customer-to-delivery and PayMongo sandbox E2E cannot run. The latest Linux OpenNext web deployment
-attempt also stalled before producing a bundle or deployment. Production Workers and required queue/R2
-resources are not provisioned, and named human go/no-go owners are not recorded.
+staging, and all three have completed email verification; administrator TOTP enrollment remains
+pending. The result is still no-go because staging has zero catalog categories, active SKUs, delivery
+windows, and orders, so customer-to-delivery and PayMongo sandbox E2E cannot run. The staging web
+Worker now includes the password-reset form after a callback regression was fixed and deployed.
+Production Workers and required queue/R2 resources are not provisioned, and named human go/no-go
+owners are not recorded.
 
 Bootstrap increment: the protected `PUT /api/v1/admin/launch-configuration` route now gives an
 MFA-verified superadmin a supported, idempotent path to load approved catalog categories, SKU
@@ -875,7 +876,7 @@ rejects client-owned final prices. The operations console exposes the same manif
 only to superadmins. This is a data-bootstrap mechanism, not staging data: no launch values were
 invented or applied by this increment.
 
-Resume point: verify the mock staging identities by email, enroll administrator TOTP, and use the
+Resume point: enroll administrator TOTP and use the
 superadmin session to assign the delivery candidate. Import the labelled mock-only manifest, then run
 the authenticated PayMongo/order/operations/delivery flow and mutation load fixture. Repair the WSL
 OpenNext build/deployment before testing the updated web flow; name operational owners; then provision

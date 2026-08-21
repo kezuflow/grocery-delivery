@@ -12,8 +12,8 @@ go/no-go owners have not been named.
 
 | Component       | Verified version or state                                                      |
 | --------------- | ------------------------------------------------------------------------------ |
-| API Worker      | `0083fbf0-5a21-4065-97da-f8cbbd3c967c`                                         |
-| Web Worker      | `cb188806-7f27-4f00-b00a-47dd79b4552f`                                         |
+| API Worker      | `8cdff181-f3e4-41a5-adc0-b3d292177d0f`                                         |
+| Web Worker      | `8d7ab071-f53e-44a0-8ce7-c11f6d8d4838`                                         |
 | Jobs Worker     | `e547906a-a346-4b51-9b07-cf1e9f405116`                                         |
 | Workflow Worker | `0c647a09-383a-4b3b-b6b8-9289749594bd`                                         |
 | D1 migrations   | 36 applied; no pending migrations                                              |
@@ -37,14 +37,17 @@ one-year immutable cache policy.
 - The authenticated mutation portion remains incomplete. Three clearly labelled mock identities
   were created through the deployed Better Auth signup endpoint on 2026-08-21: a superadmin,
   customer, and delivery-staff candidate. All are Gmail plus-address aliases owned by the
-  rehearsal operator, and all are unverified. The API accepted the requests with `200`, and D1
+  rehearsal operator, and all have now completed email verification. The API accepted the requests
+  with `200`, and D1
   confirms the server-owned assignments: the superadmin has only `superadmin` and requires MFA;
   the other two accounts are customers. No production identities or data were created.
-- Cloudflare Email Sending accepted the verification sends from
-  `no-reply@getscenepass.com`, but delivery cannot be proved from Worker/D1 state. Inbox delivery,
-  email verification, and administrator TOTP enrollment must be completed interactively before
-  protected mutations can run. After that, the superadmin must assign the delivery candidate the
-  audited `deliveryman` role through `POST /api/v1/admin/identity/roles`.
+- Cloudflare Email Sending accepted the verification and password-recovery sends from
+  `no-reply@getscenepass.com`. The initial recovery email exposed an empty Better Auth callback and
+  therefore redirected to `INVALID_TOKEN`. The API now supplies the trusted staging web reset
+  callback, and the web Worker exposes the matching reset form plus a storefront recovery action.
+  Administrator TOTP enrollment must still be completed interactively before protected mutations
+  can run. After that, the superadmin must assign the delivery candidate the audited `deliveryman`
+  role through `POST /api/v1/admin/identity/roles`.
 - A staging-only OpenNext web deployment was attempted from Ubuntu WSL because Windows cannot
   package its symlinks. Node 22 and pnpm 11 were installed, dependencies were restored in a
   temporary Linux workspace, then `next build` remained in its build worker for more than 12

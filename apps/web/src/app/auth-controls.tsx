@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type AuthMode = "sign-in" | "sign-up";
+type AuthMode = "sign-in" | "sign-up" | "forgot-password";
 
 export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
   const router = useRouter();
@@ -54,6 +54,23 @@ export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
             setPending(true);
             setMessage(null);
             const form = new FormData(currentTarget);
+            if (mode === "forgot-password") {
+              const response = await fetch("/api/auth/request-password-reset", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  email: form.get("email"),
+                  redirectTo: `${window.location.origin}/reset-password`,
+                }),
+              });
+              setMessage(
+                response.ok
+                  ? "If that email exists, a reset link is on its way."
+                  : "We could not send a reset link. Please try again.",
+              );
+              setPending(false);
+              return;
+            }
             const endpoint = mode === "sign-in" ? "sign-in" : "sign-up";
             const response = await fetch(`/api/auth/${endpoint}/email`, {
               method: "POST",
@@ -88,23 +105,43 @@ export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
           required
           type="email"
         />
-        <input
-          aria-label="Password"
-          autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-          minLength={8}
-          name="password"
-          placeholder="Password"
-          required
-          type="password"
-        />
+        {mode !== "forgot-password" ? (
+          <input
+            aria-label="Password"
+            autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+            minLength={8}
+            name="password"
+            placeholder="Password"
+            required
+            type="password"
+          />
+        ) : null}
         <button className="button button-small" disabled={pending} type="submit">
-          {pending ? "Working..." : mode === "sign-in" ? "Sign in" : "Create account"}
+          {pending
+            ? "Working..."
+            : mode === "sign-in"
+              ? "Sign in"
+              : mode === "sign-up"
+                ? "Create account"
+                : "Send reset link"}
         </button>
       </form>
+      {mode === "sign-in" ? (
+        <button
+          className="auth-switch"
+          onClick={() => {
+            setMode("forgot-password");
+            setMessage(null);
+          }}
+          type="button"
+        >
+          Forgot password?
+        </button>
+      ) : null}
       <button
         className="auth-switch"
         onClick={() => {
-          setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+          setMode(mode === "sign-in" || mode === "forgot-password" ? "sign-up" : "sign-in");
           setMessage(null);
         }}
         type="button"
