@@ -17,7 +17,11 @@ export function LaunchConfigurationForm() {
   const [message, setMessage] = useState<string | null>(null);
 
   return (
-    <section className="account-panel account-panel-wide" aria-labelledby="launch-config-title">
+    <section
+      className="account-panel account-panel-wide"
+      aria-labelledby="launch-config-title"
+      id="launch-configuration"
+    >
       <div className="account-panel-heading">
         <p className="eyebrow" id="launch-config-title">
           Launch configuration

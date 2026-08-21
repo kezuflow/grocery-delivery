@@ -15,8 +15,10 @@ import type {
   AdminOrderRequestsResponse,
 } from "@carbon/contracts";
 
+import type { AdminPermission } from "../../lib/permissions";
+
 type Props = Readonly<{
-  permissions: string[];
+  permissions: readonly AdminPermission[];
   procurement: ProcurementResponse["data"] | null;
   promotions: PromotionAdminSummary[];
   supportCases: SupportCasesResponse["data"]["cases"];
@@ -35,7 +37,7 @@ export function AdminActions({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [refundKey, setRefundKey] = useState(() => crypto.randomUUID());
-  const can = (permission: string) => permissions.includes(permission);
+  const can = (permission: AdminPermission) => permissions.includes(permission);
 
   async function run(action: () => Promise<unknown>): Promise<boolean> {
     setBusy(true);
@@ -58,7 +60,11 @@ export function AdminActions({
   }
 
   return (
-    <section className="account-panel account-panel-wide" aria-label="Operations actions">
+    <section
+      className="account-panel account-panel-wide"
+      aria-label="Operations actions"
+      id="actions"
+    >
       <div className="account-panel-heading">
         <p className="eyebrow">Actions</p>
         <span>{busy ? "Saving..." : (message ?? "Server-controlled workflows")}</span>
@@ -393,33 +399,37 @@ export function AdminActions({
           </button>
         </form>
       ) : null}
-      {can("support") && supportCases.length ? (
-        <div className="admin-action-grid">
-          {supportCases.map((supportCase) => (
-            <form
-              key={supportCase.id}
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                void run(() =>
-                  client.updateAdminSupportCaseStatus(supportCase.id, {
-                    status: form.get("status"),
-                  }),
-                );
-              }}
-            >
-              <h3>{supportCase.subject}</h3>
-              <p>{supportCase.message}</p>
-              <select name="status" defaultValue={supportCase.status}>
-                <option value="open">Open</option>
-                <option value="in_progress">In progress</option>
-                <option value="resolved">Resolved</option>
-              </select>
-              <button type="submit" disabled={busy}>
-                Update case
-              </button>
-            </form>
-          ))}
+      {can("support") ? (
+        <div className="admin-action-grid" id="support">
+          {supportCases.length ? (
+            supportCases.map((supportCase) => (
+              <form
+                key={supportCase.id}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  void run(() =>
+                    client.updateAdminSupportCaseStatus(supportCase.id, {
+                      status: form.get("status"),
+                    }),
+                  );
+                }}
+              >
+                <h3>{supportCase.subject}</h3>
+                <p>{supportCase.message}</p>
+                <select name="status" defaultValue={supportCase.status}>
+                  <option value="open">Open</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+                <button type="submit" disabled={busy}>
+                  Update case
+                </button>
+              </form>
+            ))
+          ) : (
+            <p className="subscription-note">No open support cases.</p>
+          )}
         </div>
       ) : null}
     </section>

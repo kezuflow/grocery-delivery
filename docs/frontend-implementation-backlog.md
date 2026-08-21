@@ -145,7 +145,7 @@ from another feature.
 | ------ | -------------------------------------------------- | -------- | --------------------- |
 | FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
 | FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
-| FE-003 | Shared shells, session states, and RBAC navigation | next     | FE-002                |
+| FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
 | FE-004 | Public landing page                                | planned  | FE-002, FE-003        |
 | FE-005 | Customer catalog and mobile shopping               | planned  | FE-003, FE-004        |
 | FE-006 | Cart, subscription, and checkout                   | planned  | FE-005                |
@@ -288,3 +288,16 @@ Focused web build, lint, typecheck, and tests pass (23 tests).
 
 The reusable UI and token foundation is complete. The next frontend slice is FE-003: shared shells,
 session states, and RBAC navigation.
+
+### FE-003 Completion Record
+
+Shared protected application shells now provide a responsive header, desktop navigation, mobile
+sheet navigation, breadcrumbs, role status, account sign-out, and browser offline feedback.
+Customer, admin, and delivery routes use server-side session guards with explicit unauthorized,
+forbidden, and session-unavailable states. Admin navigation and dashboard reads derive from
+server-provided permissions, including superadmin inheritance. Protected routes also include
+reusable loading skeletons and retryable error boundaries, while existing API-connected workflows
+remain in place.
+
+Focused web lint, typecheck, tests (40 tests), and production build pass. The next frontend slice is
+FE-004: public landing page.

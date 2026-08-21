@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-
 import { loadAdminDashboard } from "../../lib/admin";
-import { loadCurrentSession } from "../../lib/session";
-import { AuthControls } from "../auth-controls";
+import { requireRole } from "../../lib/auth";
+import { getEffectiveAdminPermissions } from "../../lib/permissions";
+import { AppShell } from "../../components/layout";
 import { AdminActions } from "./admin-actions";
 import { LaunchConfigurationForm } from "./launch-configuration-form";
 
@@ -11,30 +10,20 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Operations" };
 
 export default async function AdminPage() {
-  const auth = await loadCurrentSession();
-  if (!auth.session || auth.session.role !== "admin") redirect("/");
-  const dashboard = await loadAdminDashboard(auth.session.adminPermissions);
+  const session = await requireRole("admin");
+  const permissions = getEffectiveAdminPermissions(session);
+  const dashboard = await loadAdminDashboard(permissions);
   return (
-    <main className="account-page min-h-screen bg-paper text-ink">
-      <header className="site-header account-header">
-        <a className="wordmark" href="/" aria-label="Carbon Food Delivery home">
-          <span className="wordmark-mark">C</span>
-          <span>Carbon</span>
-        </a>
-        <nav aria-label="Operations navigation">
-          <a href="/">Storefront</a>
-          <AuthControls signedIn />
-        </nav>
-      </header>
-      <section className="account-intro">
-        <div>
-          <p className="eyebrow">Operations console</p>
-          <h1>Weekly operations</h1>
-        </div>
-        <span className="account-status">
-          {auth.session.adminPermissions.join(", ") || "admin"}
-        </span>
-      </section>
+    <AppShell
+      breadcrumbs={[{ href: "/", label: "Storefront" }, { label: "Operations" }]}
+      description="Monitor the weekly cycle and run the workflows your role is responsible for."
+      eyebrow="Operations console"
+      session={session}
+      status={
+        <span className="account-status">{session.adminPermissions.join(", ") || "admin"}</span>
+      }
+      title="Weekly operations"
+    >
       {dashboard.error ? (
         <section className="account-state" role="status">
           <h2>Dashboard unavailable</h2>
@@ -55,7 +44,7 @@ export default async function AdminPage() {
             title="Assignments"
             value={String(dashboard.projection?.delivery.totalAssignments ?? 0)}
           />
-          {auth.session.adminPermissions.includes("reporting") ? (
+          {permissions.includes("reporting") ? (
             <section className="account-panel account-panel-wide">
               <div className="account-panel-heading">
                 <p className="eyebrow">Operational alerts</p>
@@ -78,7 +67,7 @@ export default async function AdminPage() {
               )}
             </section>
           ) : null}
-          <section className="account-panel account-panel-wide">
+          <section className="account-panel account-panel-wide" id="packing">
             <div className="account-panel-heading">
               <p className="eyebrow">Packing</p>
               <span>{dashboard.procurement?.manifests.length ?? 0} manifests</span>
@@ -117,17 +106,15 @@ export default async function AdminPage() {
             )}
           </section>
           <AdminActions
-            permissions={auth.session.adminPermissions}
+            permissions={permissions}
             procurement={dashboard.procurement}
             promotions={dashboard.promotions}
             supportCases={dashboard.supportCases}
             orderRequests={dashboard.orderRequests}
           />
-          {auth.session.adminPermissions.includes("superadmin") ? (
-            <LaunchConfigurationForm />
-          ) : null}
-          {auth.session.adminPermissions.includes("reporting") ? (
-            <section className="account-panel account-panel-wide">
+          {permissions.includes("superadmin") ? <LaunchConfigurationForm /> : null}
+          {permissions.includes("reporting") ? (
+            <section className="account-panel account-panel-wide" id="audit">
               <div className="account-panel-heading">
                 <p className="eyebrow">Audit history</p>
                 <span>{dashboard.auditEvents.length} events</span>
@@ -149,7 +136,7 @@ export default async function AdminPage() {
           ) : null}
         </section>
       )}
-    </main>
+    </AppShell>
   );
 }
 

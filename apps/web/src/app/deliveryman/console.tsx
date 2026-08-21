@@ -127,32 +127,14 @@ export function DeliverymanConsole({
   };
 
   return (
-    <main className="account-page deliveryman-page">
-      <header className="site-header account-header">
-        <a className="wordmark" href="/" aria-label="Carbon Food Delivery home">
-          <span className="wordmark-mark">C</span>
-          <span>Carbon</span>
-        </a>
-        <nav>
-          <a href="/">Storefront</a>
-        </nav>
-      </header>
-      <section className="account-intro">
-        <div>
-          <p className="eyebrow">Delivery route</p>
-          <h1>{initial.cycleId}</h1>
-        </div>
-        <span className="account-status">
-          {queued.length ? `${queued.length} pending` : "synced"}
-        </span>
-      </section>
+    <section className="grid gap-6" aria-label="Assigned deliveries">
       <section className="deliveryman-toolbar">
         <button className="button button-small" onClick={() => void refresh()} type="button">
           Refresh assignments
         </button>
         {message ? <span role="status">{message}</span> : null}
       </section>
-      <section className="deliveryman-list" aria-label="Assigned deliveries">
+      <div className="deliveryman-list">
         {assignments.length === 0 ? (
           <p className="subscription-note">No deliveries are assigned for this cycle.</p>
         ) : (
@@ -255,8 +237,8 @@ export function DeliverymanConsole({
             </article>
           ))
         )}
-      </section>
-    </main>
+      </div>
+    </section>
   );
 }
 

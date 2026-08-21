@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-
 import { loadCustomerAccount } from "../../lib/account";
-import { loadCurrentSession } from "../../lib/session";
-import { AuthControls } from "../auth-controls";
+import { requireCustomerSession } from "../../lib/auth";
+import { AppShell } from "../../components/layout";
 import { CartEditor } from "./cart-editor";
 import { DeliveryAddressEditor } from "./delivery-address-editor";
 import { DeliveryAddressBook } from "./delivery-address-book";
@@ -33,9 +31,7 @@ function formatPrice(centavos: number) {
 }
 
 export default async function AccountPage() {
-  const auth = await loadCurrentSession();
-  if (!auth.session) redirect("/");
-  if (auth.session.role !== "customer" || !auth.session.customerId) redirect("/");
+  const session = await requireCustomerSession();
 
   const account = await loadCustomerAccount();
   const plan = account.subscription
@@ -43,26 +39,14 @@ export default async function AccountPage() {
     : null;
 
   return (
-    <main className="account-page">
-      <header className="site-header account-header">
-        <a className="wordmark" href="/" aria-label="Carbon Food Delivery home">
-          <span className="wordmark-mark">C</span>
-          <span>Carbon</span>
-        </a>
-        <nav aria-label="Account navigation">
-          <a href="/">Storefront</a>
-          <AuthControls signedIn />
-        </nav>
-      </header>
-
-      <section className="account-intro">
-        <div>
-          <p className="eyebrow">Your weekly shop</p>
-          <h1>Account</h1>
-        </div>
-        <span className="account-status">{auth.session.role}</span>
-      </section>
-
+    <AppShell
+      breadcrumbs={[{ href: "/", label: "Storefront" }, { label: "Account" }]}
+      description="Manage your weekly plan, delivery details, orders, and support requests."
+      eyebrow="Your weekly shop"
+      session={session}
+      status={<span className="account-status">Customer</span>}
+      title="Account"
+    >
       {account.error ? (
         <section className="account-state" role="status">
           <h2>Account temporarily unavailable</h2>
@@ -266,6 +250,6 @@ export default async function AccountPage() {
           <PrivacyPanel privacy={account.privacy} />
         </section>
       )}
-    </main>
+    </AppShell>
   );
 }
