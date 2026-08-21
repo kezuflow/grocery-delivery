@@ -66,6 +66,7 @@ export const procurementPurchaseRequestSchema = z.object({
 });
 export const procurementSubstitutionRequestSchema = z.object({
   shortageId: z.string().min(1),
+  orderId: z.string().trim().min(1).max(128).optional(),
   substituteSkuId: z.string().min(1),
   quantity: z.number().int().positive(),
   status: z.enum(["proposed", "approved", "rejected"]),

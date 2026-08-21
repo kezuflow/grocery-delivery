@@ -33,6 +33,8 @@ import {
   supportCasesResponseSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
+  customerOrderSubstitutionResponseSchema,
+  customerOrderSubstitutionsResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultCartLockService,
@@ -76,6 +78,7 @@ import {
   InMemorySupportCaseRepository,
   InMemoryNotificationPreferencesRepository,
   InMemoryCustomerOrderRequestRepository,
+  InMemoryCustomerOrderSubstitutionRepository,
 } from "@carbon/db";
 import { createApi } from "./app.js";
 import { createInMemoryMetricsSink } from "@carbon/observability";
@@ -2468,5 +2471,106 @@ describe("API worker", () => {
     expect(customerOrderRequestsResponseSchema.parse(await list.json()).data.requests).toHaveLength(
       1,
     );
+  });
+
+  it("lets only the affected customer decide a proposed order substitution idempotently", async () => {
+    const procurementRepository = new InMemoryProcurementRepository();
+    await procurementRepository.saveShortage({
+      id: "shortage-customer-1",
+      cycleId: "cycle-2026-08-22",
+      skuId: "sku-a",
+      requestedQuantity: 2,
+      availableQuantity: 1,
+      status: "open",
+      createdAt: "2026-08-20T00:00:00.000Z",
+    });
+    const customerSubstitutionRepository = new InMemoryCustomerOrderSubstitutionRepository();
+    const orderReader = new InMemoryOrderRepository();
+    await orderReader.save(
+      createLockedOrder({
+        id: "order-substitution-1",
+        customerId: "customer-substitution-1",
+        subscriptionId: "subscription-1",
+        planId: "plan-small",
+        cycleId: "cycle-2026-08-22",
+        idempotencyKey: "checkout-substitution-1",
+        requestFingerprint: "fingerprint-substitution-1",
+        cart: createCart([
+          createCartLine({ skuId: "sku-a", quantity: 1, unitPrice: createMoney(100) }),
+        ]),
+        weeklyCredit: createMoney(100),
+        totals: {
+          subtotal: createMoney(100),
+          weeklyFee: createMoney(0),
+          includedCredit: createMoney(100),
+          overage: createMoney(0),
+          deliveryFee: createMoney(0),
+          totalDue: createMoney(0),
+        },
+        status: "locked",
+        lockedAt: "2026-08-20T00:00:00.000Z",
+      }),
+    );
+    let activeSession = createSession({
+      id: "session-substitution-admin",
+      userId: "admin-substitution-1",
+      role: "admin",
+      customerId: null,
+      adminPermissions: ["procurement"],
+      expiresAt: "2099-08-21T00:00:00.000Z",
+      revokedAt: null,
+    });
+    const app = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      procurementRepository,
+      customerOrderSubstitutionRepository: customerSubstitutionRepository,
+      orderReader,
+      sessionResolver: { resolve: () => Promise.resolve(activeSession) },
+      sink: () => undefined,
+    });
+    const proposal = await app.request("/api/v1/admin/procurement/substitutions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        shortageId: "shortage-customer-1",
+        orderId: "order-substitution-1",
+        substituteSkuId: "sku-b",
+        quantity: 1,
+        status: "proposed",
+      }),
+    });
+    expect(proposal.status).toBe(200);
+
+    activeSession = createSession({
+      id: "session-substitution-customer",
+      userId: "user-substitution-1",
+      role: "customer",
+      customerId: "customer-substitution-1",
+      adminPermissions: [],
+      expiresAt: "2099-08-21T00:00:00.000Z",
+      revokedAt: null,
+    });
+    const list = await app.request("/api/v1/order-substitutions");
+    const listBody = customerOrderSubstitutionsResponseSchema.parse(await list.json());
+    expect(listBody.data.substitutions).toHaveLength(1);
+    const substitutionId = listBody.data.substitutions[0]?.id ?? "";
+    const decision = await app.request(`/api/v1/order-substitutions/${substitutionId}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "decision-1" },
+      body: JSON.stringify({ decision: "accept" }),
+    });
+    expect(decision.status).toBe(200);
+    expect(customerOrderSubstitutionResponseSchema.parse(await decision.json()).data.status).toBe(
+      "accepted",
+    );
+    const replay = await app.request(`/api/v1/order-substitutions/${substitutionId}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "decision-1" },
+      body: JSON.stringify({ decision: "accept" }),
+    });
+    expect(replay.status).toBe(200);
+    await expect(
+      procurementRepository.listSubstitutions("cycle-2026-08-22"),
+    ).resolves.toMatchObject([{ status: "approved" }]);
   });
 });

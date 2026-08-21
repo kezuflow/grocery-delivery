@@ -756,8 +756,14 @@ fingerprints before accepting a request. Accepted requests remain pending for op
 and write an audit event; the account experience renders the server-owned request status and offers
 a modular request form. Focused API, repository, contract, and web checks pass.
 
-Next resume point: add customer substitution decisions, then connect approved cancellation/refund
-requests to finance and order state transitions.
+Completion record: customer substitution proposals now link an operational procurement proposal to a
+specific customer order and original SKU. Protected customer list and decision routes enforce
+customer ownership, pending-only decisions, cycle and line eligibility, idempotency fingerprints,
+procurement status synchronization, and audit events. The account experience renders server-owned
+proposals with accept/reject actions. Focused domain, contract, repository, API, and web checks pass.
+
+Next resume point: connect approved cancellation/refund requests to finance and durable order state
+transitions.
 
 ### Slice 020: Delivery staff production workflow
 

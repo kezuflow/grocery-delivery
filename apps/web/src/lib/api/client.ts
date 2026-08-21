@@ -43,6 +43,9 @@ import {
   customerOrderRequestCreateSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
+  customerOrderSubstitutionDecisionSchema,
+  customerOrderSubstitutionResponseSchema,
+  customerOrderSubstitutionsResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   plansListResponseSchema,
@@ -83,6 +86,8 @@ import {
   type PaymentRefundResponse,
   type CustomerOrderRequestResponse,
   type CustomerOrderRequestsResponse,
+  type CustomerOrderSubstitutionResponse,
+  type CustomerOrderSubstitutionsResponse,
 } from "@carbon/contracts";
 
 export type ApiTransport = Readonly<{
@@ -188,6 +193,30 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
         "/api/v1/order-requests",
         payload,
         customerOrderRequestResponseSchema,
+        "POST",
+        { ...init, headers: { ...init?.headers, "idempotency-key": idempotencyKey } },
+      );
+    },
+    getOrderSubstitutions(init?: RequestInit): Promise<CustomerOrderSubstitutionsResponse> {
+      return getJson(
+        transport,
+        "/api/v1/order-substitutions",
+        customerOrderSubstitutionsResponseSchema,
+        init,
+      );
+    },
+    decideOrderSubstitution(
+      id: string,
+      decision: "accept" | "reject",
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CustomerOrderSubstitutionResponse> {
+      const payload = customerOrderSubstitutionDecisionSchema.parse({ decision });
+      return sendJson(
+        transport,
+        `/api/v1/order-substitutions/${encodeURIComponent(id)}/decision`,
+        payload,
+        customerOrderSubstitutionResponseSchema,
         "POST",
         { ...init, headers: { ...init?.headers, "idempotency-key": idempotencyKey } },
       );

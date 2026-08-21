@@ -107,6 +107,14 @@ export const openApiDocument: OpenApiDocument = {
       ...protectedOperation("List cancellation and refund requests", "get"),
       ...protectedOperation("Create a cancellation or refund request", "post", "201"),
     },
+    "/api/v1/order-substitutions": protectedOperation(
+      "List customer substitution proposals",
+      "get",
+    ),
+    "/api/v1/order-substitutions/{id}/decision": protectedOperation(
+      "Accept or reject a substitution proposal",
+      "post",
+    ),
     "/api/v1/deliveryman/assignments": protectedOperation("Read deliveryman assignments", "get"),
     "/api/v1/deliveryman/events": protectedOperation("Record a delivery event", "post"),
     "/api/v1/deliveryman/media": protectedOperation("Request a proof-of-delivery upload", "post"),

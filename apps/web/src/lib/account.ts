@@ -14,6 +14,7 @@ import type {
   SupportCasesResponse,
   NotificationPreferencesResponse,
   CustomerOrderRequestsResponse,
+  CustomerOrderSubstitutionsResponse,
 } from "@carbon/contracts";
 
 import { ApiClientError, createApiClient, type ApiTransport } from "./api/client";
@@ -30,6 +31,7 @@ export type CustomerAccountData = Readonly<{
   orderFulfillment: readonly CustomerOrderFulfillment[];
   supportCases: SupportCasesResponse["data"]["cases"];
   orderRequests: CustomerOrderRequestsResponse["data"]["requests"];
+  orderSubstitutions: CustomerOrderSubstitutionsResponse["data"]["substitutions"];
   notificationPreferences: NotificationPreferencesResponse["data"];
   catalog: CatalogListResponse["data"];
   error: string | null;
@@ -72,6 +74,7 @@ export async function resolveCustomerAccount(
       supportCases,
       notificationPreferences,
       orderRequests,
+      orderSubstitutions,
     ] = await Promise.all([
       client.getCurrentSubscription(init).catch((error: unknown) => {
         if (error instanceof ApiClientError && error.status === 404) return null;
@@ -94,6 +97,7 @@ export async function resolveCustomerAccount(
         },
       })),
       client.getOrderRequests(init).catch(() => ({ data: { requests: [] } })),
+      client.getOrderSubstitutions(init).catch(() => ({ data: { substitutions: [] } })),
     ]);
     return {
       subscription: subscription?.data ?? null,
@@ -107,6 +111,7 @@ export async function resolveCustomerAccount(
       orderFulfillment: orderData.fulfillment,
       supportCases: supportCases.data.cases,
       orderRequests: orderRequests.data.requests,
+      orderSubstitutions: orderSubstitutions.data.substitutions,
       notificationPreferences: notificationPreferences.data,
       error: null,
     };
@@ -123,6 +128,7 @@ export async function resolveCustomerAccount(
       orderFulfillment: [],
       supportCases: [],
       orderRequests: [],
+      orderSubstitutions: [],
       notificationPreferences: {
         customerId: "",
         deliveryUpdates: true,

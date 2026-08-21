@@ -116,6 +116,7 @@ export function AdminActions({ permissions, procurement, promotions, supportCase
               void run(() =>
                 client.createAdminSubstitution({
                   shortageId: form.get("shortageId"),
+                  orderId: form.get("orderId") || undefined,
                   substituteSkuId: form.get("substituteSkuId"),
                   quantity: Number(form.get("quantity")),
                   status: form.get("status"),
@@ -126,6 +127,7 @@ export function AdminActions({ permissions, procurement, promotions, supportCase
             <h3>Substitution</h3>
             <input name="shortageId" placeholder="Shortage ID" required />
             <input name="substituteSkuId" placeholder="Substitute SKU" required />
+            <input name="orderId" placeholder="Affected order ID (optional)" />
             <input name="quantity" type="number" min="1" placeholder="Quantity" required />
             <select name="status" defaultValue="proposed">
               <option value="proposed">Propose</option>

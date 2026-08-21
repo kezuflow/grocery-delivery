@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|admin)/,
+        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|order-substitutions|admin)/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -370,5 +370,38 @@ describe("web API client", () => {
         instructions: null,
       }),
     ).resolves.toMatchObject({ data: { city: "Quezon City" } });
+  });
+
+  it("submits an idempotent customer substitution decision", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            id: "substitution-1",
+            customerId: "customer-1",
+            orderId: "order-1",
+            shortageId: "shortage-1",
+            originalSkuId: "sku-1",
+            procurementSubstitutionId: "procurement-substitution-1",
+            substituteSkuId: "sku-2",
+            quantity: 1,
+            status: "accepted",
+            decidedAt: "2026-08-21T01:00:00.000Z",
+            createdAt: "2026-08-21T00:00:00.000Z",
+            updatedAt: "2026-08-21T01:00:00.000Z",
+          },
+          meta,
+        },
+        200,
+        (init) => {
+          expect(init?.method).toBe("POST");
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe("decision-1");
+          expect(JSON.parse(init?.body as string)).toEqual({ decision: "accept" });
+        },
+      ),
+    );
+    await expect(
+      client.decideOrderSubstitution("substitution-1", "accept", "decision-1"),
+    ).resolves.toMatchObject({ data: { status: "accepted" } });
   });
 });

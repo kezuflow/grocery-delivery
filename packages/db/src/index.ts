@@ -23,3 +23,4 @@ export * from "./support.js";
 export * from "./notification-preferences.js";
 export * from "./notification-delivery-receipts.js";
 export * from "./order-requests.js";
+export * from "./customer-substitutions.js";

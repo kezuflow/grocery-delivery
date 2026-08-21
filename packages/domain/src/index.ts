@@ -14,3 +14,4 @@ export * from "./dispatch.js";
 export * from "./delivery-events.js";
 export * from "./delivery-tracking.js";
 export * from "./order-requests.js";
+export * from "./customer-substitutions.js";

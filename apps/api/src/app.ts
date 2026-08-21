@@ -121,6 +121,9 @@ import {
   customerOrderRequestCreateSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
+  customerOrderSubstitutionDecisionSchema,
+  customerOrderSubstitutionResponseSchema,
+  customerOrderSubstitutionsResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -157,11 +160,13 @@ import {
   D1SupportCaseRepository,
   D1NotificationPreferencesRepository,
   D1CustomerOrderRequestRepository,
+  D1CustomerOrderSubstitutionRepository,
   type PromotionBannerAnalyticsRepository,
   type SupportCaseRepository,
   type SupportCase,
   type NotificationPreferencesRepository,
   type CustomerOrderRequestRepository,
+  type CustomerOrderSubstitutionRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -195,11 +200,13 @@ import {
   createPackingManifest,
   createProcurementShortage,
   createProcurementSubstitution,
+  createCustomerOrderSubstitution,
   createPlan,
   hasAdminPermission,
   multiplyMoney,
   normalizePromotionCode,
   type Promotion,
+  type CustomerOrderSubstitution,
   type Session,
 } from "@carbon/domain";
 import {
@@ -301,6 +308,7 @@ export type ApiOptions = Readonly<{
   supportCaseRepository?: SupportCaseRepository;
   notificationPreferencesRepository?: NotificationPreferencesRepository;
   customerOrderRequestRepository?: CustomerOrderRequestRepository;
+  customerOrderSubstitutionRepository?: CustomerOrderSubstitutionRepository;
   identityRepository?: AccountIdentityRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
@@ -502,6 +510,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
       context.req.path === "/api/v1/order-requests" ||
+      context.req.path === "/api/v1/order-substitutions" ||
+      context.req.path.startsWith("/api/v1/order-substitutions/") ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
       context.req.path.startsWith("/api/v1/payments/methods/") ||
@@ -1756,17 +1766,101 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         errorResponse("SHORTAGE_NOT_FOUND", "shortage was not found", context.get("correlationId")),
         404,
       );
-    await repository.saveSubstitution(
-      createProcurementSubstitution({
-        id: crypto.randomUUID(),
-        shortageId: shortage.id,
-        originalSkuId: shortage.skuId,
-        substituteSkuId: input.data.substituteSkuId,
-        quantity: input.data.quantity,
-        status: input.data.status,
-        approvedAt: input.data.status === "approved" ? now().toISOString() : null,
-      }),
-    );
+    if (input.data.orderId && input.data.status !== "proposed") {
+      return context.json(
+        errorResponse(
+          "INVALID_SUBSTITUTION_STATUS",
+          "customer-targeted substitutions must begin as proposed",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const procurementSubstitution = createProcurementSubstitution({
+      id: crypto.randomUUID(),
+      shortageId: shortage.id,
+      originalSkuId: shortage.skuId,
+      substituteSkuId: input.data.substituteSkuId,
+      quantity: input.data.quantity,
+      status: input.data.status,
+      approvedAt: input.data.status === "approved" ? now().toISOString() : null,
+    });
+    if (input.data.orderId) {
+      const orderReader =
+        options.orderReader ?? (bindings.DB ? new D1OrderRepository(bindings.DB) : undefined);
+      const customerSubstitutionRepository =
+        options.customerOrderSubstitutionRepository ??
+        (bindings.DB ? new D1CustomerOrderSubstitutionRepository(bindings.DB) : undefined);
+      const order = orderReader ? await orderReader.findById(input.data.orderId) : null;
+      const line = order?.cart.lines.find((value) => value.skuId === shortage.skuId);
+      if (
+        !order ||
+        order.cycleId !== shortage.cycleId ||
+        !line ||
+        input.data.quantity > line.quantity
+      ) {
+        return context.json(
+          errorResponse(
+            "INVALID_SUBSTITUTION_ORDER",
+            "the substitution order or quantity is invalid",
+            context.get("correlationId"),
+          ),
+          400,
+        );
+      }
+      if (!customerSubstitutionRepository) {
+        return context.json(
+          errorResponse(
+            "ORDER_SUBSTITUTIONS_UNAVAILABLE",
+            "customer substitutions are unavailable",
+            context.get("correlationId"),
+          ),
+          503,
+        );
+      }
+      const existingProposals = await customerSubstitutionRepository.listByCustomer(
+        order.customerId,
+      );
+      if (
+        existingProposals.some(
+          (proposal) =>
+            proposal.orderId === order.id &&
+            proposal.originalSkuId === shortage.skuId &&
+            proposal.status === "pending",
+        )
+      ) {
+        return context.json(
+          errorResponse(
+            "SUBSTITUTION_ALREADY_PENDING",
+            "a substitution decision is already pending for this order item",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      await repository.saveSubstitution(procurementSubstitution);
+      const createdAt = now().toISOString();
+      await customerSubstitutionRepository.save(
+        createCustomerOrderSubstitution({
+          id: crypto.randomUUID(),
+          customerId: order.customerId,
+          orderId: order.id,
+          shortageId: shortage.id,
+          originalSkuId: shortage.skuId,
+          procurementSubstitutionId: procurementSubstitution.id,
+          substituteSkuId: input.data.substituteSkuId,
+          quantity: input.data.quantity,
+          status: "pending",
+          idempotencyKey: null,
+          requestFingerprint: null,
+          decidedAt: null,
+          createdAt,
+          updatedAt: createdAt,
+        }),
+      );
+    } else {
+      await repository.saveSubstitution(procurementSubstitution);
+    }
     const cycle = assignWeeklyCycle(now());
     return context.json(
       {
@@ -2859,6 +2953,175 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const body = { data: request, meta: { correlationId: context.get("correlationId") } };
     customerOrderRequestResponseSchema.parse(body);
     return context.json(body, 201);
+  });
+
+  app.get("/api/v1/order-substitutions", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.customerOrderSubstitutionRepository ??
+      (bindings.DB ? new D1CustomerOrderSubstitutionRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "ORDER_SUBSTITUTIONS_UNAVAILABLE",
+          "customer substitutions are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const body = {
+      data: {
+        substitutions: (await repository.listByCustomer(session.customerId)).map(
+          toCustomerOrderSubstitutionData,
+        ),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    customerOrderSubstitutionsResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/order-substitutions/:id/decision", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.customerOrderSubstitutionRepository ??
+      (bindings.DB ? new D1CustomerOrderSubstitutionRepository(bindings.DB) : undefined);
+    const procurementRepository =
+      options.procurementRepository ??
+      (bindings.DB ? new D1ProcurementRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository || !procurementRepository) {
+      return context.json(
+        errorResponse(
+          "ORDER_SUBSTITUTIONS_UNAVAILABLE",
+          "customer substitutions are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey || idempotencyKey.length > 128) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "a valid Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = customerOrderSubstitutionDecisionSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_SUBSTITUTION_DECISION",
+          "substitution decision input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const fingerprint = JSON.stringify(input.data);
+    const existing = await repository.findByIdempotency(session.customerId, idempotencyKey);
+    if (existing) {
+      if (existing.requestFingerprint !== fingerprint) {
+        return context.json(
+          errorResponse(
+            "IDEMPOTENCY_CONFLICT",
+            "idempotency key was already used for a different substitution decision",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      const body = {
+        data: toCustomerOrderSubstitutionData(existing),
+        meta: { correlationId: context.get("correlationId") },
+      };
+      customerOrderSubstitutionResponseSchema.parse(body);
+      return context.json(body, 200);
+    }
+    const substitution = await repository.findById(session.customerId, context.req.param("id"));
+    if (!substitution) {
+      return context.json(
+        errorResponse(
+          "SUBSTITUTION_NOT_FOUND",
+          "the substitution was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    if (substitution.status !== "pending") {
+      return context.json(
+        errorResponse(
+          "SUBSTITUTION_ALREADY_DECIDED",
+          "the substitution already has a decision",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const updatedAt = now().toISOString();
+    const updated = createCustomerOrderSubstitution({
+      ...substitution,
+      status: input.data.decision === "accept" ? "accepted" : "rejected",
+      idempotencyKey,
+      requestFingerprint: fingerprint,
+      decidedAt: updatedAt,
+      updatedAt,
+    });
+    await procurementRepository.saveSubstitution(
+      createProcurementSubstitution({
+        id: updated.procurementSubstitutionId,
+        shortageId: updated.shortageId,
+        originalSkuId: updated.originalSkuId,
+        substituteSkuId: updated.substituteSkuId,
+        quantity: updated.quantity,
+        status: input.data.decision === "accept" ? "approved" : "rejected",
+        approvedAt: input.data.decision === "accept" ? updatedAt : null,
+      }),
+    );
+    await repository.save(updated);
+    await saveOptionalAudit(options.identityRepository, bindings, {
+      actorUserId: session.userId,
+      action: `customer.substitution.${input.data.decision}ed`,
+      targetType: "customer_order_substitution",
+      targetId: updated.id,
+      occurredAt: updatedAt,
+      metadata: { orderId: updated.orderId, substituteSkuId: updated.substituteSkuId },
+    });
+    const body = {
+      data: toCustomerOrderSubstitutionData(updated),
+      meta: { correlationId: context.get("correlationId") },
+    };
+    customerOrderSubstitutionResponseSchema.parse(body);
+    return context.json(body, 200);
   });
 
   app.post("/api/v1/deliveryman/media", async (context) => {
@@ -4843,6 +5106,23 @@ function toSupportCaseData(caseRecord: SupportCase) {
     status: caseRecord.status,
     createdAt: caseRecord.createdAt,
     updatedAt: caseRecord.updatedAt,
+  };
+}
+
+function toCustomerOrderSubstitutionData(substitution: CustomerOrderSubstitution) {
+  return {
+    id: substitution.id,
+    customerId: substitution.customerId,
+    orderId: substitution.orderId,
+    shortageId: substitution.shortageId,
+    originalSkuId: substitution.originalSkuId,
+    procurementSubstitutionId: substitution.procurementSubstitutionId,
+    substituteSkuId: substitution.substituteSkuId,
+    quantity: substitution.quantity,
+    status: substitution.status,
+    decidedAt: substitution.decidedAt,
+    createdAt: substitution.createdAt,
+    updatedAt: substitution.updatedAt,
   };
 }
 

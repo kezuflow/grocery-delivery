@@ -15,6 +15,7 @@ import { NotificationPreferencesForm } from "./notification-preferences-form";
 import { OrderHistory } from "./order-history";
 import { OrderFulfillment } from "./order-fulfillment";
 import { OrderRequestForm } from "./order-request-form";
+import { OrderSubstitutions } from "./order-substitutions";
 
 export const dynamic = "force-dynamic";
 
@@ -204,6 +205,7 @@ export default async function AccountPage() {
           </article>
           <OrderHistory orders={account.orderHistory} />
           <OrderFulfillment fulfillment={account.orderFulfillment} />
+          <OrderSubstitutions substitutions={account.orderSubstitutions} />
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">
               <p className="eyebrow">Order help</p>
