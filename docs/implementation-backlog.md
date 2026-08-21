@@ -742,6 +742,16 @@ pass.
 Next resume point: add customer order detail/tracking and proof-of-delivery views, then continue
 substitution decisions and cancellation/refund requests.
 
+Completion record: the account experience now hydrates each customer-owned order with its validated
+tracking snapshot and signed proof-of-delivery media list through the existing protected APIs. A
+dedicated fulfillment component renders server-owned delivery status, latest event, and short-lived
+proof links; missing detail for one order remains isolated instead of inventing a status or blanking
+the entire account. Focused web coverage includes populated tracking/media hydration, and the full
+`pnpm check` passes all 55 tasks.
+
+Next resume point: add customer substitution decisions and cancellation/refund request workflows
+with server-owned eligibility, idempotency, and audit records.
+
 ### Slice 020: Delivery staff production workflow
 
 Scope:

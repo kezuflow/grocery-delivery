@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import type {
   CartResponse,
   CatalogListResponse,
+  DeliveryMediaListResponse,
+  DeliveryTrackingResponse,
   DeliveryAddressResponse,
   DeliveryWindowsResponse,
   PlansListResponse,
@@ -24,10 +26,17 @@ export type CustomerAccountData = Readonly<{
   plans: PlansListResponse["data"]["plans"];
   paymentHistory: PaymentHistoryResponse["data"]["entries"];
   orderHistory: OrderListResponse["data"]["orders"];
+  orderFulfillment: readonly CustomerOrderFulfillment[];
   supportCases: SupportCasesResponse["data"]["cases"];
   notificationPreferences: NotificationPreferencesResponse["data"];
   catalog: CatalogListResponse["data"];
   error: string | null;
+}>;
+
+export type CustomerOrderFulfillment = Readonly<{
+  orderId: string;
+  tracking: DeliveryTrackingResponse["data"] | null;
+  media: DeliveryMediaListResponse["data"]["media"];
 }>;
 
 const emptyCart: CartResponse["data"] = {
@@ -57,7 +66,7 @@ export async function resolveCustomerAccount(
       plans,
       catalog,
       paymentHistory,
-      orderHistory,
+      orderData,
       supportCases,
       notificationPreferences,
     ] = await Promise.all([
@@ -71,7 +80,7 @@ export async function resolveCustomerAccount(
       client.listPlans(),
       client.listCatalog(100),
       client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
-      client.getOrderHistory(init).catch(() => ({ data: { orders: [] } })),
+      loadOrderData(client, init),
       client.getSupportCases(init).catch(() => ({ data: { cases: [] } })),
       client.getNotificationPreferences(init).catch(() => ({
         data: {
@@ -90,7 +99,8 @@ export async function resolveCustomerAccount(
       plans: plans.data.plans,
       catalog: catalog.data,
       paymentHistory: paymentHistory.data.entries,
-      orderHistory: orderHistory.data.orders,
+      orderHistory: orderData.orders,
+      orderFulfillment: orderData.fulfillment,
       supportCases: supportCases.data.cases,
       notificationPreferences: notificationPreferences.data,
       error: null,
@@ -105,6 +115,7 @@ export async function resolveCustomerAccount(
       catalog: { categories: [], items: [], nextCursor: null },
       paymentHistory: [],
       orderHistory: [],
+      orderFulfillment: [],
       supportCases: [],
       notificationPreferences: {
         customerId: "",
@@ -114,5 +125,27 @@ export async function resolveCustomerAccount(
       },
       error: "We could not load your account right now. Please try again shortly.",
     };
+  }
+}
+
+async function loadOrderData(client: ReturnType<typeof createApiClient>, init: RequestInit) {
+  try {
+    const response = await client.getOrderHistory(init);
+    const fulfillment = await Promise.all(
+      response.data.orders.map(async (order) => {
+        const [tracking, media] = await Promise.all([
+          client.getOrderTracking(order.id, init).catch(() => null),
+          client.getOrderMedia(order.id, init).catch(() => ({ data: { media: [] } })),
+        ]);
+        return {
+          orderId: order.id,
+          tracking: tracking?.data ?? null,
+          media: media.data.media,
+        } satisfies CustomerOrderFulfillment;
+      }),
+    );
+    return { orders: response.data.orders, fulfillment };
+  } catch {
+    return { orders: [], fulfillment: [] };
   }
 }
