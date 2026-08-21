@@ -21,6 +21,9 @@ cloudflare-env.d.ts
 .env.*
 !.env.example
 
+# Local staging credentials (never commit)
+staging-credentials.local.json
+
 # Logs and operating-system files
 *.log
 .DS_Store
