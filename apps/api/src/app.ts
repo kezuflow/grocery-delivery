@@ -118,6 +118,9 @@ import {
   supportCasesResponseSchema,
   notificationPreferencesRequestSchema,
   notificationPreferencesResponseSchema,
+  customerOrderRequestCreateSchema,
+  customerOrderRequestResponseSchema,
+  customerOrderRequestsResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -153,10 +156,12 @@ import {
   D1PromotionBannerAnalyticsRepository,
   D1SupportCaseRepository,
   D1NotificationPreferencesRepository,
+  D1CustomerOrderRequestRepository,
   type PromotionBannerAnalyticsRepository,
   type SupportCaseRepository,
   type SupportCase,
   type NotificationPreferencesRepository,
+  type CustomerOrderRequestRepository,
   InMemoryCartRepository,
   type CartRepository,
   type CatalogDatabase,
@@ -295,6 +300,7 @@ export type ApiOptions = Readonly<{
   operationalAlertThresholds?: Partial<OperationalAlertThresholds>;
   supportCaseRepository?: SupportCaseRepository;
   notificationPreferencesRepository?: NotificationPreferencesRepository;
+  customerOrderRequestRepository?: CustomerOrderRequestRepository;
   identityRepository?: AccountIdentityRepository;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
@@ -495,6 +501,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path.startsWith("/api/v1/deliveryman/") ||
       context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
+      context.req.path === "/api/v1/order-requests" ||
       context.req.path === "/api/v1/payments/charge" ||
       context.req.path === "/api/v1/payments/methods" ||
       context.req.path.startsWith("/api/v1/payments/methods/") ||
@@ -2655,6 +2662,203 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     };
     orderListResponseSchema.parse(body);
     return context.json(body, 200);
+  });
+
+  app.get("/api/v1/order-requests", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.customerOrderRequestRepository ??
+      (bindings.DB ? new D1CustomerOrderRequestRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUESTS_UNAVAILABLE",
+          "order requests are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const body = {
+      data: { requests: await repository.listByCustomer(session.customerId) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    customerOrderRequestsResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/order-requests", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.customerOrderRequestRepository ??
+      (bindings.DB ? new D1CustomerOrderRequestRepository(bindings.DB) : undefined);
+    const orderReader =
+      options.orderReader ?? (bindings.DB ? new D1OrderRepository(bindings.DB) : undefined);
+    const dispatchRepository =
+      options.dispatchRepository ??
+      (bindings.DB ? new D1DispatchRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository || !orderReader) {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUESTS_UNAVAILABLE",
+          "order requests are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey || idempotencyKey.length > 128) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "a valid Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = customerOrderRequestCreateSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_ORDER_REQUEST",
+          "order request input is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const fingerprint = JSON.stringify(input.data);
+    const existing = await repository.findByIdempotency(session.customerId, idempotencyKey);
+    if (existing) {
+      if (existing.requestFingerprint !== fingerprint) {
+        return context.json(
+          errorResponse(
+            "IDEMPOTENCY_CONFLICT",
+            "idempotency key was already used for a different order request",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      const body = { data: existing, meta: { correlationId: context.get("correlationId") } };
+      customerOrderRequestResponseSchema.parse(body);
+      return context.json(body, 200);
+    }
+    const order = await orderReader.findById(input.data.orderId);
+    if (!order || order.customerId !== session.customerId) {
+      return context.json(
+        errorResponse("ORDER_NOT_FOUND", "the order was not found", context.get("correlationId")),
+        404,
+      );
+    }
+    const requests = await repository.listByCustomer(session.customerId);
+    if (
+      requests.some(
+        (request) =>
+          request.orderId === order.id &&
+          request.kind === input.data.kind &&
+          request.status === "pending",
+      )
+    ) {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUEST_ALREADY_PENDING",
+          `a ${input.data.kind} request is already pending for this order`,
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    if (input.data.kind === "refund" && order.paymentState !== "paid") {
+      return context.json(
+        errorResponse(
+          "ORDER_NOT_REFUND_ELIGIBLE",
+          "only a paid order can have a refund requested",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    if (input.data.kind === "cancellation") {
+      if (order.paymentState === "paid" || order.paymentState === "pending") {
+        return context.json(
+          errorResponse(
+            "ORDER_NOT_CANCELLATION_ELIGIBLE",
+            "paid or payment-pending orders require support or a refund request",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      const assignment = dispatchRepository
+        ? (await dispatchRepository.list(order.cycleId)).find((item) => item.orderId === order.id)
+        : undefined;
+      if (assignment) {
+        return context.json(
+          errorResponse(
+            "ORDER_NOT_CANCELLATION_ELIGIBLE",
+            "an order already assigned for delivery cannot be canceled",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+    }
+    const timestamp = now().toISOString();
+    const request = {
+      id: crypto.randomUUID(),
+      customerId: session.customerId,
+      orderId: order.id,
+      kind: input.data.kind,
+      reason: input.data.reason,
+      status: "pending" as const,
+      idempotencyKey,
+      requestFingerprint: fingerprint,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await repository.save(request);
+    await saveOptionalAudit(options.identityRepository, bindings, {
+      actorUserId: session.userId,
+      action: `order_request.${request.kind}-requested`,
+      targetType: "order_request",
+      targetId: request.id,
+      occurredAt: timestamp,
+      metadata: {
+        orderId: request.orderId,
+        customerId: request.customerId,
+        correlationId: context.get("correlationId"),
+      },
+    });
+    const body = { data: request, meta: { correlationId: context.get("correlationId") } };
+    customerOrderRequestResponseSchema.parse(body);
+    return context.json(body, 201);
   });
 
   app.post("/api/v1/deliveryman/media", async (context) => {

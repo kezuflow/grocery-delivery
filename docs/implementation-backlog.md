@@ -749,8 +749,15 @@ proof links; missing detail for one order remains isolated instead of inventing 
 the entire account. Focused web coverage includes populated tracking/media hydration, and the full
 `pnpm check` passes all 55 tasks.
 
-Next resume point: add customer substitution decisions and cancellation/refund request workflows
-with server-owned eligibility, idempotency, and audit records.
+Completion record: customer cancellation and refund requests now use a customer-scoped durable
+request repository, validated contracts, and protected API routes. The server verifies order
+ownership, payment state, dispatch assignment, duplicate pending requests, and idempotency
+fingerprints before accepting a request. Accepted requests remain pending for operational review
+and write an audit event; the account experience renders the server-owned request status and offers
+a modular request form. Focused API, repository, contract, and web checks pass.
+
+Next resume point: add customer substitution decisions, then connect approved cancellation/refund
+requests to finance and order state transitions.
 
 ### Slice 020: Delivery staff production workflow
 

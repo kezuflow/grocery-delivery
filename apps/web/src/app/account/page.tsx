@@ -14,6 +14,7 @@ import { SupportCaseForm } from "./support-case-form";
 import { NotificationPreferencesForm } from "./notification-preferences-form";
 import { OrderHistory } from "./order-history";
 import { OrderFulfillment } from "./order-fulfillment";
+import { OrderRequestForm } from "./order-request-form";
 
 export const dynamic = "force-dynamic";
 
@@ -203,6 +204,26 @@ export default async function AccountPage() {
           </article>
           <OrderHistory orders={account.orderHistory} />
           <OrderFulfillment fulfillment={account.orderFulfillment} />
+          <article className="account-panel account-panel-wide">
+            <div className="account-panel-heading">
+              <p className="eyebrow">Order help</p>
+              <span>{account.orderRequests.length} requests</span>
+            </div>
+            <OrderRequestForm orders={account.orderHistory} />
+            {account.orderRequests.length ? (
+              <ul className="account-history">
+                {account.orderRequests.map((request) => (
+                  <li key={request.id}>
+                    <span>
+                      {request.kind} · {request.orderId}
+                    </span>
+                    <strong>{request.status}</strong>
+                    <small>{new Date(request.updatedAt).toLocaleDateString("en-PH")}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </article>
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">
               <p className="eyebrow">Payment history</p>

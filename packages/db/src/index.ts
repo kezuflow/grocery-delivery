@@ -22,3 +22,4 @@ export * from "./promotion-banner-analytics.js";
 export * from "./support.js";
 export * from "./notification-preferences.js";
 export * from "./notification-delivery-receipts.js";
+export * from "./order-requests.js";

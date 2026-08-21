@@ -40,6 +40,9 @@ import {
   supportCasesResponseSchema,
   notificationPreferencesRequestSchema,
   notificationPreferencesResponseSchema,
+  customerOrderRequestCreateSchema,
+  customerOrderRequestResponseSchema,
+  customerOrderRequestsResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   plansListResponseSchema,
@@ -78,6 +81,8 @@ import {
   type SupportCasesResponse,
   type NotificationPreferencesResponse,
   type PaymentRefundResponse,
+  type CustomerOrderRequestResponse,
+  type CustomerOrderRequestsResponse,
 } from "@carbon/contracts";
 
 export type ApiTransport = Readonly<{
@@ -163,6 +168,29 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getOrderHistory(init?: RequestInit): Promise<OrderListResponse> {
       return getJson(transport, "/api/v1/orders", orderListResponseSchema, init);
+    },
+    getOrderRequests(init?: RequestInit): Promise<CustomerOrderRequestsResponse> {
+      return getJson(
+        transport,
+        "/api/v1/order-requests",
+        customerOrderRequestsResponseSchema,
+        init,
+      );
+    },
+    createOrderRequest(
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CustomerOrderRequestResponse> {
+      const payload = customerOrderRequestCreateSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/order-requests",
+        payload,
+        customerOrderRequestResponseSchema,
+        "POST",
+        { ...init, headers: { ...init?.headers, "idempotency-key": idempotencyKey } },
+      );
     },
     getAdminProjection(init?: RequestInit): Promise<OperationalProjectionResponse> {
       return getJson(
