@@ -9,6 +9,9 @@
   --color-accent: var(--color-accent-value);
   --color-accent-dark: var(--color-accent-dark-value);
   --color-deep: var(--color-deep-value);
+  --color-success: var(--color-success-value);
+  --color-warning: var(--color-warning-value);
+  --color-danger: var(--color-danger-value);
 }
 
 * {

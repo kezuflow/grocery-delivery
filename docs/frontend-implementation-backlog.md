@@ -117,8 +117,8 @@ from another feature.
 | Slice  | Area                                               | Status   | Depends on            |
 | ------ | -------------------------------------------------- | -------- | --------------------- |
 | FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
-| FE-002 | Tokens and accessible UI primitives                | next     | FE-001                |
-| FE-003 | Shared shells, session states, and RBAC navigation | planned  | FE-002                |
+| FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
+| FE-003 | Shared shells, session states, and RBAC navigation | next     | FE-002                |
 | FE-004 | Public landing page                                | planned  | FE-002, FE-003        |
 | FE-005 | Customer catalog and mobile shopping               | planned  | FE-003, FE-004        |
 | FE-006 | Cart, subscription, and checkout                   | planned  | FE-005                |
@@ -148,6 +148,13 @@ Add typed `Button`, `LinkButton`, `Input`, `Select`, `Textarea`, `Badge`, `Card`
 `Table`, `Dialog`, `Sheet`, `Tabs`, `EmptyState`, `ErrorState`, `Skeleton`, and
 `StatusPill` primitives. Test default, hover, focus-visible, disabled, loading, error, and
 selected states.
+
+Completion record: added a typed UI foundation under `apps/web/src/components/ui` with one public
+barrel export. The modules provide class composition, button/link variants, labeled form controls,
+badges and status pills, cards, semantic tables, feedback states, native dialog/sheet behavior, and
+keyboard-usable tabs. Status formatting remains in pure helpers for straightforward tests.
+Tailwind semantic tokens now include success, warning, and danger colors. No route behavior or API
+contract changed. Focused web lint, typecheck, 26 tests, and production build pass.
 
 ### FE-003: Shared shells, session states, and RBAC navigation
 
@@ -239,5 +246,9 @@ Tailwind CSS 4.3.3 and the official `@tailwindcss/postcss` integration are insta
 render while the component migration proceeds. The public and admin roots include utility classes
 as a build smoke check, and no API or route behavior changed.
 
-Focused web build, lint, typecheck, and tests pass (23 tests). The next frontend slice is FE-002:
-tokens and accessible UI primitives.
+Focused web build, lint, typecheck, and tests pass (23 tests).
+
+### FE-002 Completion Record
+
+The reusable UI and token foundation is complete. The next frontend slice is FE-003: shared shells,
+session states, and RBAC navigation.

@@ -6,6 +6,9 @@
   --color-accent-value: #c6e46b;
   --color-accent-dark-value: #8daa3e;
   --color-deep-value: #244d3e;
+  --color-success-value: #047857;
+  --color-warning-value: #b45309;
+  --color-danger-value: #b91c1c;
 
   /* Legacy aliases remain temporarily while route styles migrate to utilities. */
   --ink: var(--color-ink-value);
