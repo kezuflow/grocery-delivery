@@ -141,20 +141,20 @@ from another feature.
 
 ## Slice Ledger
 
-| Slice  | Area                                               | Status      | Depends on            |
-| ------ | -------------------------------------------------- | ----------- | --------------------- |
-| FE-001 | Tailwind baseline and CSS migration                | complete    | `da3e311` -> current  |
-| FE-002 | Tokens and accessible UI primitives                | complete    | `b0b575a` -> current  |
-| FE-003 | Shared shells, session states, and RBAC navigation | complete    | FE-002 -> FE-004      |
-| FE-004 | Public landing page                                | complete    | FE-003 -> FE-005      |
-| FE-005 | Customer catalog and mobile shopping               | complete    | FE-004 -> FE-006      |
-| FE-006 | Cart, subscription, and checkout                   | complete    | FE-005 -> FE-007      |
-| FE-007 | Customer account, orders, tracking, and support    | complete    | FE-006 -> FE-008      |
-| FE-008 | Admin overview and operations navigation           | in progress | FE-003                |
-| FE-009 | Admin operational workspaces                       | planned     | FE-008                |
-| FE-010 | Delivery dashboard and mobile PWA workflow         | planned     | FE-003                |
-| FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned     | FE-004 through FE-010 |
-| FE-012 | Frontend release hardening and handoff             | planned     | FE-011                |
+| Slice  | Area                                               | Status   | Depends on            |
+| ------ | -------------------------------------------------- | -------- | --------------------- |
+| FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
+| FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
+| FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
+| FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
+| FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006      |
+| FE-006 | Cart, subscription, and checkout                   | complete | FE-005 -> FE-007      |
+| FE-007 | Customer account, orders, tracking, and support    | complete | FE-006 -> FE-008      |
+| FE-008 | Admin overview and operations navigation           | complete | FE-003 -> FE-009      |
+| FE-009 | Admin operational workspaces                       | complete | FE-008 -> FE-010      |
+| FE-010 | Delivery dashboard and mobile PWA workflow         | next     | FE-003                |
+| FE-011 | Browser E2E, responsive, accessibility, visual QA  | planned  | FE-004 through FE-010 |
+| FE-012 | Frontend release hardening and handoff             | planned  | FE-011                |
 
 ## Slice Details
 
@@ -270,6 +270,12 @@ Current increment:
   workspaces.
 - Centralize readable admin navigation definitions and cover permission filtering in focused tests.
 
+Completion record: the protected `/admin` route now composes a focused admin overview feature with
+server-derived KPI cards, operational alerts, cycle activity, recent audit activity, and
+permission-filtered workspace links. Existing server-owned dashboard reads and role guards remain
+unchanged. Focused web tests, lint, typecheck, production build, and the full repository checks
+pass. The next increment separates the operational workspaces into dedicated routes.
+
 ### FE-009: Admin operational workspaces
 
 Move the existing admin procurement, packing, dispatch, support, reporting, promotions, audit,
@@ -277,6 +283,23 @@ refund, order-request, and configuration integrations into separate feature modu
 complete catalog/pricing and staff surfaces against implemented contracts and endpoints. Use
 responsive tables, drawers/dialogs for focused edits, explicit destructive-action confirmation,
 server validation, and permission-aware controls.
+
+Current increment:
+
+- Add protected procurement, packing, dispatch, support, promotions, reporting, and configuration
+  routes around the existing server-backed admin actions.
+- Keep each route responsible for one operational concern while preserving server-owned permissions,
+  validation, idempotency, and status transitions.
+- Cover workspace navigation and the production web build before continuing to delivery staff.
+
+Completion record: the admin console now exposes dedicated permission-protected procurement,
+packing, dispatch, support, promotions, reporting, and configuration routes. Shared workspace
+composition keeps server-derived dashboard data, role guards, idempotent actions, and launch
+configuration in one readable feature boundary, while route files remain thin. Existing connected
+operational controls were moved under the feature module without adding unimplemented backend
+contracts. Focused web tests, lint, typecheck, and production build pass; the full repository check
+is the final pre-commit verification for this slice. The next increment is the delivery dashboard
+and mobile PWA workflow.
 
 ### FE-010: Delivery dashboard and mobile PWA workflow
 
