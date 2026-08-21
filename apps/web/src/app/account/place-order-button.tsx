@@ -12,7 +12,8 @@ import {
 export function PlaceOrderButton({
   cartHasLines,
   subscriptionActive,
-}: Readonly<{ cartHasLines: boolean; subscriptionActive: boolean }>) {
+  cutoffAt,
+}: Readonly<{ cartHasLines: boolean; subscriptionActive: boolean; cutoffAt: string }>) {
   const router = useRouter();
   const idempotencyKey = useRef<string | undefined>(undefined);
   const [pending, setPending] = useState(false);
@@ -146,6 +147,12 @@ export function PlaceOrderButton({
         <p className="subscription-note">An active subscription is required to place an order.</p>
       ) : !cartHasLines && !message ? (
         <p className="subscription-note">Add at least one saved cart item to place an order.</p>
+      ) : null}
+      {cutoffAt ? (
+        <p className="subscription-note">
+          This delivery cycle closes{" "}
+          {new Date(cutoffAt).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}.
+        </p>
       ) : null}
       {message ? (
         <p className={`order-message${message.error ? " order-message-error" : ""}`} role="status">

@@ -7,6 +7,7 @@ import type {
   PromotionAdminListResponse,
   AdminAuditResponse,
   SupportCasesResponse,
+  AdminOrderRequestsResponse,
 } from "@carbon/contracts";
 
 import { createApiClient } from "./api/client";
@@ -19,6 +20,7 @@ export type AdminDashboardData = Readonly<{
   promotions: PromotionAdminListResponse["data"]["promotions"];
   auditEvents: AdminAuditResponse["data"]["events"];
   supportCases: SupportCasesResponse["data"]["cases"];
+  orderRequests: AdminOrderRequestsResponse["data"]["requests"];
   error: string | null;
 }>;
 
@@ -29,14 +31,18 @@ export async function loadAdminDashboard(
   const client = createApiClient(createRuntimeApiTransport());
   const init: RequestInit = { headers: { cookie: cookieHeader } };
   try {
-    const [projection, procurement, dispatch, promotions, audit, supportCases] = await Promise.all([
-      permissions.includes("reporting") ? client.getAdminProjection(init) : null,
-      permissions.includes("procurement") ? client.getAdminProcurement(init) : null,
-      permissions.includes("dispatch") ? client.getAdminDispatch(init) : null,
-      permissions.includes("marketing") ? client.listAdminPromotions(init) : null,
-      permissions.includes("reporting") ? client.getAdminAudit(init) : null,
-      permissions.includes("support") ? client.listAdminSupportCases(init) : null,
-    ]);
+    const [projection, procurement, dispatch, promotions, audit, supportCases, orderRequests] =
+      await Promise.all([
+        permissions.includes("reporting") ? client.getAdminProjection(init) : null,
+        permissions.includes("procurement") ? client.getAdminProcurement(init) : null,
+        permissions.includes("dispatch") ? client.getAdminDispatch(init) : null,
+        permissions.includes("marketing") ? client.listAdminPromotions(init) : null,
+        permissions.includes("reporting") ? client.getAdminAudit(init) : null,
+        permissions.includes("support") ? client.listAdminSupportCases(init) : null,
+        permissions.some((permission) => ["finance", "support", "dispatch"].includes(permission))
+          ? client.getAdminOrderRequests(init)
+          : null,
+      ]);
     return {
       projection: projection?.data ?? null,
       procurement: procurement?.data ?? null,
@@ -44,6 +50,7 @@ export async function loadAdminDashboard(
       promotions: promotions?.data.promotions ?? [],
       auditEvents: audit?.data.events ?? [],
       supportCases: supportCases?.data.cases ?? [],
+      orderRequests: orderRequests?.data.requests ?? [],
       error: null,
     };
   } catch {
@@ -54,6 +61,7 @@ export async function loadAdminDashboard(
       promotions: [],
       auditEvents: [],
       supportCases: [],
+      orderRequests: [],
       error: "The operations dashboard is temporarily unavailable.",
     };
   }

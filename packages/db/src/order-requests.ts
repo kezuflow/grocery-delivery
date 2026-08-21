@@ -2,12 +2,15 @@ import { createCustomerOrderRequest, type CustomerOrderRequest } from "@carbon/d
 import type { CatalogDatabase } from "./catalog.js";
 
 export interface CustomerOrderRequestRepository {
+  listPending(): Promise<readonly CustomerOrderRequest[]>;
   listByCustomer(customerId: string): Promise<readonly CustomerOrderRequest[]>;
+  findById(id: string): Promise<CustomerOrderRequest | null>;
   findByIdempotency(
     customerId: string,
     idempotencyKey: string,
   ): Promise<CustomerOrderRequest | null>;
   save(request: CustomerOrderRequest): Promise<void>;
+  update(request: CustomerOrderRequest): Promise<void>;
 }
 
 export class InMemoryCustomerOrderRequestRepository implements CustomerOrderRequestRepository {
@@ -23,6 +26,16 @@ export class InMemoryCustomerOrderRequestRepository implements CustomerOrderRequ
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
     );
   }
+  listPending() {
+    return Promise.resolve(
+      [...this.requests.values()]
+        .filter((request) => request.status === "pending" || request.status === "approved")
+        .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)),
+    );
+  }
+  findById(id: string) {
+    return Promise.resolve(this.requests.get(id) ?? null);
+  }
   findByIdempotency(customerId: string, idempotencyKey: string) {
     return Promise.resolve(
       [...this.requests.values()].find(
@@ -34,10 +47,27 @@ export class InMemoryCustomerOrderRequestRepository implements CustomerOrderRequ
     this.requests.set(request.id, createCustomerOrderRequest(request));
     return Promise.resolve();
   }
+  update(request: CustomerOrderRequest) {
+    this.requests.set(request.id, createCustomerOrderRequest(request));
+    return Promise.resolve();
+  }
 }
 
 export class D1CustomerOrderRequestRepository implements CustomerOrderRequestRepository {
   constructor(private readonly database: CatalogDatabase) {}
+
+  async listPending() {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, kind, reason, status, idempotency_key,
+                request_fingerprint, created_at, updated_at
+         FROM customer_order_requests
+         WHERE status IN ('pending', 'approved')
+         ORDER BY updated_at ASC, id ASC`,
+      )
+      .all<CustomerOrderRequestRow>();
+    return rows.results.map(mapRequest);
+  }
 
   async listByCustomer(customerId: string) {
     const rows = await this.database
@@ -59,6 +89,18 @@ export class D1CustomerOrderRequestRepository implements CustomerOrderRequestRep
          FROM customer_order_requests WHERE customer_id = ? AND idempotency_key = ? LIMIT 1`,
       )
       .bind(customerId, idempotencyKey)
+      .all<CustomerOrderRequestRow>();
+    return rows.results[0] ? mapRequest(rows.results[0]) : null;
+  }
+
+  async findById(id: string) {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, kind, reason, status, idempotency_key,
+                request_fingerprint, created_at, updated_at
+         FROM customer_order_requests WHERE id = ? LIMIT 1`,
+      )
+      .bind(id)
       .all<CustomerOrderRequestRow>();
     return rows.results[0] ? mapRequest(rows.results[0]) : null;
   }
@@ -86,6 +128,15 @@ export class D1CustomerOrderRequestRepository implements CustomerOrderRequestRep
           value.createdAt,
           value.updatedAt,
         ),
+    ]);
+  }
+
+  async update(request: CustomerOrderRequest) {
+    const value = createCustomerOrderRequest(request);
+    await this.database.batch([
+      this.database
+        .prepare(`UPDATE customer_order_requests SET status = ?, updated_at = ? WHERE id = ?`)
+        .bind(value.status, value.updatedAt, value.id),
     ]);
   }
 }

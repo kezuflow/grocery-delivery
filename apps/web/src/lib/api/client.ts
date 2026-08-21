@@ -6,6 +6,8 @@ import {
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
+  deliveryAddressesResponseSchema,
+  savedDeliveryAddressResponseSchema,
   deliveryWindowSelectionRequestSchema,
   deliveryWindowsResponseSchema,
   deliveryEventRequestSchema,
@@ -43,6 +45,8 @@ import {
   customerOrderRequestCreateSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
+  adminOrderRequestDecisionSchema,
+  adminOrderRequestsResponseSchema,
   customerOrderSubstitutionDecisionSchema,
   customerOrderSubstitutionResponseSchema,
   customerOrderSubstitutionsResponseSchema,
@@ -59,6 +63,8 @@ import {
   type CurrentSessionResponse,
   type DeliveryAddressInput,
   type DeliveryAddressResponse,
+  type DeliveryAddressesResponse,
+  type SavedDeliveryAddressResponse,
   type DeliveryWindowSelectionRequest,
   type DeliveryWindowsResponse,
   type DeliveryEventRequest,
@@ -86,6 +92,7 @@ import {
   type PaymentRefundResponse,
   type CustomerOrderRequestResponse,
   type CustomerOrderRequestsResponse,
+  type AdminOrderRequestsResponse,
   type CustomerOrderSubstitutionResponse,
   type CustomerOrderSubstitutionsResponse,
 } from "@carbon/contracts";
@@ -231,6 +238,30 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getAdminAudit(init?: RequestInit): Promise<AdminAuditResponse> {
       return getJson(transport, "/api/v1/admin/audit?limit=50", adminAuditResponseSchema, init);
+    },
+    getAdminOrderRequests(init?: RequestInit): Promise<AdminOrderRequestsResponse> {
+      return getJson(
+        transport,
+        "/api/v1/admin/order-requests",
+        adminOrderRequestsResponseSchema,
+        init,
+      );
+    },
+    decideAdminOrderRequest(
+      id: string,
+      decision: "approve" | "reject",
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CustomerOrderRequestResponse> {
+      const payload = adminOrderRequestDecisionSchema.parse({ decision });
+      return sendJson(
+        transport,
+        `/api/v1/admin/order-requests/${encodeURIComponent(id)}/decision`,
+        payload,
+        customerOrderRequestResponseSchema,
+        "POST",
+        { ...init, headers: { ...init?.headers, "idempotency-key": idempotencyKey } },
+      );
     },
     getSupportCases(init?: RequestInit): Promise<SupportCasesResponse> {
       return getJson(transport, "/api/v1/support/cases", supportCasesResponseSchema, init);
@@ -417,6 +448,39 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getDeliveryAddress(init?: RequestInit): Promise<DeliveryAddressResponse> {
       return getJson(transport, "/api/v1/delivery-address", deliveryAddressResponseSchema, init);
+    },
+    getDeliveryAddresses(init?: RequestInit): Promise<DeliveryAddressesResponse> {
+      return getJson(
+        transport,
+        "/api/v1/delivery-addresses",
+        deliveryAddressesResponseSchema,
+        init,
+      );
+    },
+    createDeliveryAddress(
+      input: DeliveryAddressInput,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<SavedDeliveryAddressResponse> {
+      const payload = deliveryAddressInputSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/delivery-addresses",
+        payload,
+        savedDeliveryAddressResponseSchema,
+        "POST",
+        { ...init, headers: { ...init?.headers, "idempotency-key": idempotencyKey } },
+      );
+    },
+    selectDeliveryAddress(id: string, init?: RequestInit): Promise<SavedDeliveryAddressResponse> {
+      return sendJson(
+        transport,
+        `/api/v1/delivery-addresses/${encodeURIComponent(id)}/select`,
+        {},
+        savedDeliveryAddressResponseSchema,
+        "PUT",
+        init,
+      );
     },
     updateDeliveryAddress(
       input: DeliveryAddressInput,

@@ -38,5 +38,22 @@ export const deliveryAddressResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const savedDeliveryAddressSchema = deliveryAddressSchema.extend({
+  id: z.string().min(1),
+  selected: z.boolean(),
+});
+
+export const deliveryAddressesResponseSchema = z.object({
+  data: z.object({ addresses: z.array(savedDeliveryAddressSchema) }),
+  meta: responseMetaSchema,
+});
+
+export const savedDeliveryAddressResponseSchema = z.object({
+  data: savedDeliveryAddressSchema,
+  meta: responseMetaSchema,
+});
+
 export type DeliveryAddressInput = z.infer<typeof deliveryAddressInputSchema>;
 export type DeliveryAddressResponse = z.infer<typeof deliveryAddressResponseSchema>;
+export type DeliveryAddressesResponse = z.infer<typeof deliveryAddressesResponseSchema>;
+export type SavedDeliveryAddressResponse = z.infer<typeof savedDeliveryAddressResponseSchema>;

@@ -41,6 +41,29 @@ export function createCustomerOrderRequest(input: CustomerOrderRequest): Custome
   return Object.freeze({ ...input });
 }
 
+export function decideCustomerOrderRequest(
+  request: CustomerOrderRequest,
+  status: Extract<CustomerOrderRequestStatus, "approved" | "rejected" | "completed">,
+  updatedAt: string,
+): CustomerOrderRequest {
+  if (request.status === "completed" || request.status === "rejected") {
+    if (request.status !== status) {
+      throw new DomainValidationError(
+        "ORDER_REQUEST_ALREADY_DECIDED",
+        "order request already has a final decision",
+      );
+    }
+    return request;
+  }
+  if (status === "completed" && request.status !== "approved") {
+    throw new DomainValidationError(
+      "INVALID_ORDER_REQUEST_TRANSITION",
+      "only an approved order request can be completed",
+    );
+  }
+  return createCustomerOrderRequest({ ...request, status, updatedAt });
+}
+
 function text(value: string, field: string) {
   if (!value.trim())
     throw new DomainValidationError("INVALID_ORDER_REQUEST_TEXT", `${field} must not be empty`);

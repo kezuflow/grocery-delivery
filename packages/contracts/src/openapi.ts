@@ -96,6 +96,14 @@ export const openApiDocument: OpenApiDocument = {
       ...protectedOperation("Read the delivery address", "get"),
       ...protectedOperation("Save the delivery address", "put"),
     },
+    "/api/v1/delivery-addresses": {
+      ...protectedOperation("List saved delivery addresses", "get"),
+      ...protectedOperation("Add a saved delivery address", "post", "201"),
+    },
+    "/api/v1/delivery-addresses/{id}/select": protectedOperation(
+      "Select the checkout delivery address",
+      "put",
+    ),
     "/api/v1/delivery-windows": {
       ...protectedOperation("Read delivery windows", "get"),
       ...protectedOperation("Select a delivery window", "put"),
@@ -168,6 +176,14 @@ export const openApiDocument: OpenApiDocument = {
       "patch",
     ),
     "/api/v1/admin/payments/refunds": protectedOperation("Refund a payment", "post"),
+    "/api/v1/admin/order-requests": protectedOperation(
+      "List pending cancellation and refund requests",
+      "get",
+    ),
+    "/api/v1/admin/order-requests/{id}/decision": protectedOperation(
+      "Approve and execute or reject an order request",
+      "post",
+    ),
     "/api/v1/admin/promotion-banners": {
       ...protectedOperation("List promotion banners", "get"),
       ...protectedOperation("Create a promotion banner", "post", "201"),

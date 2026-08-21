@@ -31,7 +31,7 @@ export type LockedOrder = Readonly<{
   deliveryAddress?: DeliveryAddress | null;
   deliveryWindow?: DeliveryWindow | null;
   paymentState?: PaymentState;
-  status: "locked";
+  status: OrderStatus;
   lockedAt: string;
 }>;
 
@@ -43,8 +43,8 @@ export function createLockedOrder(input: LockedOrder): LockedOrder {
   assertText(input.cycleId, "order cycle id");
   assertText(input.idempotencyKey, "order idempotency key");
   assertText(input.requestFingerprint, "order request fingerprint");
-  if (input.status !== "locked") {
-    throw new DomainValidationError("INVALID_ORDER_STATUS", "new orders must be locked");
+  if (input.status !== "locked" && input.status !== "canceled") {
+    throw new DomainValidationError("INVALID_ORDER_STATUS", "order status is invalid");
   }
   if (
     Number.isNaN(Date.parse(input.lockedAt)) ||

@@ -6,6 +6,7 @@ import {
   catalogListResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
+  deliveryAddressesResponseSchema,
   deliveryWindowsResponseSchema,
   dispatchResponseSchema,
   operationalProjectionResponseSchema,
@@ -1288,6 +1289,69 @@ describe("API worker", () => {
     expect(unavailableBody.error.code).toBe("DELIVERY_ADDRESS_UNSERVICEABLE");
   });
 
+  it("adds and selects customer-owned saved delivery addresses idempotently", async () => {
+    const repository = new InMemoryDeliveryAddressRepository();
+    const app = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      deliveryAddressRepository: repository,
+      serviceablePostalCodes: ["1105", "1200"],
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-address-book",
+              userId: "user-address-book",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-address-book",
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+      sink: () => undefined,
+    });
+    const input = {
+      recipientName: "Maria Santos",
+      phone: "+639171234567",
+      line1: "12 Green Street",
+      barangay: "Bagong Pagasa",
+      city: "Quezon City",
+      province: "Metro Manila",
+      postalCode: "1105",
+    };
+    const first = await app.request("/api/v1/delivery-addresses", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "home" },
+      body: JSON.stringify(input),
+    });
+    expect(first.status).toBe(201);
+    const replay = await app.request("/api/v1/delivery-addresses", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "home" },
+      body: JSON.stringify(input),
+    });
+    expect(replay.status).toBe(200);
+    await app.request("/api/v1/delivery-addresses", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "office" },
+      body: JSON.stringify({ ...input, line1: "8 Office Road", postalCode: "1200" }),
+    });
+    const list = deliveryAddressesResponseSchema.parse(
+      await (await app.request("/api/v1/delivery-addresses")).json(),
+    );
+    expect(list.data.addresses).toHaveLength(2);
+    const office = list.data.addresses.find((address) => address.line1 === "8 Office Road");
+    const selected = await app.request(
+      `/api/v1/delivery-addresses/${encodeURIComponent(office?.id ?? "")}/select`,
+      { method: "PUT", headers: { "content-type": "application/json" }, body: "{}" },
+    );
+    expect(selected.status).toBe(200);
+    await expect(repository.findByCustomerId("customer-address-book")).resolves.toMatchObject({
+      line1: "8 Office Road",
+    });
+  });
+
   it("lists and selects a current weekly delivery window", async () => {
     const repository = new InMemoryDeliveryWindowRepository([
       {
@@ -2471,6 +2535,88 @@ describe("API worker", () => {
     expect(customerOrderRequestsResponseSchema.parse(await list.json()).data.requests).toHaveLength(
       1,
     );
+  });
+
+  it("lets support approve a cancellation into durable canceled order history", async () => {
+    const requestRepository = new InMemoryCustomerOrderRequestRepository();
+    const orderRepository = new InMemoryOrderRepository();
+    await orderRepository.save(
+      createLockedOrder({
+        id: "order-cancel-1",
+        customerId: "customer-cancel-1",
+        subscriptionId: "subscription-1",
+        planId: "plan-small",
+        cycleId: "cycle-2026-08-22",
+        idempotencyKey: "checkout-cancel-1",
+        requestFingerprint: "fingerprint-cancel-1",
+        cart: createCart([
+          createCartLine({ skuId: "sku-a", quantity: 1, unitPrice: createMoney(100) }),
+        ]),
+        weeklyCredit: createMoney(100),
+        totals: {
+          subtotal: createMoney(100),
+          weeklyFee: createMoney(0),
+          includedCredit: createMoney(100),
+          overage: createMoney(0),
+          deliveryFee: createMoney(0),
+          totalDue: createMoney(100),
+        },
+        paymentState: "unpaid",
+        status: "locked",
+        lockedAt: "2026-08-18T00:00:00.000Z",
+      }),
+    );
+    let session = createSession({
+      id: "session-cancel-customer",
+      userId: "user-cancel",
+      role: "customer",
+      customerId: "customer-cancel-1",
+      adminPermissions: [],
+      expiresAt: "2099-08-21T00:00:00.000Z",
+      revokedAt: null,
+    });
+    const app = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
+      customerOrderRequestRepository: requestRepository,
+      orderReader: orderRepository,
+      sessionResolver: { resolve: () => Promise.resolve(session) },
+      sink: () => undefined,
+    });
+    const createdResponse = await app.request("/api/v1/order-requests", {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "cancel-request-1" },
+      body: JSON.stringify({
+        orderId: "order-cancel-1",
+        kind: "cancellation",
+        reason: "No longer needed",
+      }),
+    });
+    const created = customerOrderRequestResponseSchema.parse(await createdResponse.json());
+    session = createSession({
+      id: "session-cancel-admin",
+      userId: "admin-cancel",
+      role: "admin",
+      customerId: null,
+      adminPermissions: ["support"],
+      expiresAt: "2099-08-21T00:00:00.000Z",
+      revokedAt: null,
+    });
+    const decision = await app.request(`/api/v1/admin/order-requests/${created.data.id}/decision`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": `order-request:${created.data.id}:approve`,
+      },
+      body: JSON.stringify({ decision: "approve" }),
+    });
+    expect(decision.status).toBe(200);
+    expect(customerOrderRequestResponseSchema.parse(await decision.json()).data.status).toBe(
+      "completed",
+    );
+    await expect(orderRepository.listByCustomer("customer-cancel-1")).resolves.toMatchObject([
+      { id: "order-cancel-1", status: "canceled" },
+    ]);
+    await expect(orderRepository.findById("order-cancel-1")).resolves.toBeNull();
   });
 
   it("lets only the affected customer decide a proposed order substitution idempotently", async () => {

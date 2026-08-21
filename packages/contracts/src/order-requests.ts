@@ -28,5 +28,13 @@ export const customerOrderRequestResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const adminOrderRequestDecisionSchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+});
+
+export const adminOrderRequestsResponseSchema = customerOrderRequestsResponseSchema;
+
 export type CustomerOrderRequestsResponse = z.infer<typeof customerOrderRequestsResponseSchema>;
 export type CustomerOrderRequestResponse = z.infer<typeof customerOrderRequestResponseSchema>;
+export type AdminOrderRequestDecision = z.infer<typeof adminOrderRequestDecisionSchema>;
+export type AdminOrderRequestsResponse = z.infer<typeof adminOrderRequestsResponseSchema>;

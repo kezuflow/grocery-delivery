@@ -120,6 +120,7 @@ export default async function AdminPage() {
             procurement={dashboard.procurement}
             promotions={dashboard.promotions}
             supportCases={dashboard.supportCases}
+            orderRequests={dashboard.orderRequests}
           />
           {auth.session.adminPermissions.includes("reporting") ? (
             <section className="account-panel account-panel-wide">

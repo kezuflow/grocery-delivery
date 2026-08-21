@@ -122,9 +122,11 @@ export class D1PaymentRepository implements PaymentRepository {
               a.amount_centavos, a.status, a.updated_at AS occurred_at
        FROM payment_attempts a WHERE a.customer_id = ?
        UNION ALL
-       SELECT r.id, r.customer_id, 'refund' AS kind, NULL AS order_id, r.payment_attempt_id,
+       SELECT r.id, r.customer_id, 'refund' AS kind, a.order_id, r.payment_attempt_id,
               r.amount_centavos, r.status, r.updated_at AS occurred_at
-       FROM payment_refunds r WHERE r.customer_id = ?
+       FROM payment_refunds r
+       JOIN payment_attempts a ON a.id = r.payment_attempt_id
+       WHERE r.customer_id = ?
        ORDER BY occurred_at DESC, id DESC`,
       )
       .bind(customerId, customerId)
@@ -214,6 +216,21 @@ export class D1PaymentRepository implements PaymentRepository {
       .all<PaymentAttemptRow>();
     const row = rows.results[0];
     return row ? mapPaymentAttempt(row) : null;
+  }
+
+  async findSuccessfulPaymentAttemptByOrder(customerId: string, orderId: string) {
+    const rows = await this.database
+      .prepare(
+        `SELECT id, customer_id, order_id, provider_name, amount_centavos, status,
+                provider_reference, failure_code, idempotency_key, request_fingerprint,
+                created_at, updated_at
+         FROM payment_attempts
+         WHERE customer_id = ? AND order_id = ? AND status = 'succeeded'
+         ORDER BY updated_at DESC LIMIT 1`,
+      )
+      .bind(customerId, orderId)
+      .all<PaymentAttemptRow>();
+    return rows.results[0] ? mapPaymentAttempt(rows.results[0]) : null;
   }
 
   async findPaymentAttemptByIdempotencyKey(

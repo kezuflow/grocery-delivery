@@ -128,6 +128,10 @@ export interface PaymentRepository {
     revocation: PaymentMethodRevocation,
   ): Promise<void>;
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null>;
+  findSuccessfulPaymentAttemptByOrder(
+    customerId: string,
+    orderId: string,
+  ): Promise<PaymentAttempt | null>;
   findPaymentAttemptByIdempotencyKey(
     customerId: string,
     idempotencyKey: string,
@@ -255,6 +259,22 @@ export class InMemoryPaymentRepository implements PaymentRepository {
 
   findPaymentAttemptById(id: string): Promise<PaymentAttempt | null> {
     return Promise.resolve(this.attempts.get(id) ?? null);
+  }
+
+  findSuccessfulPaymentAttemptByOrder(
+    customerId: string,
+    orderId: string,
+  ): Promise<PaymentAttempt | null> {
+    return Promise.resolve(
+      [...this.attempts.values()]
+        .filter(
+          (attempt) =>
+            attempt.customerId === customerId &&
+            attempt.orderId === orderId &&
+            attempt.status === "succeeded",
+        )
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null,
+    );
   }
 
   findPaymentAttemptByIdempotencyKey(
@@ -404,16 +424,19 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       }));
     const refunds: PaymentHistoryEntry[] = [...this.refunds.values()]
       .filter((refund) => refund.customerId === customerId)
-      .map((refund) => ({
-        id: refund.id,
-        customerId,
-        kind: "refund",
-        orderId: null,
-        paymentAttemptId: refund.paymentAttemptId,
-        amount: createMoney(refund.amount.centavos),
-        status: refund.status,
-        occurredAt: refund.updatedAt,
-      }));
+      .map((refund) => {
+        const attempt = this.attempts.get(refund.paymentAttemptId);
+        return {
+          id: refund.id,
+          customerId,
+          kind: "refund",
+          orderId: attempt?.orderId ?? null,
+          paymentAttemptId: refund.paymentAttemptId,
+          amount: createMoney(refund.amount.centavos),
+          status: refund.status,
+          occurredAt: refund.updatedAt,
+        };
+      });
     return Promise.resolve(
       [...charges, ...refunds].sort((left, right) =>
         right.occurredAt.localeCompare(left.occurredAt),

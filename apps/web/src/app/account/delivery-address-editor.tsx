@@ -133,7 +133,12 @@ export function DeliveryAddressEditor({
               setPending(true);
               setMessage(null);
               try {
-                await createApiClient(createSameOriginApiTransport()).updateDeliveryAddress(form);
+                const client = createApiClient(createSameOriginApiTransport());
+                if (initialAddress) {
+                  await client.updateDeliveryAddress(form);
+                } else {
+                  await client.createDeliveryAddress(form, crypto.randomUUID());
+                }
                 router.refresh();
               } catch (error) {
                 setMessage(
@@ -148,7 +153,7 @@ export function DeliveryAddressEditor({
           }}
           type="button"
         >
-          {pending ? "Saving..." : "Save address"}
+          {pending ? "Saving..." : initialAddress ? "Update selected address" : "Add address"}
         </button>
         {message ? (
           <p className="auth-message" role="alert">

@@ -50,7 +50,8 @@ describe("delivery address repositories", () => {
     await repository.save(address);
 
     expect(database.batches).toHaveLength(1);
-    expect(database.calls.at(-1)?.sql).toContain("ON CONFLICT(customer_id)");
+    expect(database.calls.some((call) => call.sql.includes("ON CONFLICT(customer_id)"))).toBe(true);
+    expect(database.calls.some((call) => call.sql.includes("delivery_address_book"))).toBe(true);
     expect(database.calls.at(-1)?.values).not.toContain("another-customer");
   });
 });

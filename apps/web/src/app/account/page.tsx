@@ -6,6 +6,7 @@ import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
 import { CartEditor } from "./cart-editor";
 import { DeliveryAddressEditor } from "./delivery-address-editor";
+import { DeliveryAddressBook } from "./delivery-address-book";
 import { DeliveryWindowSelector } from "./delivery-window-selector";
 import { PlaceOrderButton } from "./place-order-button";
 import { SubscriptionActions } from "./subscription-actions";
@@ -16,6 +17,7 @@ import { OrderHistory } from "./order-history";
 import { OrderFulfillment } from "./order-fulfillment";
 import { OrderRequestForm } from "./order-request-form";
 import { OrderSubstitutions } from "./order-substitutions";
+import { Receipts } from "./receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -160,6 +162,7 @@ export default async function AccountPage() {
             )}
             <PlaceOrderButton
               cartHasLines={account.cart.lines.length > 0}
+              cutoffAt={account.deliveryWindows.cutoffAt}
               subscriptionActive={
                 account.subscription?.status === "active" &&
                 account.subscription.billingStatus === "current"
@@ -178,6 +181,7 @@ export default async function AccountPage() {
               </span>
             </div>
             <DeliveryAddressEditor initialAddress={account.deliveryAddress} />
+            <DeliveryAddressBook initialAddresses={account.deliveryAddresses} />
           </article>
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">
@@ -204,6 +208,7 @@ export default async function AccountPage() {
             ) : null}
           </article>
           <OrderHistory orders={account.orderHistory} />
+          <Receipts orders={account.orderHistory} payments={account.paymentHistory} />
           <OrderFulfillment fulfillment={account.orderFulfillment} />
           <OrderSubstitutions substitutions={account.orderSubstitutions} />
           <article className="account-panel account-panel-wide">

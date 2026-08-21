@@ -16,6 +16,7 @@ export const deliveryWindowSchema = z.object({
 export const deliveryWindowsResponseSchema = z.object({
   data: z.object({
     cycleId: z.string().min(1),
+    cutoffAt: z.string().datetime().default("1970-01-01T00:00:00.000Z"),
     windows: z.array(deliveryWindowSchema),
     selectedWindowId: z.string().min(1).nullable(),
   }),

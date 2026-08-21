@@ -42,6 +42,8 @@ import {
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
+  deliveryAddressesResponseSchema,
+  savedDeliveryAddressResponseSchema,
   deliveryWindowSelectionRequestSchema,
   deliveryWindowsResponseSchema,
   deliveryEventRequestSchema,
@@ -121,6 +123,8 @@ import {
   customerOrderRequestCreateSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
+  adminOrderRequestDecisionSchema,
+  adminOrderRequestsResponseSchema,
   customerOrderSubstitutionDecisionSchema,
   customerOrderSubstitutionResponseSchema,
   customerOrderSubstitutionsResponseSchema,
@@ -195,6 +199,7 @@ import {
   assignWeeklyCycle,
   createMoney,
   createDeliveryAddress,
+  decideCustomerOrderRequest,
   createDeliveryEvent,
   createDispatchAssignment,
   createPackingManifest,
@@ -323,7 +328,10 @@ export type ApiOptions = Readonly<{
   planLookup?: PlanLookup;
   orderLockService?: CartLockService;
   promotionRepository?: PromotionRepository;
-  orderReader?: Pick<OrderRepository, "findById" | "updatePaymentState" | "listByCustomer">;
+  orderReader?: Pick<
+    OrderRepository,
+    "findById" | "findByIdIncludingCanceled" | "updatePaymentState" | "listByCustomer" | "cancel"
+  >;
   paymentProvider?: PaymentProvider;
   paymentService?: PaymentService;
   deliveryFeeCentavos?: number;
@@ -500,6 +508,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/subscription/actions" ||
       context.req.path === "/api/v1/cart" ||
       context.req.path === "/api/v1/delivery-address" ||
+      context.req.path.startsWith("/api/v1/delivery-addresses") ||
       context.req.path === "/api/v1/delivery-windows" ||
       context.req.path.startsWith("/api/v1/admin/procurement") ||
       context.req.path.startsWith("/api/v1/admin/dispatch") ||
@@ -1449,6 +1458,234 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }
   });
 
+  app.get("/api/v1/delivery-addresses", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryAddressRepository ??
+      (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_UNAVAILABLE",
+          "delivery address storage is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const addresses = (await repository.listByCustomer(session.customerId)).map((saved) => ({
+      id: saved.id,
+      selected: saved.selected,
+      ...toDeliveryAddressData(
+        saved.address,
+        resolveServiceability(saved.address.postalCode, options, bindings),
+      ),
+    }));
+    const body = {
+      data: { addresses },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    deliveryAddressesResponseSchema.parse(body);
+    context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/delivery-addresses", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryAddressRepository ??
+      (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_UNAVAILABLE",
+          "delivery address storage is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey || idempotencyKey.length > 128) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "a valid Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = deliveryAddressInputSchema.safeParse(await context.req.json().catch(() => null));
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_DELIVERY_ADDRESS",
+          "delivery address fields are invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const existingAddresses = await repository.listByCustomer(session.customerId);
+    const id = `address:${session.customerId}:${idempotencyKey}`;
+    const existing = existingAddresses.find((saved) => saved.id === id);
+    if (existing) {
+      const fingerprint = JSON.stringify(input.data);
+      const existingFingerprint = JSON.stringify({
+        recipientName: existing.address.recipientName,
+        phone: existing.address.phone,
+        line1: existing.address.line1,
+        line2: existing.address.line2,
+        barangay: existing.address.barangay,
+        city: existing.address.city,
+        province: existing.address.province,
+        postalCode: existing.address.postalCode,
+        instructions: existing.address.instructions,
+      });
+      if (fingerprint !== existingFingerprint) {
+        return context.json(
+          errorResponse(
+            "IDEMPOTENCY_CONFLICT",
+            "idempotency key was already used for a different address",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      const body = {
+        data: {
+          id: existing.id,
+          selected: existing.selected,
+          ...toDeliveryAddressData(
+            existing.address,
+            resolveServiceability(existing.address.postalCode, options, bindings),
+          ),
+        },
+        meta: { correlationId: context.get("correlationId") },
+      };
+      savedDeliveryAddressResponseSchema.parse(body);
+      return context.json(body, 200);
+    }
+    const timestamp = now().toISOString();
+    const address = createDeliveryAddress({
+      ...input.data,
+      customerId: session.customerId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    const serviceable = resolveServiceability(address.postalCode, options, bindings);
+    if (!serviceable) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_UNSERVICEABLE",
+          "delivery is not currently available for this postal code",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const selected = existingAddresses.length === 0;
+    await repository.saveAddress({ id, address, selected });
+    const body = {
+      data: { id, selected, ...toDeliveryAddressData(address, serviceable) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    savedDeliveryAddressResponseSchema.parse(body);
+    return context.json(body, 201);
+  });
+
+  app.put("/api/v1/delivery-addresses/:id/select", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.deliveryAddressRepository ??
+      (bindings.DB ? new D1DeliveryAddressRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_UNAVAILABLE",
+          "delivery address storage is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const selected = await repository.select(
+      session.customerId,
+      context.req.param("id"),
+      now().toISOString(),
+    );
+    if (!selected) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_NOT_FOUND",
+          "address was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const saved = (await repository.listByCustomer(session.customerId)).find(
+      (address) => address.id === context.req.param("id"),
+    );
+    if (!saved) {
+      return context.json(
+        errorResponse(
+          "DELIVERY_ADDRESS_NOT_FOUND",
+          "address was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const body = {
+      data: {
+        id: saved.id,
+        selected: true,
+        ...toDeliveryAddressData(
+          saved.address,
+          resolveServiceability(saved.address.postalCode, options, bindings),
+        ),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    savedDeliveryAddressResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
   app.get("/api/v1/delivery-windows", async (context) => {
     const bindings: ApiBindings = context.env ?? {};
     const repository =
@@ -1481,6 +1718,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const body: DeliveryWindowsResponse = {
       data: {
         cycleId: cycle.id,
+        cutoffAt: cycle.cutoffAt,
         windows: windows.map((window) => ({
           id: window.id,
           cycleId: window.cycleId,
@@ -1552,7 +1790,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       if (!selected) throw new Error("delivery window selection was not saved");
       return context.json(
         {
-          data: { cycleId: cycle.id, windows: [], selectedWindowId: selected.windowId },
+          data: {
+            cycleId: cycle.id,
+            cutoffAt: cycle.cutoffAt,
+            windows: [],
+            selectedWindowId: selected.windowId,
+          },
           meta: { correlationId: context.get("correlationId") },
         },
         200,
@@ -2864,11 +3107,23 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       customerOrderRequestResponseSchema.parse(body);
       return context.json(body, 200);
     }
-    const order = await orderReader.findById(input.data.orderId);
+    const order = orderReader.findByIdIncludingCanceled
+      ? await orderReader.findByIdIncludingCanceled(input.data.orderId)
+      : await orderReader.findById(input.data.orderId);
     if (!order || order.customerId !== session.customerId) {
       return context.json(
         errorResponse("ORDER_NOT_FOUND", "the order was not found", context.get("correlationId")),
         404,
+      );
+    }
+    if (order.status !== "locked") {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUEST_NOT_ELIGIBLE",
+          "a canceled order cannot receive a new request",
+          context.get("correlationId"),
+        ),
+        409,
       );
     }
     const requests = await repository.listByCustomer(session.customerId);
@@ -2953,6 +3208,228 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const body = { data: request, meta: { correlationId: context.get("correlationId") } };
     customerOrderRequestResponseSchema.parse(body);
     return context.json(body, 201);
+  });
+
+  app.get("/api/v1/admin/order-requests", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.customerOrderRequestRepository ??
+      (bindings.DB ? new D1CustomerOrderRequestRepository(bindings.DB) : undefined);
+    const session = context.get("session");
+    if (
+      !session ||
+      !(
+        hasAdminPermission(session.role, session.adminPermissions, "finance") ||
+        hasAdminPermission(session.role, session.adminPermissions, "support") ||
+        hasAdminPermission(session.role, session.adminPermissions, "dispatch")
+      )
+    ) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "order request administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUESTS_UNAVAILABLE",
+          "order requests are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const requests = (await repository.listPending()).filter((request) =>
+      request.kind === "refund"
+        ? hasAdminPermission(session.role, session.adminPermissions, "finance")
+        : hasAdminPermission(session.role, session.adminPermissions, "support") ||
+          hasAdminPermission(session.role, session.adminPermissions, "dispatch"),
+    );
+    const body = {
+      data: { requests },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    adminOrderRequestsResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.post("/api/v1/admin/order-requests/:id/decision", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const repository =
+      options.customerOrderRequestRepository ??
+      (bindings.DB ? new D1CustomerOrderRequestRepository(bindings.DB) : undefined);
+    const orderReader =
+      options.orderReader ?? (bindings.DB ? new D1OrderRepository(bindings.DB) : undefined);
+    const paymentService =
+      options.paymentService ??
+      (bindings.DB && options.paymentProvider
+        ? new DefaultPaymentService(new D1PaymentRepository(bindings.DB), options.paymentProvider)
+        : undefined);
+    const session = context.get("session");
+    if (!session) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active administrator session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository || !orderReader) {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUESTS_UNAVAILABLE",
+          "order requests are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey || idempotencyKey.length > 128) {
+      return context.json(
+        errorResponse(
+          "MISSING_IDEMPOTENCY_KEY",
+          "a valid Idempotency-Key is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const request = await repository.findById(context.req.param("id"));
+    if (!request) {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUEST_NOT_FOUND",
+          "order request was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const permission = request.kind === "refund" ? "finance" : "support";
+    const canDecide =
+      hasAdminPermission(session.role, session.adminPermissions, permission) ||
+      (request.kind === "cancellation" &&
+        hasAdminPermission(session.role, session.adminPermissions, "dispatch"));
+    if (!canDecide) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          `${permission} administrator permission is required`,
+          context.get("correlationId"),
+        ),
+        403,
+      );
+    }
+    const input = adminOrderRequestDecisionSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_ORDER_REQUEST_DECISION",
+          "order request decision is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const finalDecision = request.status === "completed" ? "approve" : "reject";
+    if (request.status === "completed" || request.status === "rejected") {
+      if (input.data.decision !== finalDecision) {
+        return context.json(
+          errorResponse(
+            "ORDER_REQUEST_ALREADY_DECIDED",
+            "order request already has a different final decision",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      }
+      const body = { data: request, meta: { correlationId: context.get("correlationId") } };
+      customerOrderRequestResponseSchema.parse(body);
+      return context.json(body, 200);
+    }
+    if (request.status === "approved" && input.data.decision === "reject") {
+      return context.json(
+        errorResponse(
+          "ORDER_REQUEST_ALREADY_APPROVED",
+          "an approved request must be retried to completion",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const timestamp = now().toISOString();
+    if (input.data.decision === "reject") {
+      const rejected = decideCustomerOrderRequest(request, "rejected", timestamp);
+      await repository.update(rejected);
+      await saveOptionalAudit(options.identityRepository, bindings, {
+        actorUserId: session.userId,
+        action: `order_request.${request.kind}-rejected`,
+        targetType: "order_request",
+        targetId: request.id,
+        occurredAt: timestamp,
+        metadata: {
+          orderId: request.orderId,
+          customerId: request.customerId,
+          correlationId: context.get("correlationId"),
+        },
+      });
+      const body = { data: rejected, meta: { correlationId: context.get("correlationId") } };
+      customerOrderRequestResponseSchema.parse(body);
+      return context.json(body, 200);
+    }
+    const approved = decideCustomerOrderRequest(request, "approved", timestamp);
+    await repository.update(approved);
+    try {
+      if (request.kind === "cancellation") {
+        if (!orderReader.cancel) {
+          throw new Error("order cancellation is unavailable");
+        }
+        await orderReader.cancel(request.orderId);
+      } else {
+        if (!paymentService) {
+          throw new Error("payment refunds are unavailable");
+        }
+        await paymentService.refundOrder({
+          customerId: request.customerId,
+          orderId: request.orderId,
+          reason: request.reason,
+          idempotencyKey: `order-request:${request.id}`,
+          now: timestamp,
+        });
+      }
+      const completed = decideCustomerOrderRequest(approved, "completed", now().toISOString());
+      await repository.update(completed);
+      await saveOptionalAudit(options.identityRepository, bindings, {
+        actorUserId: session.userId,
+        action: `order_request.${request.kind}-completed`,
+        targetType: "order_request",
+        targetId: request.id,
+        occurredAt: completed.updatedAt,
+        metadata: {
+          orderId: request.orderId,
+          customerId: request.customerId,
+          correlationId: context.get("correlationId"),
+        },
+      });
+      const body = { data: completed, meta: { correlationId: context.get("correlationId") } };
+      customerOrderRequestResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "order request execution failed";
+      return context.json(
+        errorResponse("ORDER_REQUEST_EXECUTION_FAILED", message, context.get("correlationId")),
+        409,
+      );
+    }
   });
 
   app.get("/api/v1/order-substitutions", async (context) => {

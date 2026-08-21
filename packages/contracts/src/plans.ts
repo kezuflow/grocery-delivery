@@ -160,7 +160,7 @@ export const orderSchema = z.object({
     .nullable()
     .default(null),
   paymentState: z.enum(["unpaid", "pending", "paid", "failed"]).default("unpaid"),
-  status: z.literal("locked"),
+  status: z.enum(["locked", "canceled"]),
   lockedAt: z.string().datetime(),
 });
 

@@ -48,8 +48,8 @@ conversation history or temporary handoff files.
 | 016   | Immutable order fulfillment and cutoff enforcement              | complete | `b7fde24`; immutable snapshots, payable/packed dispatch, and order history complete               |
 | 017   | Admin operations console                                        | complete | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete |
 | 018   | Deployable jobs, queues, workflows, and notifications           | complete | Staging queue retry/dead-letter/replay and durable workflow evidence complete                     |
-| 019   | Customer fulfillment, support, and payment history              | next     | Depends on orders, payments, tracking, and notifications                                          |
-| 020   | Delivery staff production workflow                              | planned  | Depends on immutable orders, dispatch, storage, and offline sync                                  |
+| 019   | Customer fulfillment, support, and payment history              | complete | Approved requests, address book, receipts, and status messaging complete                          |
+| 020   | Delivery staff production workflow                              | next     | Begin production route, contact, storage, and offline hardening                                   |
 | 021   | Privacy, audit, compliance, and launch observability            | planned  | Depends on identity, payments, admin, and operational events                                      |
 | 022   | Staging launch rehearsal and go/no-go gate                      | planned  | Depends on all launch-critical slices                                                             |
 
@@ -718,6 +718,8 @@ and proof-of-delivery media reads while preserving customer isolation and server
 
 ### Slice 019: Customer fulfillment, support, and payment history
 
+Status: complete
+
 Scope:
 
 - Add customer order history, receipts, payment history, tracking, proof-of-delivery media, delivery
@@ -764,6 +766,23 @@ proposals with accept/reject actions. Focused domain, contract, repository, API,
 
 Next resume point: connect approved cancellation/refund requests to finance and durable order state
 transitions.
+
+Completion record: finance/support administrators now list and decide pending customer order
+requests through permission-scoped APIs. Approved cancellations persist a canceled order state that
+remains visible in customer history, while approved refunds resolve the successful order charge and
+remaining refundable amount entirely on the server with a stable request idempotency key. Both
+paths persist final request status and audit evidence.
+
+Completion record: customers can save multiple serviceable delivery addresses and select the active
+checkout address through a forward-only D1 address-book migration while the original selected-address
+endpoint remains compatible. The account now renders modular receipts joined from validated order
+and payment history, explicit order/payment/delivery labels, and the server-returned Manila cutoff.
+OpenAPI was regenerated, focused authorization/idempotency/persistence tests pass, and `pnpm check`
+passes all 55 tasks.
+
+Next resume point: begin Slice 020 with delivery-staff route ordering and minimum-data assignment
+projections, then add contact actions, real R2 proof storage, validated event sequencing/failure
+codes, and offline conflict resolution.
 
 ### Slice 020: Delivery staff production workflow
 

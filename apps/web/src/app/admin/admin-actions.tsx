@@ -12,6 +12,7 @@ import type {
   ProcurementResponse,
   PromotionAdminSummary,
   SupportCasesResponse,
+  AdminOrderRequestsResponse,
 } from "@carbon/contracts";
 
 type Props = Readonly<{
@@ -19,9 +20,16 @@ type Props = Readonly<{
   procurement: ProcurementResponse["data"] | null;
   promotions: PromotionAdminSummary[];
   supportCases: SupportCasesResponse["data"]["cases"];
+  orderRequests: AdminOrderRequestsResponse["data"]["requests"];
 }>;
 
-export function AdminActions({ permissions, procurement, promotions, supportCases }: Props) {
+export function AdminActions({
+  permissions,
+  procurement,
+  promotions,
+  supportCases,
+  orderRequests,
+}: Props) {
   const router = useRouter();
   const client = createApiClient(createSameOriginApiTransport());
   const [message, setMessage] = useState<string | null>(null);
@@ -55,6 +63,55 @@ export function AdminActions({ permissions, procurement, promotions, supportCase
         <p className="eyebrow">Actions</p>
         <span>{busy ? "Saving..." : (message ?? "Server-controlled workflows")}</span>
       </div>
+      {orderRequests.length ? (
+        <div className="admin-action-grid">
+          {orderRequests.map((request) => {
+            const permitted = request.kind === "refund" ? can("finance") : can("support");
+            if (!permitted) return null;
+            return (
+              <div key={request.id}>
+                <h3>{request.kind === "refund" ? "Refund request" : "Cancellation request"}</h3>
+                <p>{request.reason}</p>
+                <small>
+                  {request.orderId} · {request.customerId} · {request.status}
+                </small>
+                <div className="admin-button-row">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(() =>
+                        client.decideAdminOrderRequest(
+                          request.id,
+                          "approve",
+                          `order-request:${request.id}:approve`,
+                        ),
+                      )
+                    }
+                  >
+                    Approve and execute
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(() =>
+                        client.decideAdminOrderRequest(
+                          request.id,
+                          "reject",
+                          `order-request:${request.id}:reject`,
+                        ),
+                      )
+                    }
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       {can("procurement") && procurement ? (
         <div className="admin-action-grid">
           <form

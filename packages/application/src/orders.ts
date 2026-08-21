@@ -13,6 +13,7 @@ import {
 
 export type OrderRepository = Readonly<{
   findById(id: string): Promise<LockedOrder | null>;
+  findByIdIncludingCanceled?(id: string): Promise<LockedOrder | null>;
   listByCustomer?(customerId: string): Promise<readonly LockedOrder[]>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
@@ -20,6 +21,7 @@ export type OrderRepository = Readonly<{
     orderId: string,
     paymentState: NonNullable<LockedOrder["paymentState"]>,
   ): Promise<void>;
+  cancel?(orderId: string): Promise<void>;
 }>;
 
 export type AtomicOrderRepository = OrderRepository &
@@ -64,6 +66,13 @@ export class InMemoryOrderRepository implements OrderRepository {
   }
 
   findById(id: string): Promise<LockedOrder | null> {
+    return Promise.resolve(
+      [...this.orders.values()].find((order) => order.id === id && order.status === "locked") ??
+        null,
+    );
+  }
+
+  findByIdIncludingCanceled(id: string): Promise<LockedOrder | null> {
     return Promise.resolve([...this.orders.values()].find((order) => order.id === id) ?? null);
   }
 
@@ -86,6 +95,15 @@ export class InMemoryOrderRepository implements OrderRepository {
   ): Promise<void> {
     for (const [key, order] of this.orders) {
       if (order.id === orderId) this.orders.set(key, { ...order, paymentState });
+    }
+    return Promise.resolve();
+  }
+
+  cancel(orderId: string): Promise<void> {
+    for (const [key, order] of this.orders) {
+      if (order.id === orderId && order.status === "locked") {
+        this.orders.set(key, { ...order, status: "canceled" });
+      }
     }
     return Promise.resolve();
   }

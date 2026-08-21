@@ -251,6 +251,46 @@ describe("payment orchestration", () => {
     expect(repository.ledgerEntries).toHaveLength(2);
   });
 
+  it("resolves and refunds the remaining successful order charge server-side", async () => {
+    const repository = new InMemoryPaymentRepository();
+    const service = new DefaultPaymentService(
+      repository,
+      new FakePaymentProvider({ now: () => new Date(chargeInput.now) }),
+      (() => {
+        let sequence = 0;
+        return () => `order-refund-${++sequence}`;
+      })(),
+    );
+    await service.charge(chargeInput);
+    await service.refund({
+      customerId: chargeInput.customerId,
+      paymentAttemptId: "order-refund-1",
+      amount: createMoney(10_000),
+      reason: "partial adjustment",
+      idempotencyKey: "partial-order-refund",
+      now: "2026-08-20T10:01:00.000Z",
+    });
+
+    const refund = await service.refundOrder({
+      customerId: chargeInput.customerId,
+      orderId: chargeInput.orderId,
+      reason: "approved customer refund",
+      idempotencyKey: "order-request:request-1",
+      now: "2026-08-20T10:02:00.000Z",
+    });
+
+    expect(refund.amount.centavos).toBe(59_900);
+    await expect(
+      service.refundOrder({
+        customerId: chargeInput.customerId,
+        orderId: chargeInput.orderId,
+        reason: "approved customer refund",
+        idempotencyKey: "order-request:request-1",
+        now: "2026-08-20T10:02:00.000Z",
+      }),
+    ).resolves.toEqual(refund);
+  });
+
   it("rejects cumulative refunds above the successful charge before calling the provider", async () => {
     const repository = new InMemoryPaymentRepository();
     const provider = new CountingRefundProvider({ now: () => new Date(chargeInput.now) });

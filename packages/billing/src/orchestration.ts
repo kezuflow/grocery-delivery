@@ -1,4 +1,4 @@
-import type { Money } from "@carbon/domain";
+import { createMoney, type Money } from "@carbon/domain";
 
 import {
   createPaymentAttempt,
@@ -44,6 +44,14 @@ export type RefundPaymentInput = Readonly<{
   now: string;
 }>;
 
+export type RefundOrderInput = Readonly<{
+  customerId: string;
+  orderId: string;
+  reason: string;
+  idempotencyKey: string;
+  now: string;
+}>;
+
 export type RevokePaymentMethodInput = Readonly<{
   customerId: string;
   customerReference: string;
@@ -70,6 +78,7 @@ export interface PaymentService {
   revokePaymentMethod(input: RevokePaymentMethodInput): Promise<PaymentMethod>;
   charge(input: ChargePaymentInput): Promise<PaymentAttempt>;
   refund(input: RefundPaymentInput): Promise<Refund>;
+  refundOrder(input: RefundOrderInput): Promise<Refund>;
   handleWebhook(input: PaymentWebhookInput): Promise<PaymentWebhookResult>;
 }
 
@@ -276,6 +285,52 @@ export class DefaultPaymentService implements PaymentService {
       await this.repository.saveRefund(refund);
     }
     return refund;
+  }
+
+  async refundOrder(input: RefundOrderInput): Promise<Refund> {
+    const idempotencyKey = normalizeKey(input.idempotencyKey);
+    const existing = await this.repository.findRefundByIdempotencyKey(
+      input.customerId,
+      idempotencyKey,
+    );
+    if (existing) {
+      const existingAttempt = await this.repository.findPaymentAttemptById(
+        existing.paymentAttemptId,
+      );
+      if (existingAttempt?.orderId !== input.orderId || existing.reason !== input.reason) {
+        throw new PaymentProviderError(
+          "IDEMPOTENCY_KEY_REUSED",
+          "idempotency key was reused for a different order refund",
+        );
+      }
+      return existing;
+    }
+    const attempt = await this.repository.findSuccessfulPaymentAttemptByOrder(
+      input.customerId,
+      input.orderId,
+    );
+    if (!attempt) {
+      throw new PaymentProviderError(
+        "PAYMENT_ATTEMPT_NOT_FOUND",
+        "paid order charge was not found",
+      );
+    }
+    const refunds = await this.repository.listRefundsForPaymentAttempt(attempt.id);
+    const refundedCentavos = refunds
+      .filter((refund) => refund.status === "succeeded")
+      .reduce((total, refund) => total + refund.amount.centavos, 0);
+    const remainingCentavos = attempt.amount.centavos - refundedCentavos;
+    if (remainingCentavos < 1) {
+      throw new PaymentProviderError("CHARGE_ALREADY_REFUNDED", "order charge is already refunded");
+    }
+    return this.refund({
+      customerId: input.customerId,
+      paymentAttemptId: attempt.id,
+      amount: createMoney(remainingCentavos),
+      reason: input.reason,
+      idempotencyKey,
+      now: input.now,
+    });
   }
 
   async handleWebhook(input: PaymentWebhookInput): Promise<PaymentWebhookResult> {

@@ -6,6 +6,7 @@ import type {
   DeliveryMediaListResponse,
   DeliveryTrackingResponse,
   DeliveryAddressResponse,
+  DeliveryAddressesResponse,
   DeliveryWindowsResponse,
   PlansListResponse,
   OrderListResponse,
@@ -23,6 +24,7 @@ import { createRuntimeApiTransport } from "./api/runtime";
 export type CustomerAccountData = Readonly<{
   subscription: SubscriptionResponse["data"] | null;
   deliveryAddress: DeliveryAddressResponse["data"];
+  deliveryAddresses: DeliveryAddressesResponse["data"]["addresses"];
   deliveryWindows: DeliveryWindowsResponse["data"];
   cart: CartResponse["data"];
   plans: PlansListResponse["data"]["plans"];
@@ -66,6 +68,7 @@ export async function resolveCustomerAccount(
       subscription,
       cart,
       deliveryAddress,
+      deliveryAddresses,
       deliveryWindows,
       plans,
       catalog,
@@ -82,6 +85,7 @@ export async function resolveCustomerAccount(
       }),
       client.getCart(init),
       client.getDeliveryAddress(init),
+      client.getDeliveryAddresses(init).catch(() => ({ data: { addresses: [] } })),
       client.getDeliveryWindows(init),
       client.listPlans(),
       client.listCatalog(100),
@@ -102,6 +106,7 @@ export async function resolveCustomerAccount(
     return {
       subscription: subscription?.data ?? null,
       deliveryAddress: deliveryAddress.data,
+      deliveryAddresses: deliveryAddresses.data.addresses,
       deliveryWindows: deliveryWindows.data,
       cart: cart.data,
       plans: plans.data.plans,
@@ -119,7 +124,13 @@ export async function resolveCustomerAccount(
     return {
       subscription: null,
       deliveryAddress: null,
-      deliveryWindows: { cycleId: "", windows: [], selectedWindowId: null },
+      deliveryAddresses: [],
+      deliveryWindows: {
+        cycleId: "",
+        cutoffAt: new Date(0).toISOString(),
+        windows: [],
+        selectedWindowId: null,
+      },
       cart: emptyCart,
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },

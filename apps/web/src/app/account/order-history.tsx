@@ -17,7 +17,13 @@ function formatCycle(cycleId: string) {
 }
 
 function formatPaymentState(state: OrderListResponse["data"]["orders"][number]["paymentState"]) {
-  return state.replace("_", " ");
+  const labels = {
+    unpaid: "Payment not started",
+    pending: "Payment processing",
+    paid: "Paid",
+    failed: "Payment failed",
+  } as const;
+  return labels[state];
 }
 
 export function OrderHistory({ orders }: OrderHistoryProps) {
@@ -39,8 +45,8 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
               <span>{formatCycle(order.cycleId)}</span>
               <strong>{formatPrice(order.totals.totalDue.centavos)}</strong>
               <small>
-                {formatPaymentState(order.paymentState)} · locked{" "}
-                {new Date(order.lockedAt).toLocaleDateString("en-PH")}
+                {order.status === "canceled" ? "Canceled" : formatPaymentState(order.paymentState)}{" "}
+                · placed {new Date(order.lockedAt).toLocaleDateString("en-PH")}
               </small>
             </li>
           ))}

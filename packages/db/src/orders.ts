@@ -23,6 +23,7 @@ export type OrderOutboxEvent = Readonly<{
 
 export interface OrderRepository {
   findById(id: string): Promise<LockedOrder | null>;
+  findByIdIncludingCanceled(id: string): Promise<LockedOrder | null>;
   listByCustomer(customerId: string): Promise<readonly LockedOrder[]>;
   findByIdempotencyKey(customerId: string, idempotencyKey: string): Promise<LockedOrder | null>;
   save(order: LockedOrder): Promise<void>;
@@ -31,6 +32,7 @@ export interface OrderRepository {
     orderId: string,
     paymentState: NonNullable<LockedOrder["paymentState"]>,
   ): Promise<void>;
+  cancel(orderId: string): Promise<void>;
 }
 
 export interface OutboxPublisher {
@@ -41,15 +43,20 @@ export class D1OrderRepository implements OrderRepository {
   constructor(private readonly database: OrderDatabase) {}
 
   async findById(id: string): Promise<LockedOrder | null> {
+    const order = await this.findByIdIncludingCanceled(id);
+    return order?.status === "locked" ? order : null;
+  }
+
+  async findByIdIncludingCanceled(id: string): Promise<LockedOrder | null> {
     const orders = await this.database
       .prepare(
         `SELECT id, customer_id, subscription_id, plan_id, cycle_id, idempotency_key,
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
                 discount_centavos, weekly_fee_centavos, included_credit_centavos, overage_centavos,
                 delivery_fee_centavos, total_due_centavos, applied_promotion_json,
-                delivery_address_json, delivery_window_json, payment_state, locked_at
+                delivery_address_json, delivery_window_json, payment_state, status, locked_at
          FROM orders
-         WHERE id = ? AND status = 'locked'
+         WHERE id = ?
          LIMIT 1`,
       )
       .bind(id)
@@ -74,12 +81,14 @@ export class D1OrderRepository implements OrderRepository {
     const rows = await this.database
       .prepare(
         `SELECT id FROM orders
-         WHERE customer_id = ? AND status = 'locked'
+         WHERE customer_id = ?
          ORDER BY locked_at DESC`,
       )
       .bind(customerId)
       .all<{ id: string }>();
-    const orders = await Promise.all(rows.results.map((row) => this.findById(row.id)));
+    const orders = await Promise.all(
+      rows.results.map((row) => this.findByIdIncludingCanceled(row.id)),
+    );
     return orders.filter((order): order is LockedOrder => order !== null);
   }
 
@@ -93,7 +102,7 @@ export class D1OrderRepository implements OrderRepository {
                 request_fingerprint, weekly_credit_centavos, subtotal_centavos,
                 discount_centavos, weekly_fee_centavos, included_credit_centavos, overage_centavos,
                 delivery_fee_centavos, total_due_centavos, applied_promotion_json,
-                delivery_address_json, delivery_window_json, payment_state, locked_at
+                delivery_address_json, delivery_window_json, payment_state, status, locked_at
          FROM orders
          WHERE customer_id = ? AND idempotency_key = ? AND status = 'locked'
          LIMIT 1`,
@@ -140,6 +149,14 @@ export class D1OrderRepository implements OrderRepository {
       this.database
         .prepare(`UPDATE orders SET payment_state = ? WHERE id = ? AND status = 'locked'`)
         .bind(paymentState, orderId),
+    ]);
+  }
+
+  async cancel(orderId: string): Promise<void> {
+    await this.database.batch([
+      this.database
+        .prepare(`UPDATE orders SET status = 'canceled' WHERE id = ? AND status = 'locked'`)
+        .bind(orderId),
     ]);
   }
 }
@@ -258,7 +275,7 @@ function mapOrder(order: OrderRow, lines: readonly OrderLineRow[]): LockedOrder 
       ? parseJson<DeliveryWindow>(order.delivery_window_json)
       : null,
     paymentState: order.payment_state ?? "unpaid",
-    status: "locked",
+    status: order.status ?? "locked",
     lockedAt: order.locked_at,
   });
 }
@@ -287,6 +304,7 @@ type OrderRow = Record<string, unknown> & {
   delivery_address_json: string | null;
   delivery_window_json: string | null;
   payment_state: LockedOrder["paymentState"];
+  status: LockedOrder["status"];
   locked_at: string;
 };
 
