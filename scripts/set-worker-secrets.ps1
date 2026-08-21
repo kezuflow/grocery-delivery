@@ -39,14 +39,17 @@ try {
 
   $betterAuthFile = Join-Path $env:TEMP "carbon-better-auth-secret-$([guid]::NewGuid()).txt"
   $eventProcessorFile = Join-Path $env:TEMP "carbon-event-processor-token-$([guid]::NewGuid()).txt"
-  $tempFiles += $betterAuthFile, $eventProcessorFile
+  $mediaSigningFile = Join-Path $env:TEMP "carbon-media-signing-secret-$([guid]::NewGuid()).txt"
+  $tempFiles += $betterAuthFile, $eventProcessorFile, $mediaSigningFile
 
   [IO.File]::WriteAllText($betterAuthFile, (New-RandomSecret))
   [IO.File]::WriteAllText($eventProcessorFile, (New-RandomSecret))
+  [IO.File]::WriteAllText($mediaSigningFile, (New-RandomSecret))
 
   Set-WorkerSecretFromFile -Worker "@carbon/api" -Name "BETTER_AUTH_SECRET" -File $betterAuthFile
   Set-WorkerSecretFromFile -Worker "@carbon/api" -Name "EVENT_PROCESSOR_TOKEN" -File $eventProcessorFile
   Set-WorkerSecretFromFile -Worker "@carbon/jobs" -Name "EVENT_PROCESSOR_TOKEN" -File $eventProcessorFile
+  Set-WorkerSecretFromFile -Worker "@carbon/api" -Name "MEDIA_SIGNING_SECRET" -File $mediaSigningFile
 
   Write-Host ""
   Write-Host "Worker secrets configured for $Environment." -ForegroundColor Green

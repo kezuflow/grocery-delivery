@@ -224,6 +224,7 @@ import type { NotificationSender } from "@carbon/notifications";
 import {
   DeterministicMediaSigner,
   DeterministicPromotionMediaSigner,
+  verifyMediaRequest,
   type DeliveryMediaSigner,
   type PromotionMediaSigner,
 } from "@carbon/storage";
@@ -265,6 +266,7 @@ export type ApiBindings = Readonly<{
     ): Promise<Readonly<{ messageId: string }>>;
   };
   DELIVERY_MEDIA_RETENTION_DAYS?: string;
+  MEDIA_SIGNING_SECRET?: string;
   MEDIA_BUCKET?: R2Bucket;
   MEDIA_BASE_URL?: string;
   PROMOTION_MEDIA_BASE_URL?: string;
@@ -3701,6 +3703,88 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
+  app.put("/api/v1/media/upload", async (context) => {
+    const bindings = context.env ?? {};
+    const signedRequest = readSignedMediaRequest(context, true);
+    if (
+      !bindings.MEDIA_BUCKET ||
+      !bindings.MEDIA_SIGNING_SECRET ||
+      !signedRequest ||
+      !(await verifyMediaRequest(bindings.MEDIA_SIGNING_SECRET, signedRequest))
+    ) {
+      return context.json(
+        errorResponse(
+          "MEDIA_UPLOAD_UNAUTHORIZED",
+          "the media upload URL is invalid or expired",
+          context.get("correlationId"),
+        ),
+        403,
+      );
+    }
+    const contentType = context.req.header("content-type")?.split(";", 1)[0]?.trim();
+    const signedContentType = signedRequest.contentType;
+    if (!signedContentType || contentType !== signedContentType) {
+      return context.json(
+        errorResponse(
+          "MEDIA_CONTENT_TYPE_MISMATCH",
+          "the uploaded media type does not match the signed request",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const body = await context.req.arrayBuffer();
+    if (body.byteLength === 0 || body.byteLength > 10 * 1024 * 1024) {
+      return context.json(
+        errorResponse(
+          "MEDIA_SIZE_INVALID",
+          "delivery media must be between 1 byte and 10 MB",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    await bindings.MEDIA_BUCKET.put(signedRequest.objectKey, body, {
+      httpMetadata: { contentType: signedContentType },
+    });
+    return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+  });
+
+  app.get("/api/v1/media/download", async (context) => {
+    const bindings = context.env ?? {};
+    const signedRequest = readSignedMediaRequest(context, false);
+    if (
+      !bindings.MEDIA_BUCKET ||
+      !bindings.MEDIA_SIGNING_SECRET ||
+      !signedRequest ||
+      !(await verifyMediaRequest(bindings.MEDIA_SIGNING_SECRET, signedRequest))
+    ) {
+      return context.json(
+        errorResponse(
+          "MEDIA_DOWNLOAD_UNAUTHORIZED",
+          "the media download URL is invalid or expired",
+          context.get("correlationId"),
+        ),
+        403,
+      );
+    }
+    const object = await bindings.MEDIA_BUCKET.get(signedRequest.objectKey);
+    if (!object) {
+      return context.json(
+        errorResponse(
+          "MEDIA_NOT_FOUND",
+          "delivery media was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const headers = new Headers({ "cache-control": "private, no-store" });
+    object.writeHttpMetadata(headers);
+    headers.set("etag", object.httpEtag);
+    return new Response(object.body, { headers });
+  });
+
   app.get("/api/v1/orders/:id/media", async (context) => {
     const bindings = context.env ?? {};
     const repository =
@@ -5446,6 +5530,20 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   });
 
   return app;
+}
+
+function readSignedMediaRequest(context: ApiContext, includeContentType: boolean) {
+  const objectKey = context.req.query("objectKey")?.trim();
+  const expiresAt = context.req.query("expiresAt")?.trim();
+  const signature = context.req.query("signature")?.trim();
+  const contentType = context.req.query("contentType")?.trim();
+  if (!objectKey || !expiresAt || !signature || (includeContentType && !contentType)) return null;
+  return {
+    objectKey,
+    expiresAt,
+    signature,
+    ...(contentType ? { contentType } : {}),
+  };
 }
 
 async function resolveCartResponse(

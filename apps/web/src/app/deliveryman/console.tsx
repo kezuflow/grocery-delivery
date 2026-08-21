@@ -10,6 +10,12 @@ import {
 
 const QUEUE_KEY = "carbon.deliveryman.event-queue";
 const eventTypes = ["picked_up", "arrived", "delivered", "failed"] as const;
+const failureReasons = [
+  ["customer_unavailable", "Customer unavailable"],
+  ["address_inaccessible", "Address inaccessible"],
+  ["damaged_order", "Damaged order"],
+  ["other", "Other"],
+] as const;
 
 export function DeliverymanConsole({
   initial,
@@ -17,6 +23,7 @@ export function DeliverymanConsole({
   const [assignments, setAssignments] = useState(initial.assignments);
   const [queued, setQueued] = useState<DeliveryEventRequest[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [busyAssignment, setBusyAssignment] = useState<string | null>(null);
   const client = useMemo(() => createApiClient(createSameOriginApiTransport()), []);
 
   useEffect(() => {
@@ -35,7 +42,14 @@ export function DeliverymanConsole({
         setQueued((current) =>
           current.filter((item) => item.clientEventId !== event.clientEventId),
         );
-      } catch {
+      } catch (error) {
+        if (error instanceof ApiClientError && error.status >= 400 && error.status < 500) {
+          setQueued((current) =>
+            current.filter((item) => item.clientEventId !== event.clientEventId),
+          );
+          setMessage(`${error.message} Refresh the route before recording another event.`);
+          continue;
+        }
         break;
       }
     }
@@ -51,7 +65,11 @@ export function DeliverymanConsole({
     return () => window.removeEventListener("online", handler);
   }, [flush]);
 
-  const record = (assignment: (typeof assignments)[number], type: (typeof eventTypes)[number]) => {
+  const record = (
+    assignment: (typeof assignments)[number],
+    type: (typeof eventTypes)[number],
+    failureReason: DeliveryEventRequest["failureReason"] = null,
+  ) => {
     const event: DeliveryEventRequest = {
       clientEventId: crypto.randomUUID(),
       assignmentId: assignment.id,
@@ -59,13 +77,41 @@ export function DeliverymanConsole({
       type,
       occurredAt: new Date().toISOString(),
       note: null,
-      failureReason: type === "failed" ? "other" : null,
+      failureReason,
     };
     setQueued((current) => [...current, event]);
     setMessage(
       navigator.onLine ? "Syncing event..." : "Saved offline. It will sync when you reconnect.",
     );
     void flush();
+  };
+
+  const uploadProof = async (assignment: (typeof assignments)[number], file: File) => {
+    setBusyAssignment(assignment.id);
+    setMessage("Uploading proof of delivery...");
+    try {
+      const signed = await client.createDeliveryMediaUpload({
+        clientMediaId: crypto.randomUUID(),
+        assignmentId: assignment.id,
+        orderId: assignment.orderId,
+        kind: "proof_of_delivery",
+        contentType: file.type,
+        sizeBytes: file.size,
+      });
+      const response = await fetch(signed.data.uploadUrl, {
+        method: "PUT",
+        headers: { "content-type": file.type },
+        body: file,
+      });
+      if (!response.ok) throw new Error("proof upload failed");
+      setMessage("Proof of delivery uploaded.");
+    } catch (error) {
+      setMessage(
+        error instanceof ApiClientError ? error.message : "Proof could not be uploaded. Try again.",
+      );
+    } finally {
+      setBusyAssignment(null);
+    }
   };
 
   const refresh = async () => {
@@ -129,21 +175,82 @@ export function DeliverymanConsole({
                       : ""}
                   </p>
                 ) : null}
+                <div className="deliveryman-contact-actions">
+                  {assignment.recipientPhone ? (
+                    <a className="button button-small" href={`tel:${assignment.recipientPhone}`}>
+                      Call customer
+                    </a>
+                  ) : null}
+                  {assignment.deliveryAddress ? (
+                    <a
+                      className="button button-small"
+                      href={createMapUrl(assignment.deliveryAddress)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open map
+                    </a>
+                  ) : null}
+                  <a className="button button-small" href="/account#support">
+                    Contact support
+                  </a>
+                </div>
                 <p className="subscription-note">{assignment.lastEventType ?? assignment.status}</p>
               </div>
               <div className="deliveryman-actions">
                 {eventTypes
                   .filter((type) => isNextEvent(assignment.lastEventType, type))
-                  .map((type) => (
-                    <button
-                      className="button button-small"
-                      key={type}
-                      onClick={() => record(assignment, type)}
-                      type="button"
-                    >
-                      {type.replace("_", " ")}
-                    </button>
-                  ))}
+                  .map((type) =>
+                    type === "failed" ? (
+                      <label key={type}>
+                        <span className="sr-only">Failure reason</span>
+                        <select
+                          defaultValue=""
+                          onChange={(event) => {
+                            const reason = event.target
+                              .value as DeliveryEventRequest["failureReason"];
+                            if (reason) record(assignment, "failed", reason);
+                            event.target.value = "";
+                          }}
+                        >
+                          <option value="" disabled>
+                            Record failed delivery
+                          </option>
+                          {failureReasons.map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : (
+                      <button
+                        className="button button-small"
+                        key={type}
+                        onClick={() => record(assignment, type)}
+                        type="button"
+                      >
+                        {type.replace("_", " ")}
+                      </button>
+                    ),
+                  )}
+                {assignment.lastEventType === "arrived" ? (
+                  <label className="button button-small">
+                    {busyAssignment === assignment.id ? "Uploading..." : "Add proof photo"}
+                    <input
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      disabled={busyAssignment === assignment.id}
+                      hidden
+                      type="file"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void uploadProof(assignment, file);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                ) : null}
               </div>
             </article>
           ))
@@ -151,6 +258,24 @@ export function DeliverymanConsole({
       </section>
     </main>
   );
+}
+
+function createMapUrl(
+  address: NonNullable<
+    DeliverymanAssignmentsResponse["data"]["assignments"][number]["deliveryAddress"]
+  >,
+) {
+  const query = [
+    address.line1,
+    address.line2,
+    address.barangay,
+    address.city,
+    address.province,
+    address.postalCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 function isNextEvent(

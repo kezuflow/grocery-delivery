@@ -16,6 +16,7 @@ import {
   deliverymanEventsResponseSchema,
   deliveryTrackingResponseSchema,
   deliveryMediaListResponseSchema,
+  deliveryMediaUploadResponseSchema,
   orderCreateRequestSchema,
   orderListResponseSchema,
   orderResponseSchema,
@@ -71,6 +72,8 @@ import {
   type DeliverymanAssignmentsResponse,
   type DeliveryTrackingResponse,
   type DeliveryMediaListResponse,
+  type DeliveryMediaUploadRequest,
+  type DeliveryMediaUploadResponse,
   type OrderCreateRequest,
   type OrderListResponse,
   type OrderResponse,
@@ -539,6 +542,19 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
         headers,
         body: JSON.stringify(payload),
       });
+    },
+    createDeliveryMediaUpload(
+      input: DeliveryMediaUploadRequest,
+      init?: RequestInit,
+    ): Promise<DeliveryMediaUploadResponse> {
+      return sendJson(
+        transport,
+        "/api/v1/deliveryman/media",
+        input,
+        deliveryMediaUploadResponseSchema,
+        "POST",
+        init,
+      );
     },
     getOrderTracking(orderId: string, init?: RequestInit): Promise<DeliveryTrackingResponse> {
       return getJson(

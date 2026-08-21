@@ -24,6 +24,89 @@ export interface DeliveryMediaSigner {
   }): Promise<Pick<DeliveryMediaDownload, "downloadUrl">>;
 }
 
+export type SignedMediaRequest = Readonly<{
+  objectKey: string;
+  contentType?: string;
+  expiresAt: string;
+  signature: string;
+}>;
+
+/**
+ * Signs first-party media URLs with a short-lived HMAC token. The API can
+ * verify the token before reading or writing the private R2 bucket, so media
+ * never needs to be public and callers do not receive bucket credentials.
+ */
+export class HmacDeliveryMediaSigner implements DeliveryMediaSigner {
+  constructor(
+    private readonly secret: string,
+    private readonly baseUrl: string,
+    private readonly pathPrefix = "/api/v1/media",
+  ) {
+    if (!secret.trim()) throw new Error("media signing secret must not be empty");
+    if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://localhost")) {
+      throw new Error("media signing base URL must use HTTPS outside local development");
+    }
+  }
+
+  async createUploadUrl(input: { objectKey: string; contentType: string; expiresAt: string }) {
+    const signature = await signMediaRequest(this.secret, {
+      objectKey: input.objectKey,
+      contentType: input.contentType,
+      expiresAt: input.expiresAt,
+    });
+    const query = new URLSearchParams({
+      objectKey: input.objectKey,
+      contentType: input.contentType,
+      expiresAt: input.expiresAt,
+      signature,
+    });
+    return { uploadUrl: `${this.baseUrl}${this.pathPrefix}/upload?${query.toString()}` };
+  }
+
+  async createDownloadUrl(input: { objectKey: string; expiresAt: string }) {
+    const signature = await signMediaRequest(this.secret, input);
+    const query = new URLSearchParams({
+      objectKey: input.objectKey,
+      expiresAt: input.expiresAt,
+      signature,
+    });
+    return { downloadUrl: `${this.baseUrl}${this.pathPrefix}/download?${query.toString()}` };
+  }
+}
+
+export async function verifyMediaRequest(secret: string, request: SignedMediaRequest) {
+  if (!secret.trim() || !request.objectKey.trim() || !request.expiresAt.trim()) return false;
+  const expiry = Date.parse(request.expiresAt);
+  if (!Number.isFinite(expiry) || expiry <= Date.now()) return false;
+  const expected = await signMediaRequest(secret, request);
+  return timingSafeEqual(expected, request.signature);
+}
+
+async function signMediaRequest(
+  secret: string,
+  input: Readonly<{ objectKey: string; contentType?: string; expiresAt: string }>,
+) {
+  const payload = [input.objectKey, input.contentType ?? "", input.expiresAt].join("\n");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function timingSafeEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 /** Storage boundary used by retention workers and delivery-media integrations. */
 export interface DeliveryMediaObjectStore {
   put(

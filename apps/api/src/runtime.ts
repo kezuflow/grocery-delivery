@@ -24,7 +24,7 @@ import {
   D1NotificationPreferencesRepository,
   D1PaymentRepository,
 } from "@carbon/db";
-import { R2DeliveryMediaObjectStore } from "@carbon/storage";
+import { HmacDeliveryMediaSigner, R2DeliveryMediaObjectStore } from "@carbon/storage";
 
 import { createApi, type ApiApp, type ApiBindings } from "./app.js";
 import { createConfiguredBetterAuthApi } from "./better-auth.js";
@@ -95,14 +95,38 @@ export function createConfiguredApi(
     factories.createEventProcessor?.(bindings, configuration) ??
     createConfiguredEventProcessor(bindings, paymentProvider);
 
+  const mediaSigner = resolveDeliveryMediaSigner(bindings, configuration);
   return createApi({
     ...(betterAuthApi ? { betterAuthApi } : {}),
     ...(paymentProvider ? { paymentProvider } : {}),
     ...(eventProcessor ? { eventProcessor } : {}),
+    ...(mediaSigner ? { mediaSigner } : {}),
     ...(bindings.EVENT_PROCESSOR_TOKEN
       ? { eventProcessorToken: bindings.EVENT_PROCESSOR_TOKEN }
       : {}),
   });
+}
+
+function resolveDeliveryMediaSigner(bindings: ApiBindings, configuration: ApiRuntimeConfiguration) {
+  if (!bindings.MEDIA_BUCKET) return undefined;
+  const secret = bindings.MEDIA_SIGNING_SECRET?.trim();
+  const baseUrl = bindings.API_PUBLIC_ORIGIN?.trim();
+  if (!secret || !baseUrl) {
+    if (configuration.environment === "staging" || configuration.environment === "production") {
+      throw new ConfigurationError(
+        "MEDIA_SIGNING_SECRET",
+        "deployed R2 delivery media requires MEDIA_SIGNING_SECRET and API_PUBLIC_ORIGIN",
+      );
+    }
+    return undefined;
+  }
+  if (secret.length < 32) {
+    throw new ConfigurationError(
+      "MEDIA_SIGNING_SECRET",
+      "MEDIA_SIGNING_SECRET must be at least 32 characters",
+    );
+  }
+  return new HmacDeliveryMediaSigner(secret, baseUrl);
 }
 
 function createConfiguredEventProcessor(
