@@ -415,6 +415,46 @@
         }
       }
     },
+    "/api/v1/account/deletion-request": {
+      "post": {
+        "summary": "Request account deletion",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/subscription": {
       "get": {
         "summary": "Read the current subscription",
@@ -1468,6 +1508,46 @@
     "/api/v1/admin/plans/{id}": {
       "put": {
         "summary": "Propose a plan change",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Validated JSON response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "The active session lacks permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/launch-configuration": {
+      "put": {
+        "summary": "Apply an idempotent launch catalog and delivery-window configuration",
         "security": [{ "sessionCookie": [] }],
         "responses": {
           "200": {

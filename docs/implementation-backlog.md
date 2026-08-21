@@ -27,31 +27,31 @@ conversation history or temporary handoff files.
 
 ## Slice Ledger
 
-| Slice | Area                                                            | Status   | Commit / resume point                                                                              |
-| ----- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                                                 |
-| 001   | API environment database bindings                               | complete | `03ef3bc`                                                                                          |
-| 002   | API runtime composition                                         | complete | `5f6a64e`                                                                                          |
-| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                                                          |
-| 004   | Better Auth production integration                              | complete | `51a8de1`                                                                                          |
-| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                                                    |
-| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete                                            |
-| 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests                                       |
-| 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                                                            |
-| 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync                                          |
-| 010   | Customer tracking, notifications, and delivery media            | complete | Customer tracking, idempotent notification adapter, and media URLs                                 |
-| 011   | Jobs, workflows, retries, and operational projections           | complete | Durable outbox, workflow retries, and operational projections                                      |
-| 012   | Release hardening and production rehearsal                      | complete | OpenAPI, origin checks, and rehearsal foundations complete                                         |
-| 013   | Production identity and account lifecycle                       | complete | Verified auth, admin role controls, and MFA enforcement complete                                   |
-| 014   | Subscription onboarding and plan selection                      | complete | Onboarding, effective-cycle lifecycle, and confirmation UX complete                                |
-| 015   | Real payments and customer checkout                             | complete | `a5469f2` checkout pricing; campaign administration complete                                       |
-| 016   | Immutable order fulfillment and cutoff enforcement              | complete | `b7fde24`; immutable snapshots, payable/packed dispatch, and order history complete                |
-| 017   | Admin operations console                                        | complete | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete  |
-| 018   | Deployable jobs, queues, workflows, and notifications           | complete | Staging queue retry/dead-letter/replay and durable workflow evidence complete                      |
-| 019   | Customer fulfillment, support, and payment history              | complete | Approved requests, address book, receipts, and status messaging complete                           |
-| 020   | Delivery staff production workflow                              | complete | HMAC-signed R2 proof media, route actions, explicit failure reasons, and offline conflict handling |
-| 021   | Privacy, audit, compliance, and launch observability            | complete | Deletion requests, export/consent UI, audit evidence, and compliance runbooks                      |
-| 022   | Staging launch rehearsal and go/no-go gate                      | blocked  | No-go evidence recorded; staging launch data, identities, provider E2E, and owners remain          |
+| Slice | Area                                                            | Status   | Commit / resume point                                                                                       |
+| ----- | --------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| 000   | Repository and domain foundation                                | complete | Existing history through `c3da0bc`                                                                          |
+| 001   | API environment database bindings                               | complete | `03ef3bc`                                                                                                   |
+| 002   | API runtime composition                                         | complete | `5f6a64e`                                                                                                   |
+| 003   | Payment-method revocation administration                        | complete | `7229e08`                                                                                                   |
+| 004   | Better Auth production integration                              | complete | `51a8de1`                                                                                                   |
+| 005   | Web-to-API service binding and customer flows                   | complete | Complete through order creation                                                                             |
+| 006   | Delivery addresses, serviceability, and weekly delivery windows | complete | Address geofence and weekly capacity selection complete                                                     |
+| 007   | Procurement, shortages, substitutions, and packing              | complete | Demand aggregation, exceptions, substitutions, and manifests                                                |
+| 008   | Dispatch, route planning, and driver assignments                | complete | Cycle-scoped admin dispatch assignments                                                                     |
+| 009   | Deliveryman PWA and offline event sync                          | complete | Deliveryman assignments and idempotent offline event sync                                                   |
+| 010   | Customer tracking, notifications, and delivery media            | complete | Customer tracking, idempotent notification adapter, and media URLs                                          |
+| 011   | Jobs, workflows, retries, and operational projections           | complete | Durable outbox, workflow retries, and operational projections                                               |
+| 012   | Release hardening and production rehearsal                      | complete | OpenAPI, origin checks, and rehearsal foundations complete                                                  |
+| 013   | Production identity and account lifecycle                       | complete | Verified auth, admin role controls, and MFA enforcement complete                                            |
+| 014   | Subscription onboarding and plan selection                      | complete | Onboarding, effective-cycle lifecycle, and confirmation UX complete                                         |
+| 015   | Real payments and customer checkout                             | complete | `a5469f2` checkout pricing; campaign administration complete                                                |
+| 016   | Immutable order fulfillment and cutoff enforcement              | complete | `b7fde24`; immutable snapshots, payable/packed dispatch, and order history complete                         |
+| 017   | Admin operations console                                        | complete | Dashboard, operational mutations, campaigns, banners, audit/refunds, alerts, and support complete           |
+| 018   | Deployable jobs, queues, workflows, and notifications           | complete | Staging queue retry/dead-letter/replay and durable workflow evidence complete                               |
+| 019   | Customer fulfillment, support, and payment history              | complete | Approved requests, address book, receipts, and status messaging complete                                    |
+| 020   | Delivery staff production workflow                              | complete | HMAC-signed R2 proof media, route actions, explicit failure reasons, and offline conflict handling          |
+| 021   | Privacy, audit, compliance, and launch observability            | complete | Deletion requests, export/consent UI, audit evidence, and compliance runbooks                               |
+| 022   | Staging launch rehearsal and go/no-go gate                      | blocked  | No-go evidence recorded; supported launch-data bootstrap added; identities, provider E2E, and owners remain |
 
 ### Completed Slice: 013 production identity and account lifecycle
 
@@ -865,10 +865,19 @@ SKUs, delivery windows, identities, and orders, so customer-to-delivery and PayM
 cannot run. Production Workers and required queue/R2 resources are not provisioned, and named human
 go/no-go owners are not recorded.
 
-Resume point: load approved staging launch data; provision verified customer, MFA administrator, and
-delivery identities; run the authenticated PayMongo/order/operations/delivery flow and mutation load
-fixture; name operational owners; then provision and verify the production resource inventory. Do not
-mark Slice 022 complete until the evidence document contains those results and a final go decision.
+Bootstrap increment: the protected `PUT /api/v1/admin/launch-configuration` route now gives an
+MFA-verified superadmin a supported, idempotent path to load approved catalog categories, SKU
+procurement costs/markups, and delivery windows. The server derives PHP prices and price-history
+records, persists the configuration atomically with cache invalidation and audit evidence, and
+rejects client-owned final prices. The operations console exposes the same manifest import surface
+only to superadmins. This is a data-bootstrap mechanism, not staging data: no launch values were
+invented or applied by this increment.
+
+Resume point: use the approved manifest through a verified superadmin session; provision verified
+customer, MFA administrator, and delivery identities; run the authenticated
+PayMongo/order/operations/delivery flow and mutation load fixture; name operational owners; then
+provision and verify the production resource inventory. Do not mark Slice 022 complete until the
+evidence document contains those results and a final go decision.
 
 ## Completed Slice: 004
 

@@ -26,6 +26,9 @@ import {
   type SubscriptionCreationService,
   type PromotionRepository,
   type EventProcessor,
+  LaunchConfigurationConflictError,
+  LaunchConfigurationService,
+  LaunchConfigurationValidationError,
 } from "@carbon/application";
 import {
   parseAllowedOrigins,
@@ -129,6 +132,8 @@ import {
   customerOrderSubstitutionDecisionSchema,
   customerOrderSubstitutionResponseSchema,
   customerOrderSubstitutionsResponseSchema,
+  launchConfigurationApplyRequestSchema,
+  launchConfigurationResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultPaymentService,
@@ -166,6 +171,7 @@ import {
   D1NotificationPreferencesRepository,
   D1CustomerOrderRequestRepository,
   D1CustomerOrderSubstitutionRepository,
+  D1LaunchConfigurationRepository,
   type PromotionBannerAnalyticsRepository,
   type SupportCaseRepository,
   type SupportCase,
@@ -350,6 +356,7 @@ export type ApiOptions = Readonly<{
   version?: string;
   eventProcessor?: EventProcessor;
   eventProcessorToken?: string;
+  launchConfigurationService?: LaunchConfigurationService;
 }>;
 
 export function createApi(options: ApiOptions = {}): ApiApp {
@@ -893,6 +900,90 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     };
     adminRoleAssignmentResponseSchema.parse(body);
     return context.json(body, 200);
+  });
+
+  app.put("/api/v1/admin/launch-configuration", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "superadmin")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "superadmin permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key")?.trim();
+    if (!idempotencyKey) {
+      return context.json(
+        errorResponse(
+          "IDEMPOTENCY_KEY_REQUIRED",
+          "an Idempotency-Key header is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = launchConfigurationApplyRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_LAUNCH_CONFIGURATION",
+          "launch configuration is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const bindings = context.env ?? {};
+    const service =
+      options.launchConfigurationService ??
+      (bindings.DB
+        ? new LaunchConfigurationService(new D1LaunchConfigurationRepository(bindings.DB))
+        : undefined);
+    if (!service) {
+      return context.json(
+        errorResponse(
+          "LAUNCH_CONFIGURATION_UNAVAILABLE",
+          "launch configuration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    try {
+      const result = await service.apply({
+        actorUserId: session.userId,
+        idempotencyKey,
+        correlationId: context.get("correlationId"),
+        appliedAt: now().toISOString(),
+        configuration: input.data,
+      });
+      const body = { data: result, meta: { correlationId: context.get("correlationId") } };
+      launchConfigurationResponseSchema.parse(body);
+      return context.json(body, 200);
+    } catch (error) {
+      if (
+        !(error instanceof LaunchConfigurationConflictError) &&
+        !(error instanceof LaunchConfigurationValidationError)
+      ) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : "launch configuration failed";
+      return context.json(
+        errorResponse(
+          error instanceof LaunchConfigurationConflictError
+            ? "IDEMPOTENCY_CONFLICT"
+            : "INVALID_LAUNCH_CONFIGURATION",
+          message,
+          context.get("correlationId"),
+        ),
+        error instanceof LaunchConfigurationConflictError ? 409 : 400,
+      );
+    }
   });
 
   app.put("/api/v1/admin/plans/:id", async (context) => {

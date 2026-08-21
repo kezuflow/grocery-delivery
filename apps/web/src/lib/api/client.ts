@@ -56,6 +56,8 @@ import {
   customerOrderSubstitutionDecisionSchema,
   customerOrderSubstitutionResponseSchema,
   customerOrderSubstitutionsResponseSchema,
+  launchConfigurationApplyRequestSchema,
+  launchConfigurationResponseSchema,
   paymentRefundRequestSchema,
   paymentRefundResponseSchema,
   plansListResponseSchema,
@@ -105,6 +107,7 @@ import {
   type AdminOrderRequestsResponse,
   type CustomerOrderSubstitutionResponse,
   type CustomerOrderSubstitutionsResponse,
+  type LaunchConfigurationResponse,
 } from "@carbon/contracts";
 
 export type ApiTransport = Readonly<{
@@ -287,6 +290,23 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getAdminAudit(init?: RequestInit): Promise<AdminAuditResponse> {
       return getJson(transport, "/api/v1/admin/audit?limit=50", adminAuditResponseSchema, init);
+    },
+    applyLaunchConfiguration(
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<LaunchConfigurationResponse> {
+      const payload = launchConfigurationApplyRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        "/api/v1/admin/launch-configuration",
+        payload,
+        launchConfigurationResponseSchema,
+        "PUT",
+        { ...init, headers },
+      );
     },
     getAdminOrderRequests(init?: RequestInit): Promise<AdminOrderRequestsResponse> {
       return getJson(

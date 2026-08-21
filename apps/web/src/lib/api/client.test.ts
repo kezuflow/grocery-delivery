@@ -404,4 +404,76 @@ describe("web API client", () => {
       client.decideOrderSubstitution("substitution-1", "accept", "decision-1"),
     ).resolves.toMatchObject({ data: { status: "accepted" } });
   });
+
+  it("submits a superadmin launch manifest without a client-owned final price", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            idempotencyKey: "launch-1",
+            categoryCount: 1,
+            skuCount: 1,
+            deliveryWindowCount: 1,
+            appliedAt: "2026-08-21T08:00:00.000Z",
+            replayed: false,
+          },
+          meta,
+        },
+        200,
+        (init) => {
+          expect(init?.method).toBe("PUT");
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe("launch-1");
+          expect(JSON.parse(init?.body as string)).toEqual(launchConfiguration());
+        },
+      ),
+    );
+
+    await expect(
+      client.applyLaunchConfiguration(launchConfiguration(), "launch-1"),
+    ).resolves.toMatchObject({
+      data: { skuCount: 1, replayed: false },
+    });
+    expect(() =>
+      client.applyLaunchConfiguration(
+        {
+          ...launchConfiguration(),
+          skus: [{ ...launchConfiguration().skus[0], price: { centavos: 1, currency: "PHP" } }],
+        },
+        "launch-2",
+      ),
+    ).toThrow();
+  });
 });
+
+function launchConfiguration() {
+  return {
+    reason: "Approved staging launch manifest",
+    categories: [{ id: "fruit", name: "Fruit", slug: "fruit", active: true }],
+    skus: [
+      {
+        id: "banana-kg",
+        categoryId: "fruit",
+        name: "Bananas",
+        slug: "bananas",
+        description: "Fresh bananas",
+        unit: "kilogram",
+        imageUrl: null,
+        procurementCostCentavos: 10_000,
+        markupBasisPoints: 2_500,
+        priceEffectiveAt: "2026-08-21T08:00:00.000Z",
+        active: true,
+      },
+    ],
+    deliveryWindows: [
+      {
+        id: "window-1",
+        cycleId: "cycle-2026-08-22",
+        label: "Saturday morning",
+        startsAt: "2026-08-22T00:00:00.000Z",
+        endsAt: "2026-08-22T04:00:00.000Z",
+        capacity: 50,
+        active: true,
+      },
+    ],
+  };
+}

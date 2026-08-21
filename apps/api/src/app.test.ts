@@ -36,6 +36,7 @@ import {
   customerOrderRequestsResponseSchema,
   customerOrderSubstitutionResponseSchema,
   customerOrderSubstitutionsResponseSchema,
+  launchConfigurationResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultCartLockService,
@@ -47,6 +48,8 @@ import {
   InMemoryOrderRepository,
   InMemoryOutboxPublisher,
   InMemorySubscriptionRepository,
+  InMemoryLaunchConfigurationRepository,
+  LaunchConfigurationService,
 } from "@carbon/application";
 import {
   DefaultPaymentService,
@@ -525,6 +528,158 @@ describe("API worker", () => {
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("applies and replays a superadmin launch configuration", async () => {
+    const repository = new InMemoryLaunchConfigurationRepository();
+    const launchConfigurationService = new LaunchConfigurationService(
+      repository,
+      () => "audit-launch-1",
+    );
+    const adminApp = createApi({
+      now: () => new Date("2026-08-21T08:00:00.000Z"),
+      generateCorrelationId: () => "correlation-launch-1",
+      sink: () => undefined,
+      launchConfigurationService,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-superadmin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["superadmin"],
+              customerId: null,
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+              mfaRequired: true,
+              mfaVerified: true,
+            }),
+          ),
+      },
+    });
+    const request = (body: unknown, idempotencyKey?: string) =>
+      adminApp.request("/api/v1/admin/launch-configuration", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+    const first = await request(launchConfigurationFixture(), "launch-1");
+    const firstBody = launchConfigurationResponseSchema.parse(await first.json());
+    expect(first.status).toBe(200);
+    expect(firstBody).toMatchObject({
+      data: { skuCount: 1, replayed: false },
+      meta: { correlationId: "correlation-launch-1" },
+    });
+
+    const replay = await request(launchConfigurationFixture(), "launch-1");
+    expect(launchConfigurationResponseSchema.parse(await replay.json()).data.replayed).toBe(true);
+    expect(repository.applied).toHaveLength(1);
+
+    const conflict = await request(
+      { ...launchConfigurationFixture(), reason: "A different approval" },
+      "launch-1",
+    );
+    expect(conflict.status).toBe(409);
+    expect(apiErrorResponseSchema.parse(await conflict.json()).error.code).toBe(
+      "IDEMPOTENCY_CONFLICT",
+    );
+
+    const missingKey = await request(launchConfigurationFixture());
+    expect(missingKey.status).toBe(400);
+    expect(apiErrorResponseSchema.parse(await missingKey.json()).error.code).toBe(
+      "IDEMPOTENCY_KEY_REQUIRED",
+    );
+
+    const invalid = await request(
+      {
+        ...launchConfigurationFixture(),
+        categories: [
+          launchConfigurationFixture().categories[0],
+          { id: "fruit-2", name: "More Fruit", slug: "fruit", active: true },
+        ],
+      },
+      "launch-2",
+    );
+    expect(invalid.status).toBe(400);
+    expect(apiErrorResponseSchema.parse(await invalid.json()).error.code).toBe(
+      "INVALID_LAUNCH_CONFIGURATION",
+    );
+  });
+
+  it("reports launch configuration persistence failures as internal errors", async () => {
+    const adminApp = createApi({
+      generateCorrelationId: () => "correlation-launch-failure",
+      sink: () => undefined,
+      launchConfigurationService: new LaunchConfigurationService({
+        findCommand: () => Promise.resolve(null),
+        apply: () => Promise.reject(new Error("D1 unavailable")),
+      }),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-superadmin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["superadmin"],
+              customerId: null,
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+              mfaRequired: true,
+              mfaVerified: true,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request("/api/v1/admin/launch-configuration", {
+      method: "PUT",
+      headers: { "content-type": "application/json", "idempotency-key": "launch-1" },
+      body: JSON.stringify(launchConfigurationFixture()),
+    });
+
+    expect(response.status).toBe(500);
+    expect(apiErrorResponseSchema.parse(await response.json())).toMatchObject({
+      error: { code: "INTERNAL_ERROR", message: "unexpected server error" },
+      meta: { correlationId: "correlation-launch-failure" },
+    });
+  });
+
+  it("rejects launch configuration writes without superadmin permission", async () => {
+    const adminApp = createApi({
+      sink: () => undefined,
+      launchConfigurationService: new LaunchConfigurationService(
+        new InMemoryLaunchConfigurationRepository(),
+      ),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-pricing",
+              userId: "pricing-1",
+              role: "admin",
+              adminPermissions: ["pricing"],
+              customerId: null,
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+              mfaRequired: true,
+              mfaVerified: true,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request("/api/v1/admin/launch-configuration", {
+      method: "PUT",
+      headers: { "content-type": "application/json", "idempotency-key": "launch-1" },
+      body: JSON.stringify(launchConfigurationFixture()),
+    });
+
+    expect(response.status).toBe(403);
+    expect(apiErrorResponseSchema.parse(await response.json()).error.code).toBe("FORBIDDEN");
   });
 
   it("creates pending plan changes and requires an independent finance approval", async () => {
@@ -1566,6 +1721,7 @@ describe("API worker", () => {
 
   it("rejects unavailable SKUs before locking an order", async () => {
     const orderApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
       sink: () => undefined,
       catalogCheckoutReader: createDefaultCatalogReader(),
       planLookup: new InMemoryPlanReader(),
@@ -1613,6 +1769,7 @@ describe("API worker", () => {
 
   it("requires a saved serviceable delivery address before locking an order", async () => {
     const orderApp = createApi({
+      now: () => new Date("2026-08-20T10:00:00.000Z"),
       sink: () => undefined,
       deliveryAddressRepository: new InMemoryDeliveryAddressRepository(),
       serviceablePostalCodes: ["1105"],
@@ -2728,3 +2885,36 @@ describe("API worker", () => {
     ).resolves.toMatchObject([{ status: "approved" }]);
   });
 });
+
+function launchConfigurationFixture() {
+  return {
+    reason: "Approved staging launch manifest",
+    categories: [{ id: "fruit", name: "Fruit", slug: "fruit", active: true }],
+    skus: [
+      {
+        id: "banana-kg",
+        categoryId: "fruit",
+        name: "Bananas",
+        slug: "bananas",
+        description: "Fresh bananas",
+        unit: "kilogram",
+        imageUrl: null,
+        procurementCostCentavos: 10_000,
+        markupBasisPoints: 2_500,
+        priceEffectiveAt: "2026-08-21T08:00:00.000Z",
+        active: true,
+      },
+    ],
+    deliveryWindows: [
+      {
+        id: "window-1",
+        cycleId: "cycle-2026-08-22",
+        label: "Saturday morning",
+        startsAt: "2026-08-22T00:00:00.000Z",
+        endsAt: "2026-08-22T04:00:00.000Z",
+        capacity: 50,
+        active: true,
+      },
+    ],
+  };
+}

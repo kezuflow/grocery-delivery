@@ -5,6 +5,7 @@ import { loadAdminDashboard } from "../../lib/admin";
 import { loadCurrentSession } from "../../lib/session";
 import { AuthControls } from "../auth-controls";
 import { AdminActions } from "./admin-actions";
+import { LaunchConfigurationForm } from "./launch-configuration-form";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Operations" };
@@ -122,6 +123,9 @@ export default async function AdminPage() {
             supportCases={dashboard.supportCases}
             orderRequests={dashboard.orderRequests}
           />
+          {auth.session.adminPermissions.includes("superadmin") ? (
+            <LaunchConfigurationForm />
+          ) : null}
           {auth.session.adminPermissions.includes("reporting") ? (
             <section className="account-panel account-panel-wide">
               <div className="account-panel-heading">

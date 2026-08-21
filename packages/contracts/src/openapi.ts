@@ -141,6 +141,10 @@ export const openApiDocument: OpenApiDocument = {
       },
     },
     "/api/v1/admin/plans/{id}": protectedOperation("Propose a plan change", "put"),
+    "/api/v1/admin/launch-configuration": protectedOperation(
+      "Apply an idempotent launch catalog and delivery-window configuration",
+      "put",
+    ),
     "/api/v1/admin/identity/roles": protectedOperation("Assign a server-owned role", "post"),
     "/api/v1/admin/plan-change-requests/{id}/decision": protectedOperation(
       "Approve or reject a plan change",

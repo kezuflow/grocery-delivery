@@ -24,3 +24,4 @@ export * from "./notification-preferences.js";
 export * from "./notification-delivery-receipts.js";
 export * from "./order-requests.js";
 export * from "./customer-substitutions.js";
+export * from "./launch-configuration.js";
