@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 
 import type {
   CartResponse,
-  CatalogListResponse,
   DeliveryMediaListResponse,
   DeliveryTrackingResponse,
   DeliveryAddressResponse,
@@ -41,7 +40,6 @@ export type CustomerAccountData = Readonly<{
     deletionEligible: boolean;
     deletionReasons: readonly string[];
   }>;
-  catalog: CatalogListResponse["data"];
   error: string | null;
 }>;
 
@@ -77,7 +75,6 @@ export async function resolveCustomerAccount(
       deliveryAddresses,
       deliveryWindows,
       plans,
-      catalog,
       paymentHistory,
       orderData,
       supportCases,
@@ -96,7 +93,6 @@ export async function resolveCustomerAccount(
       client.getDeliveryAddresses(init).catch(() => ({ data: { addresses: [] } })),
       client.getDeliveryWindows(init),
       client.listPlans(),
-      client.listCatalog(100),
       client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
       loadOrderData(client, init),
       client.getSupportCases(init).catch(() => ({ data: { cases: [] } })),
@@ -120,7 +116,6 @@ export async function resolveCustomerAccount(
       deliveryWindows: deliveryWindows.data,
       cart: cart.data,
       plans: plans.data.plans,
-      catalog: catalog.data,
       paymentHistory: paymentHistory.data.entries,
       orderHistory: orderData.orders,
       orderFulfillment: orderData.fulfillment,
@@ -148,7 +143,6 @@ export async function resolveCustomerAccount(
       },
       cart: emptyCart,
       plans: [],
-      catalog: { categories: [], items: [], nextCursor: null },
       paymentHistory: [],
       orderHistory: [],
       orderFulfillment: [],

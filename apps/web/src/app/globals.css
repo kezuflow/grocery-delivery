@@ -343,7 +343,6 @@ a {
 }
 
 .account-details div,
-.account-cart-lines li,
 .account-total {
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -353,7 +352,6 @@ a {
 }
 
 .account-details dt,
-.account-cart-lines span,
 .account-total span,
 .account-empty p,
 .account-state p {
@@ -415,18 +413,6 @@ a {
   margin: 0 0 14px;
 }
 
-.account-cart-lines {
-  list-style: none;
-  margin: 28px 0 0;
-  padding: 0;
-}
-
-.account-cart-lines div {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
 .account-total {
   border-bottom: 0;
   padding-top: 23px;
@@ -455,57 +441,6 @@ a {
 
 .order-message-error {
   color: #a33b2b;
-}
-
-.quantity-control {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-}
-
-.quantity-control span {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.quantity-control input {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--ink);
-  font: inherit;
-  padding: 7px;
-  width: 66px;
-}
-
-.cart-editor-actions {
-  align-items: center;
-  display: flex;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.cart-add-control {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  margin-top: 22px;
-}
-
-.cart-add-control select {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--ink);
-  flex: 1;
-  font: inherit;
-  min-width: 0;
-  padding: 10px;
-}
-
-.account-editor-empty {
-  color: var(--muted);
-  font-size: 0.9rem;
-  margin-top: 28px;
 }
 
 .account-empty {
@@ -1038,12 +973,6 @@ h3 {
 
   .account-intro h1 {
     font-size: 3rem;
-  }
-
-  .cart-add-control,
-  .cart-editor-actions {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .highlight-grid {

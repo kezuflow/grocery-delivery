@@ -37,7 +37,10 @@ describe("role navigation", () => {
     const customer = { ...adminSession([]), role: "customer" as const, customerId: "customer-1" };
     const deliveryman = { ...adminSession([]), role: "deliveryman" as const };
 
-    expect(getNavigation(customer).map((item) => item.href)).toEqual(["/account"]);
+    expect(getNavigation(customer).map((item) => item.href)).toEqual([
+      "/account",
+      "/account/catalog",
+    ]);
     expect(getNavigation(deliveryman).map((item) => item.href)).toEqual(["/deliveryman"]);
   });
 });

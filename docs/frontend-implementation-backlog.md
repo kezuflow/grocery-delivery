@@ -147,7 +147,7 @@ from another feature.
 | FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
 | FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
 | FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
-| FE-005 | Customer catalog and mobile shopping               | planned  | FE-003, FE-004        |
+| FE-005 | Customer catalog and mobile shopping               | complete | FE-004 -> FE-006      |
 | FE-006 | Cart, subscription, and checkout                   | planned  | FE-005                |
 | FE-007 | Customer account, orders, tracking, and support    | planned  | FE-006                |
 | FE-008 | Admin overview and operations navigation           | planned  | FE-003                |
@@ -314,3 +314,17 @@ application navigation.
 
 Focused web lint, typecheck, tests (41 tests), and production build pass. The next frontend slice is
 FE-005: customer catalog and mobile shopping.
+
+### FE-005 Completion Record
+
+The protected `/account/catalog` route now owns the customer shopping workflow. It loads only the
+server-backed active catalog and saved cart, supports URL-backed search and category filters, and
+provides responsive product cards, accessible quantity controls, server-confirmed cart saving,
+availability labels, cart summary, retryable errors, and filter-aware empty states. Customer
+navigation includes the catalog, while the account overview links to it instead of duplicating the
+old select-based cart editor. Catalog filtering, cart transformations, customer-cookie hydration,
+and unavailable API recovery are covered by focused tests. Prices, totals, and availability remain
+server-owned. The next frontend slice is FE-006: cart, subscription, and checkout.
+
+Focused web lint, typecheck, tests (48 tests), production build, and the full repository `pnpm check`
+pass.

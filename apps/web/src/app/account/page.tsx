@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { loadCustomerAccount } from "../../lib/account";
 import { requireCustomerSession } from "../../lib/auth";
 import { AppShell } from "../../components/layout";
-import { CartEditor } from "./cart-editor";
 import { DeliveryAddressEditor } from "./delivery-address-editor";
 import { DeliveryAddressBook } from "./delivery-address-book";
 import { DeliveryWindowSelector } from "./delivery-window-selector";
@@ -119,30 +118,23 @@ export default async function AccountPage() {
               <p className="eyebrow">Saved cart</p>
               <span>{account.cart.lines.length} items</span>
             </div>
-            <CartEditor
-              catalog={account.catalog.items.map((item) => ({
-                id: item.id,
-                name: item.name,
-                priceCentavos: item.price.centavos,
-              }))}
-              initialLines={account.cart.lines.map((line) => ({
-                skuId: line.skuId,
-                quantity: line.quantity,
-                unitPriceCentavos: line.unitPrice.centavos,
-              }))}
-              key={account.cart.updatedAt ?? "empty-cart"}
-            />
             {account.cart.lines.length > 0 ? (
               <>
                 <div className="account-total">
                   <span>Subtotal</span>
                   <strong>{formatPrice(account.cart.subtotal.centavos)}</strong>
                 </div>
+                <a className="button button-small button-outline" href="/account/catalog">
+                  Edit saved cart
+                </a>
               </>
             ) : (
               <div className="account-empty">
                 <h2>Your cart is empty</h2>
-                <p>Add an available catalog item above to begin your weekly order.</p>
+                <p>Choose active catalog items to begin your weekly order.</p>
+                <a className="button button-small" href="/account/catalog">
+                  Shop catalog
+                </a>
               </div>
             )}
             <PlaceOrderButton
