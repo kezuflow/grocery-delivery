@@ -12,6 +12,7 @@ import { SubscriptionActions } from "./subscription-actions";
 import { PlanSelector } from "./plan-selector";
 import { SupportCaseForm } from "./support-case-form";
 import { NotificationPreferencesForm } from "./notification-preferences-form";
+import { OrderHistory } from "./order-history";
 
 export const dynamic = "force-dynamic";
 
@@ -199,6 +200,7 @@ export default async function AccountPage() {
               </ul>
             ) : null}
           </article>
+          <OrderHistory orders={account.orderHistory} />
           <article className="account-panel account-panel-wide">
             <div className="account-panel-heading">
               <p className="eyebrow">Payment history</p>

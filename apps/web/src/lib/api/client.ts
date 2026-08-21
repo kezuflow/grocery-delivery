@@ -15,6 +15,7 @@ import {
   deliveryTrackingResponseSchema,
   deliveryMediaListResponseSchema,
   orderCreateRequestSchema,
+  orderListResponseSchema,
   orderResponseSchema,
   couponRequestSchema,
   checkoutQuoteResponseSchema,
@@ -59,6 +60,7 @@ import {
   type DeliveryTrackingResponse,
   type DeliveryMediaListResponse,
   type OrderCreateRequest,
+  type OrderListResponse,
   type OrderResponse,
   type CheckoutQuoteResponse,
   type DispatchResponse,
@@ -158,6 +160,9 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getPaymentHistory(init?: RequestInit): Promise<PaymentHistoryResponse> {
       return getJson(transport, "/api/v1/payments/history", paymentHistoryResponseSchema, init);
+    },
+    getOrderHistory(init?: RequestInit): Promise<OrderListResponse> {
+      return getJson(transport, "/api/v1/orders", orderListResponseSchema, init);
     },
     getAdminProjection(init?: RequestInit): Promise<OperationalProjectionResponse> {
       return getJson(

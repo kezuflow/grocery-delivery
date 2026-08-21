@@ -6,6 +6,7 @@ import type {
   DeliveryAddressResponse,
   DeliveryWindowsResponse,
   PlansListResponse,
+  OrderListResponse,
   PaymentHistoryResponse,
   SubscriptionResponse,
   SupportCasesResponse,
@@ -22,6 +23,7 @@ export type CustomerAccountData = Readonly<{
   cart: CartResponse["data"];
   plans: PlansListResponse["data"]["plans"];
   paymentHistory: PaymentHistoryResponse["data"]["entries"];
+  orderHistory: OrderListResponse["data"]["orders"];
   supportCases: SupportCasesResponse["data"]["cases"];
   notificationPreferences: NotificationPreferencesResponse["data"];
   catalog: CatalogListResponse["data"];
@@ -55,6 +57,7 @@ export async function resolveCustomerAccount(
       plans,
       catalog,
       paymentHistory,
+      orderHistory,
       supportCases,
       notificationPreferences,
     ] = await Promise.all([
@@ -68,6 +71,7 @@ export async function resolveCustomerAccount(
       client.listPlans(),
       client.listCatalog(100),
       client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
+      client.getOrderHistory(init).catch(() => ({ data: { orders: [] } })),
       client.getSupportCases(init).catch(() => ({ data: { cases: [] } })),
       client.getNotificationPreferences(init).catch(() => ({
         data: {
@@ -86,6 +90,7 @@ export async function resolveCustomerAccount(
       plans: plans.data.plans,
       catalog: catalog.data,
       paymentHistory: paymentHistory.data.entries,
+      orderHistory: orderHistory.data.orders,
       supportCases: supportCases.data.cases,
       notificationPreferences: notificationPreferences.data,
       error: null,
@@ -99,6 +104,7 @@ export async function resolveCustomerAccount(
       plans: [],
       catalog: { categories: [], items: [], nextCursor: null },
       paymentHistory: [],
+      orderHistory: [],
       supportCases: [],
       notificationPreferences: {
         customerId: "",

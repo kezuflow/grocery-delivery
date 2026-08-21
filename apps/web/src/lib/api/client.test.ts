@@ -105,6 +105,45 @@ describe("web API client", () => {
     });
   });
 
+  it("loads customer-owned order history through the shared response contract", async () => {
+    const client = createApiClient(
+      transport({
+        data: {
+          orders: [
+            {
+              id: "order-1",
+              subscriptionId: "subscription-1",
+              planId: "plan-small",
+              cycleId: "cycle-2026-08-22",
+              lines: [],
+              weeklyCredit: { centavos: 10000, currency: "PHP" },
+              totals: {
+                subtotal: { centavos: 10000, currency: "PHP" },
+                discount: { centavos: 0, currency: "PHP" },
+                weeklyFee: { centavos: 0, currency: "PHP" },
+                includedCredit: { centavos: 10000, currency: "PHP" },
+                overage: { centavos: 0, currency: "PHP" },
+                deliveryFee: { centavos: 0, currency: "PHP" },
+                totalDue: { centavos: 0, currency: "PHP" },
+              },
+              appliedPromotion: null,
+              deliveryAddress: null,
+              deliveryWindow: null,
+              paymentState: "unpaid",
+              status: "locked",
+              lockedAt: "2026-08-20T00:00:00.000Z",
+            },
+          ],
+        },
+        meta,
+      }),
+    );
+
+    await expect(client.getOrderHistory()).resolves.toMatchObject({
+      data: { orders: [{ id: "order-1", cycleId: "cycle-2026-08-22" }] },
+    });
+  });
+
   it("updates a cart with only SKU identifiers and quantities", async () => {
     const client = createApiClient(
       transport(

@@ -731,6 +731,17 @@ Acceptance checks:
   totals or statuses are invented client-side.
 - Notification preferences and support requests are persisted, auditable, and retry-safe.
 
+Current increment: customer order history in the account experience
+
+Completion record: the existing customer-scoped `/api/v1/orders` response is now consumed by the
+web account loader through the shared Zod contract and rendered by a dedicated order-history
+component. Customers see only server-returned locked orders, totals, payment state, cycle, and lock
+date; the browser does not derive commerce values or status. Focused web tests, typecheck, and lint
+pass.
+
+Next resume point: add customer order detail/tracking and proof-of-delivery views, then continue
+substitution decisions and cancellation/refund requests.
+
 ### Slice 020: Delivery staff production workflow
 
 Scope:

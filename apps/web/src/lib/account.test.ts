@@ -58,6 +58,9 @@ describe("customer account hydration", () => {
           }),
         );
       }
+      if (url.pathname === "/api/v1/orders") {
+        return Promise.resolve(Response.json({ data: { orders: [] }, meta }));
+      }
       if (url.pathname === "/api/v1/plans") {
         return Promise.resolve(Response.json({ data: { plans: [] }, meta }));
       }
@@ -110,6 +113,9 @@ describe("customer account hydration", () => {
             meta,
           }),
         );
+      }
+      if (url.pathname === "/api/v1/orders") {
+        return Promise.resolve(Response.json({ data: { orders: [] }, meta }));
       }
       if (url.pathname === "/api/v1/plans") {
         return Promise.resolve(Response.json({ data: { plans: [] }, meta }));
