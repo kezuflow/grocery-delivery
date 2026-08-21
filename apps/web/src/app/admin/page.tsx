@@ -15,7 +15,7 @@ export default async function AdminPage() {
   if (!auth.session || auth.session.role !== "admin") redirect("/");
   const dashboard = await loadAdminDashboard(auth.session.adminPermissions);
   return (
-    <main className="account-page">
+    <main className="account-page min-h-screen bg-paper text-ink">
       <header className="site-header account-header">
         <a className="wordmark" href="/" aria-label="Carbon Food Delivery home">
           <span className="wordmark-mark">C</span>

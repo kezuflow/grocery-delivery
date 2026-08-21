@@ -1,11 +1,14 @@
-:root {
-  --ink: #17332b;
-  --muted: #63756e;
-  --paper: #f6f7f2;
-  --line: #dfe7df;
-  --accent: #c6e46b;
-  --accent-dark: #8daa3e;
-  --deep: #244d3e;
+@import "../styles/tokens.css";
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: var(--color-ink-value);
+  --color-muted: var(--color-muted-value);
+  --color-paper: var(--color-paper-value);
+  --color-line: var(--color-line-value);
+  --color-accent: var(--color-accent-value);
+  --color-accent-dark: var(--color-accent-dark-value);
+  --color-deep: var(--color-deep-value);
 }
 
 * {

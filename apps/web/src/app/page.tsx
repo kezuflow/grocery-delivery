@@ -33,7 +33,7 @@ export default async function HomePage() {
   const [storefront, auth] = await Promise.all([loadStorefront(), loadCurrentSession()]);
 
   return (
-    <main>
+    <main className="min-h-screen bg-paper text-ink">
       <header className="site-header">
         <a className="wordmark" href="/" aria-label="Carbon Food Delivery home">
           <span className="wordmark-mark">C</span>

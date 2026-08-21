@@ -1,0 +1,18 @@
+:root {
+  --color-ink-value: #17332b;
+  --color-muted-value: #63756e;
+  --color-paper-value: #f6f7f2;
+  --color-line-value: #dfe7df;
+  --color-accent-value: #c6e46b;
+  --color-accent-dark-value: #8daa3e;
+  --color-deep-value: #244d3e;
+
+  /* Legacy aliases remain temporarily while route styles migrate to utilities. */
+  --ink: var(--color-ink-value);
+  --muted: var(--color-muted-value);
+  --paper: var(--color-paper-value);
+  --line: var(--color-line-value);
+  --accent: var(--color-accent-value);
+  --accent-dark: var(--color-accent-dark-value);
+  --deep: var(--color-deep-value);
+}

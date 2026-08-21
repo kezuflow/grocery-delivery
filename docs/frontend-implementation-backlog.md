@@ -114,20 +114,20 @@ from another feature.
 
 ## Slice Ledger
 
-| Slice  | Area                                               | Status  | Depends on            |
-| ------ | -------------------------------------------------- | ------- | --------------------- |
-| FE-001 | Tailwind baseline and CSS migration                | next    | Existing \`apps/web\` |
-| FE-002 | Tokens and accessible UI primitives                | planned | FE-001                |
-| FE-003 | Shared shells, session states, and RBAC navigation | planned | FE-002                |
-| FE-004 | Public landing page                                | planned | FE-002, FE-003        |
-| FE-005 | Customer catalog and mobile shopping               | planned | FE-003, FE-004        |
-| FE-006 | Cart, subscription, and checkout                   | planned | FE-005                |
-| FE-007 | Customer account, orders, tracking, and support    | planned | FE-006                |
-| FE-008 | Admin overview and operations navigation           | planned | FE-003                |
-| FE-009 | Admin operational workspaces                       | planned | FE-008                |
-| FE-010 | Delivery dashboard and mobile PWA workflow         | planned | FE-003                |
-| FE-011 | Responsive, accessibility, and visual QA           | planned | FE-004 through FE-010 |
-| FE-012 | Frontend release hardening and handoff             | planned | FE-011                |
+| Slice  | Area                                               | Status   | Depends on            |
+| ------ | -------------------------------------------------- | -------- | --------------------- |
+| FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
+| FE-002 | Tokens and accessible UI primitives                | next     | FE-001                |
+| FE-003 | Shared shells, session states, and RBAC navigation | planned  | FE-002                |
+| FE-004 | Public landing page                                | planned  | FE-002, FE-003        |
+| FE-005 | Customer catalog and mobile shopping               | planned  | FE-003, FE-004        |
+| FE-006 | Cart, subscription, and checkout                   | planned  | FE-005                |
+| FE-007 | Customer account, orders, tracking, and support    | planned  | FE-006                |
+| FE-008 | Admin overview and operations navigation           | planned  | FE-003                |
+| FE-009 | Admin operational workspaces                       | planned  | FE-008                |
+| FE-010 | Delivery dashboard and mobile PWA workflow         | planned  | FE-003                |
+| FE-011 | Responsive, accessibility, and visual QA           | planned  | FE-004 through FE-010 |
+| FE-012 | Frontend release hardening and handoff             | planned  | FE-011                |
 
 ## Slice Details
 
@@ -231,6 +231,13 @@ point.
 
 ## Resume Point
 
-\`FE-001\` is next. Confirm the Tailwind version and Next.js 16 integration against installed
-package guidance, then audit current global classes so migration remains incremental and
-behavior-preserving.
+### FE-001 Completion Record
+
+Tailwind CSS 4.3.3 and the official `@tailwindcss/postcss` integration are installed for
+`@carbon/web`. The global stylesheet now imports Tailwind and semantic token definitions from
+`src/styles/tokens.css`; legacy aliases remain temporarily so existing route styles continue to
+render while the component migration proceeds. The public and admin roots include utility classes
+as a build smoke check, and no API or route behavior changed.
+
+Focused web build, lint, typecheck, and tests pass (23 tests). The next frontend slice is FE-002:
+tokens and accessible UI primitives.

@@ -17,9 +17,12 @@
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260818.1",
     "@opennextjs/cloudflare": "1.20.2",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "wrangler": "4.123.0"
