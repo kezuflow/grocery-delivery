@@ -146,7 +146,7 @@ from another feature.
 | FE-001 | Tailwind baseline and CSS migration                | complete | `da3e311` -> current  |
 | FE-002 | Tokens and accessible UI primitives                | complete | `b0b575a` -> current  |
 | FE-003 | Shared shells, session states, and RBAC navigation | complete | FE-002 -> FE-004      |
-| FE-004 | Public landing page                                | planned  | FE-002, FE-003        |
+| FE-004 | Public landing page                                | complete | FE-003 -> FE-005      |
 | FE-005 | Customer catalog and mobile shopping               | planned  | FE-003, FE-004        |
 | FE-006 | Cart, subscription, and checkout                   | planned  | FE-005                |
 | FE-007 | Customer account, orders, tracking, and support    | planned  | FE-006                |
@@ -301,3 +301,16 @@ remain in place.
 
 Focused web lint, typecheck, tests (40 tests), and production build pass. The next frontend slice is
 FE-004: public landing page.
+
+### FE-004 Completion Record
+
+The public landing page is now composed from a reusable public shell and feature-owned storefront
+sections. It preserves the API-backed hero banner, weekly plans, catalog preview, and Better Auth
+flows while adding responsive desktop/mobile navigation, focused authentication dialogs, signed-in
+account actions, accessible image alternatives, loading and error boundaries, empty states, and
+footer privacy, terms, and support links. Server-owned prices, credits, sessions, and destinations
+remain unchanged. Legacy global navigation selectors are scoped so they no longer override shared
+application navigation.
+
+Focused web lint, typecheck, tests (41 tests), and production build pass. The next frontend slice is
+FE-005: customer catalog and mobile shopping.

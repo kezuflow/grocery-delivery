@@ -553,14 +553,14 @@ a {
   width: 28px;
 }
 
-nav {
+.site-header nav {
   align-items: center;
   display: flex;
   font-size: 0.88rem;
   gap: 28px;
 }
 
-nav a:not(.button) {
+.site-header nav a:not(.button) {
   color: var(--muted);
 }
 
@@ -947,7 +947,7 @@ h3 {
     padding-right: 20px;
   }
 
-  nav a:not(.button) {
+  .site-header nav a:not(.button) {
     display: none;
   }
 
@@ -956,7 +956,7 @@ h3 {
     flex-direction: column;
   }
 
-  nav {
+  .site-header nav {
     align-items: stretch;
     flex-direction: column;
   }
