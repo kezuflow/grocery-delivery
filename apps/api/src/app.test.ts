@@ -269,12 +269,17 @@ describe("API worker", () => {
       body: JSON.stringify({ sessionId: "another-users-session" }),
     });
     const eligibility = await accountApp.request("/api/v1/account/deletion-eligibility");
+    const deletion = await accountApp.request("/api/v1/account/deletion-request", {
+      method: "POST",
+      headers: { "idempotency-key": "delete-customer-1" },
+    });
 
     expect(exported.status).toBe(200);
     expect(profile.status).toBe(200);
     expect(consent.status).toBe(201);
     expect(foreignSession.status).toBe(404);
     expect(eligibility.status).toBe(200);
+    expect(deletion.status).toBe(409);
     await expect(eligibility.json()).resolves.toMatchObject({
       data: { eligible: false, reasons: ["ACTIVE_SUBSCRIPTION"] },
     });
@@ -284,6 +289,7 @@ describe("API worker", () => {
         "consent:customer-1:marketing",
         "audit:identity.profile-corrected",
         "audit:identity.consent-recorded",
+        "audit:identity.account-deletion-requested",
       ]),
     );
     expect(calls.some((call) => call.includes("another-users-session"))).toBe(false);

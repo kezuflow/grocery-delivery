@@ -55,7 +55,21 @@ const checks = {
   },
   incident: async () => {
     await access(new URL("docs/runbooks/incident-response.md", root));
+    await access(new URL("docs/runbooks/abuse-monitoring.md", root));
     console.log("incident rehearsal: response checklist present");
+  },
+  compliance: async () => {
+    for (const file of [
+      "docs/runbooks/secret-rotation.md",
+      "docs/runbooks/security-headers.md",
+      "docs/runbooks/abuse-monitoring.md",
+      "docs/runbooks/operational-alerts.md",
+    ]) {
+      await access(new URL(file, root));
+    }
+    console.log(
+      "compliance rehearsal: secret, header, abuse, and alert ownership evidence present",
+    );
   },
 };
 

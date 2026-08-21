@@ -96,6 +96,7 @@ import {
   accountExportResponseSchema,
   accountProfileUpdateRequestSchema,
   accountDeletionEligibilityResponseSchema,
+  accountDeletionRequestResponseSchema,
   sessionRevokeRequestSchema,
   adminRoleAssignmentRequestSchema,
   adminRoleAssignmentResponseSchema,
@@ -5502,6 +5503,86 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     };
     accountDeletionEligibilityResponseSchema.parse(body);
     return context.json(body, 200);
+  });
+
+  app.post("/api/v1/account/deletion-request", async (context) => {
+    const session = context.get("session");
+    if (!session)
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "authentication is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    const bindings = context.env ?? {};
+    const repository =
+      options.identityRepository ??
+      (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+    if (!repository)
+      return context.json(
+        errorResponse(
+          "IDENTITY_UNAVAILABLE",
+          "identity operations are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    const reasons = session.customerId
+      ? await repository.findDeletionBlockingReasons(session.customerId)
+      : ["ROLE_REQUIRES_ADMIN_REVIEW"];
+    const idempotencyKey = context.req.header("idempotency-key")?.trim() || "account-deletion";
+    const fingerprint = JSON.stringify({ request: "account-deletion", reasons });
+    const previous = await repository.findCommandResult(
+      session.userId,
+      "deletion-request",
+      idempotencyKey,
+    );
+    if (previous) {
+      if (previous.requestFingerprint !== fingerprint)
+        return context.json(
+          errorResponse(
+            "IDEMPOTENCY_CONFLICT",
+            "idempotency key was reused for a different deletion request",
+            context.get("correlationId"),
+          ),
+          409,
+        );
+      const replay = {
+        data: previous.result,
+        meta: { correlationId: context.get("correlationId") },
+      };
+      accountDeletionRequestResponseSchema.parse(replay);
+      return context.json(replay, previous.responseStatus as 200 | 409);
+    }
+    const requestedAt = now().toISOString();
+    const result = {
+      requested: reasons.length === 0,
+      eligible: reasons.length === 0,
+      reasons: [...reasons],
+    };
+    await repository.saveAuditEvent({
+      id: await stableIdentityRecordId("deletion-request", session.userId, idempotencyKey),
+      actorUserId: session.userId,
+      action: "identity.account-deletion-requested",
+      targetType: "user",
+      targetId: session.userId,
+      occurredAt: requestedAt,
+      metadata: { eligible: String(result.eligible), reasons: reasons.join("|") || "none" },
+    });
+    await repository.saveCommandResult({
+      userId: session.userId,
+      command: "deletion-request",
+      idempotencyKey,
+      requestFingerprint: fingerprint,
+      responseStatus: result.eligible ? 202 : 409,
+      result,
+      createdAt: requestedAt,
+    });
+    const body = { data: result, meta: { correlationId: context.get("correlationId") } };
+    accountDeletionRequestResponseSchema.parse(body);
+    return context.json(body, result.eligible ? 202 : 409);
   });
 
   app.notFound((context) =>

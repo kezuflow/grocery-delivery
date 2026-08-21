@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { adminRoleAssignmentRequestSchema, currentSessionResponseSchema } from "./identity.js";
+import {
+  accountDeletionRequestResponseSchema,
+  adminRoleAssignmentRequestSchema,
+  currentSessionResponseSchema,
+} from "./identity.js";
 
 describe("identity contracts", () => {
   it("accepts a current session response", () => {
@@ -34,5 +38,14 @@ describe("identity contracts", () => {
         adminPermissions: ["staff"],
       }).success,
     ).toBe(true);
+  });
+
+  it("describes a server-owned deletion request result", () => {
+    expect(
+      accountDeletionRequestResponseSchema.parse({
+        data: { requested: false, eligible: false, reasons: ["ACTIVE_SUBSCRIPTION"] },
+        meta: { correlationId: "correlation-1" },
+      }).data.reasons,
+    ).toEqual(["ACTIVE_SUBSCRIPTION"]);
   });
 });

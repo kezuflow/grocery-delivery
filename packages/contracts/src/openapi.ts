@@ -83,6 +83,7 @@ export const openApiDocument: OpenApiDocument = {
       "post",
     ),
     "/api/v1/account/deletion-eligibility": protectedOperation("Read deletion eligibility", "get"),
+    "/api/v1/account/deletion-request": protectedOperation("Request account deletion", "post"),
     "/api/v1/subscription": {
       ...protectedOperation("Read the current subscription", "get"),
       ...protectedOperation("Create a subscription from an active plan", "post", "201"),

@@ -16,6 +16,7 @@ import type {
   NotificationPreferencesResponse,
   CustomerOrderRequestsResponse,
   CustomerOrderSubstitutionsResponse,
+  AccountExportResponse,
 } from "@carbon/contracts";
 
 import { ApiClientError, createApiClient, type ApiTransport } from "./api/client";
@@ -35,6 +36,11 @@ export type CustomerAccountData = Readonly<{
   orderRequests: CustomerOrderRequestsResponse["data"]["requests"];
   orderSubstitutions: CustomerOrderSubstitutionsResponse["data"]["substitutions"];
   notificationPreferences: NotificationPreferencesResponse["data"];
+  privacy: Readonly<{
+    export: AccountExportResponse["data"] | null;
+    deletionEligible: boolean;
+    deletionReasons: readonly string[];
+  }>;
   catalog: CatalogListResponse["data"];
   error: string | null;
 }>;
@@ -78,6 +84,8 @@ export async function resolveCustomerAccount(
       notificationPreferences,
       orderRequests,
       orderSubstitutions,
+      accountExport,
+      deletionEligibility,
     ] = await Promise.all([
       client.getCurrentSubscription(init).catch((error: unknown) => {
         if (error instanceof ApiClientError && error.status === 404) return null;
@@ -102,6 +110,8 @@ export async function resolveCustomerAccount(
       })),
       client.getOrderRequests(init).catch(() => ({ data: { requests: [] } })),
       client.getOrderSubstitutions(init).catch(() => ({ data: { substitutions: [] } })),
+      client.exportAccount(init).catch(() => null),
+      client.getAccountDeletionEligibility(init).catch(() => null),
     ]);
     return {
       subscription: subscription?.data ?? null,
@@ -118,6 +128,11 @@ export async function resolveCustomerAccount(
       orderRequests: orderRequests.data.requests,
       orderSubstitutions: orderSubstitutions.data.substitutions,
       notificationPreferences: notificationPreferences.data,
+      privacy: {
+        export: accountExport?.data ?? null,
+        deletionEligible: deletionEligibility?.data.eligible ?? false,
+        deletionReasons: deletionEligibility?.data.reasons ?? ["ELIGIBILITY_UNAVAILABLE"],
+      },
       error: null,
     };
   } catch {
@@ -145,6 +160,11 @@ export async function resolveCustomerAccount(
         deliveryUpdates: true,
         marketing: false,
         updatedAt: new Date(0).toISOString(),
+      },
+      privacy: {
+        export: null,
+        deletionEligible: false,
+        deletionReasons: ["ELIGIBILITY_UNAVAILABLE"],
       },
       error: "We could not load your account right now. Please try again shortly.",
     };

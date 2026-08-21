@@ -18,6 +18,7 @@ import { OrderFulfillment } from "./order-fulfillment";
 import { OrderRequestForm } from "./order-request-form";
 import { OrderSubstitutions } from "./order-substitutions";
 import { Receipts } from "./receipts";
+import { PrivacyPanel } from "./privacy-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -262,6 +263,7 @@ export default async function AccountPage() {
             </div>
             <DeliveryWindowSelector initial={account.deliveryWindows} />
           </article>
+          <PrivacyPanel privacy={account.privacy} />
         </section>
       )}
     </main>

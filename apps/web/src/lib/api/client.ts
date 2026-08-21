@@ -17,6 +17,11 @@ import {
   deliveryTrackingResponseSchema,
   deliveryMediaListResponseSchema,
   deliveryMediaUploadResponseSchema,
+  accountExportResponseSchema,
+  accountDeletionEligibilityResponseSchema,
+  accountDeletionRequestResponseSchema,
+  accountConsentRequestSchema,
+  accountConsentResponseSchema,
   orderCreateRequestSchema,
   orderListResponseSchema,
   orderResponseSchema,
@@ -74,6 +79,8 @@ import {
   type DeliveryMediaListResponse,
   type DeliveryMediaUploadRequest,
   type DeliveryMediaUploadResponse,
+  type AccountExportResponse,
+  type AccountDeletionRequestResponse,
   type OrderCreateRequest,
   type OrderListResponse,
   type OrderResponse,
@@ -174,6 +181,45 @@ export function createApiClient(baseTransport: ApiTransport, options: ApiClientO
     },
     getCurrentSession(init?: RequestInit): Promise<CurrentSessionResponse> {
       return getJson(transport, "/api/v1/me", currentSessionResponseSchema, init);
+    },
+    exportAccount(init?: RequestInit): Promise<AccountExportResponse> {
+      return getJson(transport, "/api/v1/account/export", accountExportResponseSchema, init);
+    },
+    getAccountDeletionEligibility(init?: RequestInit) {
+      return getJson(
+        transport,
+        "/api/v1/account/deletion-eligibility",
+        accountDeletionEligibilityResponseSchema,
+        init,
+      );
+    },
+    requestAccountDeletion(
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<AccountDeletionRequestResponse> {
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        "/api/v1/account/deletion-request",
+        {},
+        accountDeletionRequestResponseSchema,
+        "POST",
+        { ...init, headers },
+      );
+    },
+    recordAccountConsent(input: unknown, idempotencyKey: string, init?: RequestInit) {
+      const payload = accountConsentRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        "/api/v1/account/consents",
+        payload,
+        accountConsentResponseSchema,
+        "POST",
+        { ...init, headers },
+      );
     },
     getCurrentSubscription(init?: RequestInit): Promise<SubscriptionResponse> {
       return getJson(transport, "/api/v1/subscription", subscriptionResponseSchema, init);

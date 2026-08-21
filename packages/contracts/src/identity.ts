@@ -93,8 +93,22 @@ export const accountConsentRequestSchema = z.object({
   policyVersion: z.string().trim().min(1).max(64),
 });
 
+export const accountConsentResponseSchema = z.object({
+  data: accountConsentRequestSchema,
+  meta: responseMetaSchema,
+});
+
 export const accountDeletionEligibilityResponseSchema = z.object({
   data: z.object({
+    eligible: z.boolean(),
+    reasons: z.array(z.string().min(1)),
+  }),
+  meta: responseMetaSchema,
+});
+
+export const accountDeletionRequestResponseSchema = z.object({
+  data: z.object({
+    requested: z.boolean(),
     eligible: z.boolean(),
     reasons: z.array(z.string().min(1)),
   }),
@@ -136,3 +150,4 @@ export type AccountExportResponse = z.infer<typeof accountExportResponseSchema>;
 export type AccountProfileUpdateRequest = z.infer<typeof accountProfileUpdateRequestSchema>;
 export type AccountConsentRequest = z.infer<typeof accountConsentRequestSchema>;
 export type AdminRoleAssignmentRequest = z.infer<typeof adminRoleAssignmentRequestSchema>;
+export type AccountDeletionRequestResponse = z.infer<typeof accountDeletionRequestResponseSchema>;

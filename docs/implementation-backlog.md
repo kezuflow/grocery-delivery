@@ -50,7 +50,7 @@ conversation history or temporary handoff files.
 | 018   | Deployable jobs, queues, workflows, and notifications           | complete | Staging queue retry/dead-letter/replay and durable workflow evidence complete                      |
 | 019   | Customer fulfillment, support, and payment history              | complete | Approved requests, address book, receipts, and status messaging complete                           |
 | 020   | Delivery staff production workflow                              | complete | HMAC-signed R2 proof media, route actions, explicit failure reasons, and offline conflict handling |
-| 021   | Privacy, audit, compliance, and launch observability            | planned  | Depends on identity, payments, admin, and operational events                                       |
+| 021   | Privacy, audit, compliance, and launch observability            | complete | Deletion requests, export/consent UI, audit evidence, and compliance runbooks                      |
 | 022   | Staging launch rehearsal and go/no-go gate                      | planned  | Depends on all launch-critical slices                                                              |
 
 ### Completed Slice: 013 production identity and account lifecycle
@@ -825,6 +825,17 @@ Acceptance checks:
 - Customers can view and manage consent and request export/deletion within documented eligibility.
 - Alerts exist for failed payments, dead letters, cutoff failures, delivery exceptions, and abusive
   request patterns, with an owner and response procedure.
+
+Completion record: customer account privacy now includes server-owned export data, consent history,
+deletion eligibility, and an idempotent deletion-request command that records actor, target, reason,
+correlation, and timestamp without deleting records still required for fulfillment or finance.
+Sensitive lifecycle, payment, dispatch, support, and preference operations retain the existing audit
+boundary. Secret rotation, security-header verification, abuse monitoring, and operational-alert
+ownership/response runbooks are checked by the credential-free compliance rehearsal. Focused contract,
+API, and web tests plus compliance/incident rehearsal checks pass.
+
+Next resume point: begin Slice 022 by running the complete staging rehearsal, recording timed
+restore/rollback evidence and named go/no-go owners, then close any environment configuration gaps.
 
 ### Slice 022: Staging launch rehearsal and go/no-go gate
 
