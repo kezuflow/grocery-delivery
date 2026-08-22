@@ -6,6 +6,15 @@ Historical frontend planning is archived at
 [`docs/archive/frontend-implementation-backlog-legacy.md`](archive/frontend-implementation-backlog-legacy.md)
 for reference only; do not use it to plan new work.
 
+## Frontend Reference Scope
+
+Audit customer phone journeys against the connected Figma mobile UI and style guide recorded in
+[`docs/frontend-standards.md`](frontend-standards.md). Audit the public landing page and desktop
+marketplace against the Hatbazar reference at `E:/grocery/web/Hatbazar`, adapted to Carbon's actual
+contracts and accessibility requirements. Admin and delivery routes use conventional, responsive
+Carbon dashboards built around their existing permission and workflow boundaries; they are not
+required to reproduce the customer-mobile Figma layout.
+
 ## Classification
 
 - `matched`: contract, backend, frontend, authorization, failure states, and local/staging evidence agree.
