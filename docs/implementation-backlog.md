@@ -4,8 +4,9 @@ This is the active local-development queue for Carbon Food Delivery. Detailed re
 work remain in Git history and archived runbooks; they do not define current development scope.
 
 Follow `docs/project-guidance.md`. Local implementation and verification are the default. Do not
-deploy, publish remote data, run staging rehearsals, commit, or push unless the user explicitly asks
-for that action in the current conversation.
+deploy, publish remote data, or run staging rehearsals unless the user explicitly asks for that
+action in the current conversation. Every completed local slice must be committed and pushed before
+the next slice begins.
 
 ## Working Rules
 
@@ -17,6 +18,7 @@ for that action in the current conversation.
 - Use local Workers, local D1, deterministic fixtures, and local browser sessions.
 - Run focused checks first, then `pnpm check` and relevant local Playwright/accessibility/visual
   checks.
+- Commit and push the completed slice after verification, before starting the next slice.
 - Update this file when active scope, local evidence, or the resume point changes.
 - Preserve unrelated working-tree changes.
 

@@ -32,13 +32,17 @@ the corresponding staging, release, incident, or operations task.
 - Run focused checks first, then `pnpm check`. Add Playwright, accessibility, visual, persistence,
   idempotency, and authorization coverage in proportion to the behavior changed.
 - A slice can be locally complete when its local acceptance checks pass. It does not need staging,
-  deployment, rollout, rollback, a commit, or a push.
+  deployment, rollout, or rollback, but it must be committed and pushed before the next slice.
 
 ## Remote Actions
 
 Do not deploy Workers, publish remote fixture data, run staging rehearsals, apply remote migrations,
-provision remote resources, rotate remote secrets, commit, or push unless the user explicitly asks
-for that action in the current conversation.
+provision remote resources, or rotate remote secrets unless the user explicitly asks for that action
+in the current conversation.
+
+Every completed local slice is committed and pushed immediately after local verification. Keep each
+slice commit independently reviewable. This delivery rule does not authorize staging or production
+deployment.
 
 When the user starts a staging or production phase, create a separate promotion checklist from the
 already completed local slice. Keep local, staging, and production evidence distinct, and never

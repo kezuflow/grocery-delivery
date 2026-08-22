@@ -21,8 +21,11 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
   source-of-truth hierarchy, local-first change classifications, and verification expectations.
 - Local development is the default phase. Implement and iterate against local Workers, local D1,
   deterministic fixtures, and local browser sessions.
-- Do not deploy, publish remote fixture data, run staging rehearsals, provision remote resources,
-  commit, or push unless the user explicitly requests that action in the current conversation.
+- Do not deploy, publish remote fixture data, run staging rehearsals, or provision remote resources
+  unless the user explicitly requests that action in the current conversation.
+- After each completed local slice, run its required verification, commit the complete slice, and
+  push the commit to the configured upstream branch. Keep each slice independently reviewable and
+  do not commit incomplete work.
 - Staging and production are later promotion phases. Their existing scripts, configuration, and
   historical records remain available, but they are not prerequisites for completing local work.
 - Work on the current branch and preserve the user's working tree. Do not create or switch branches
@@ -42,7 +45,8 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 - Keep admin-configurable values configurable. Do not encode current plan prices or other
   operational settings as domain invariants unless the requirement explicitly calls for it.
 - Update `docs/implementation-backlog.md` when active scope, local completion evidence, or the resume
-  point changes. A local slice may be complete without a commit, push, deployment, or staging proof.
+  point changes. A local slice may be complete without deployment or staging proof, but completed
+  slices must be committed and pushed.
 
 ## Data And API Rules
 
@@ -77,7 +81,7 @@ evidence does not block local completion; record it only when the user starts a 
 
 ## Delivery
 
-The default handoff is an uncommitted, locally verified working tree. When the user explicitly asks
-for a commit, inspect `git status`, `git diff --check`, and the staged diff before committing. When
-the user explicitly asks for a push or deployment, perform that separately and report the exact
-target and evidence.
+The default handoff is a locally verified, committed, and pushed working tree for completed slices.
+Before each slice commit, inspect `git status`, `git diff --check`, and the staged diff. Report the
+exact commit, push target, and verification evidence. Deployment remains a separate action that
+requires an explicit user request.
