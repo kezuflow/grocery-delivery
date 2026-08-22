@@ -1357,6 +1357,17 @@ The companion system-design artifact at
 failure modes, contracts, operational signals, and rollout model. The editable implementation
 truth remains this backlog and the audit matrix.
 
+Project-guidance completion checkpoint: `docs/project-guidance.md` now indexes the source-of-truth
+hierarchy, classifies audits/slices/fixes/refactors/hotfixes, defines the required slice dossier,
+and scores repository guidance at 96/100 (9.6/10). `pnpm guidance:check` prevents missing files,
+unrouted skill references, and unfinished guidance placeholders from silently drifting. This score
+measures guidance coverage, not launch readiness; Slice 022 and AUD-001 retain their existing
+evidence gates.
+
+Guidance resume point: approve numeric performance budgets and owners, publish the supported
+browser/device/PWA matrix, automate staging cross-role evidence, and complete named production
+launch ownership without creating another planning ledger.
+
 ### Audit-first operating model
 
 Before starting the next product slice, maintain a route-and-contract audit covering the public

@@ -17,6 +17,9 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 
 ## Working Rules
 
+- Read `docs/project-guidance.md` when planning or reviewing repository-wide work. It defines the
+  source-of-truth hierarchy, change classifications, required slice dossier, cross-cutting policies,
+  and guidance coverage matrix.
 - Use the repository skill at `.codex/skills/carbon-vertical-slice/SKILL.md` for feature work,
   audits, refactors, performance work, and release decisions. Load only the concern references
   relevant to the task. The skill supplements these instructions; it does not replace the
@@ -29,6 +32,10 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 - Enforce commit-message and branch-name conventions through the local hooks in `.githooks`.
   Do not add GitHub Actions for naming-convention validation.
 - Prefer existing package boundaries, interfaces, and patterns before adding abstractions.
+- Justify new runtime dependencies and review maintenance, security, license, bundle/runtime cost,
+  and overlap with existing workspace capabilities. Update `pnpm-lock.yaml` intentionally.
+- Do not hand-edit generated artifacts. Regenerate tracked outputs with their owning command and
+  exclude build reports, traces, caches, and temporary files from commits.
 - Use ASCII by default and `apply_patch` for manual edits.
 - Keep admin-configurable values configurable. Do not encode current plan prices or other
   operational settings as domain invariants unless the requirement explicitly calls for it.

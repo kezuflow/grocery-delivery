@@ -1,5 +1,9 @@
 # Contributing
 
+Read `docs/project-guidance.md` before making cross-cutting changes. It indexes the authoritative
+architecture, backlog, audit, skill references, standards, and runbooks and defines the required
+evidence for a complete vertical slice.
+
 ## Git Workflow
 
 - `main` is the delivery branch for completed slices.

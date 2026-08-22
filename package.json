@@ -25,10 +25,11 @@
     "deploy:web:production": "pnpm --filter @carbon/web deploy:production",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "guidance:check": "node scripts/check-project-guidance.mjs",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "check": "pnpm format:check && turbo run lint typecheck test",
+    "check": "pnpm guidance:check && pnpm format:check && turbo run lint typecheck test",
     "generate:openapi": "node --experimental-strip-types scripts/generate-openapi.mjs",
     "rehearsal:check": "node scripts/rehearsal.mjs"
   },

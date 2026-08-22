@@ -7,9 +7,9 @@ description: Repository-specific guidance for designing, implementing, reviewing
 
 Use this skill as the repository's implementation playbook. It supplements `AGENTS.md`,
 `docs/implementation-backlog.md`, `docs/frontend-backend-audit.md`,
-`docs/architecture/production-plan.md`, and `docs/frontend-standards.md`; those files remain the
-authoritative project records. Do not create a second backlog, architecture truth, or frontend
-plan.
+`docs/project-guidance.md`, `docs/architecture/production-plan.md`, and
+`docs/frontend-standards.md`; those files remain the authoritative project records. Do not create
+a second backlog, architecture truth, or frontend plan.
 
 ## Operating Contract
 
@@ -57,6 +57,8 @@ Read only the references needed for the current work:
 - Correlation IDs, structured logs, metrics, traces, job IDs, and alerts: [observability.md](references/observability.md)
 - Surgical fixes, refactoring triggers, and dependency rules: [refactoring.md](references/refactoring.md)
 - Product entities, roles, money, cycles, and invariants: [domain-knowledge.md](references/domain-knowledge.md)
+- Source hierarchy, compatibility, configuration, dependencies, generated files, data lifecycle,
+  documentation, and hotfixes: [cross-cutting-governance.md](references/cross-cutting-governance.md)
 
 ## Stop Conditions
 
