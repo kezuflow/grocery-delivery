@@ -1341,6 +1341,21 @@ documented staging evidence exists.
   focused checks, `pnpm check`, deployment, and the relevant browser checks pass.
 - Update this file with scope, acceptance checks, completion evidence, and resume point in the same
   conventional commit as implementation changes.
+- Use `.codex/skills/carbon-vertical-slice/SKILL.md` as the repository execution playbook and load
+  only its relevant concern references. It is guidance, not a separate backlog.
+- Record an end-to-end trace for each slice: journey, role, route, contract, API handler,
+  application use case, domain rule, repository/migration, asynchronous work, UI states, tests,
+  observability, deployment, and rollback.
+- Record performance evidence when the slice changes request count, critical rendering, D1/query
+  work, cache behavior, queue lag, or provider latency. A claim without a measured baseline and
+  result remains `unverified`.
+- Keep local fixture, staging, and production evidence distinct. Never present deterministic local
+  fixtures as staging proof, and never deploy production without explicit authorization.
+
+The companion system-design artifact at
+`docs/architecture/vertical-slice-system-design.docx` summarizes the accepted architecture,
+failure modes, contracts, operational signals, and rollout model. The editable implementation
+truth remains this backlog and the audit matrix.
 
 ### Audit-first operating model
 

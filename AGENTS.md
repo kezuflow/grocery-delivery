@@ -17,6 +17,10 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 
 ## Working Rules
 
+- Use the repository skill at `.codex/skills/carbon-vertical-slice/SKILL.md` for feature work,
+  audits, refactors, performance work, and release decisions. Load only the concern references
+  relevant to the task. The skill supplements these instructions; it does not replace the
+  canonical backlog or architecture documents.
 - Work directly on `main`; completed work is committed and pushed to `origin/main`.
 - Preserve unrelated user changes. Do not reset, checkout, or discard work without an
   explicit request.
@@ -59,6 +63,10 @@ pnpm check
 `pnpm check` covers formatting, lint, typecheck, and tests across all Turbo packages. Add or
 update focused tests with every behavior change, including invalid input, authorization,
 idempotency, persistence, and server-side price resolution where applicable.
+
+Each completed vertical slice must also record the end-to-end trace, local versus staging
+evidence, request/latency impact, observability signals, rollout, and rollback target. A passing
+check without required staging or workflow evidence is `unverified`, not complete.
 
 ## Delivery
 

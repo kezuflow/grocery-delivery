@@ -1,0 +1,4 @@
+interface:
+  display_name: "Carbon Vertical Slice"
+  short_description: "Build complete, evidence-backed vertical slices"
+  default_prompt: "Use $carbon-vertical-slice to trace and implement this repository change end to end."
