@@ -64,13 +64,20 @@ Known backend and contract gaps:
 - Staff supports superadmin role assignment and filtered audit history, but there is no staff
   directory read endpoint.
 
-Verification still required before any matching vertical slice can be completed:
+Verification completed for this checkpoint:
+
+- Web lint, typecheck, production build, and 57 focused web unit tests pass.
+- Full Playwright coverage passes: 27 tests across phone, tablet, and desktop projects.
+- Repository guardrails pass: `pnpm check` completed 55/55 tasks.
+
+Verification and capability work still required before any matching vertical slice can be
+completed:
 
 - Focused component tests for the catalog, orders, and staff feature surfaces.
 - An API-client test for admin role assignment.
 - A browser mutation test covering role-assignment confirmation, success, and failure behavior.
 - Local and staging role/permission smoke tests for all three admin routes.
-- A passing full Playwright run and `pnpm check` for this checkpoint commit.
+- Local and staging role/permission evidence beyond the deterministic local fixtures.
 
 The verification list above is a live handoff: remove items only when the evidence has actually
 been produced, and retain any failures as audit findings with a resume point.
