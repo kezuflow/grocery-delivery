@@ -57,6 +57,7 @@ same subscription and a second trial attempt is rejected.
 
 ## Resume point
 
-The frontend slice ledger is complete through FE-012. Future work should start with product-led
-polish or a new explicitly scoped slice, preserving the tokens -> UI primitives -> layouts ->
-features -> routes dependency direction and the server-owned API boundaries.
+Frontend and backend work now share the single ledger in `docs/implementation-backlog.md`. Future
+work starts from the cross-role audit and proceeds as contract-first vertical slices, preserving the
+tokens -> UI primitives -> layouts -> features -> routes dependency direction and server-owned API
+boundaries.

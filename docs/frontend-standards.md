@@ -118,13 +118,13 @@ component with many boolean props.
 
 ## Verification Sequence
 
-- During FE-003 through FE-010, run focused unit/component checks, lint, typecheck, production web
-  build, and the repository `pnpm check` for each completed slice.
-- Perform practical manual responsive checks while building each UI slice.
-- Defer the Playwright harness, cross-role browser journeys, and formal visual regression suite to
-  FE-011, after the planned UI surfaces are complete.
-- Deferring browser E2E does not permit replacing server-backed behavior with placeholders or
-  skipping the normal per-slice verification above.
+- Every vertical slice runs focused unit/component checks, lint, typecheck, production web build,
+  and the repository `pnpm check`.
+- Perform practical responsive checks while building and run the relevant cross-role Playwright,
+  accessibility, and visual checks before the slice is complete.
+- Verify both deterministic local fixture behavior and the deployed staging workflow.
+- Do not replace missing server-backed behavior with placeholders; record it as a contract gap and
+  complete the backend and frontend together in the same slice.
 
 ## Required UI States
 
