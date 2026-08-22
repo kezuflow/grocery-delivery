@@ -75,6 +75,11 @@ status, acceptance checks, and resume point into the canonical implementation ba
 
 ### Uber Eats marketplace benchmark (AUD-001 increment)
 
+The product direction for the remaining marketplace work is an Uber Eats-style grocery clone,
+implemented with Carbon branding and weekly-delivery business rules. Customer screens must be
+phone-first and desktop-complete. Admin and delivery screens remain responsive operational
+dashboards rather than consumer-mobile compositions.
+
 Mobbin references inspected for the benchmark:
 
 - Web [Grocery home](https://mobbin.com/flows/ca71e6a2-7717-4599-b3b5-6e854d34ff3e), [grocery store detail](https://mobbin.com/flows/92e9ae68-8c98-4d02-ac3f-cf8d8707dae6), [browse categories](https://mobbin.com/flows/e23c3ac1-24e0-4b3b-a3b3-d0f6f231c28a), [product detail](https://mobbin.com/flows/51ff48ee-8cca-47b8-854a-a817372dbdc1), and [searching products](https://mobbin.com/flows/ac3d404a-24de-494f-8077-0b6c85d9f22a).

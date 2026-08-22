@@ -42,6 +42,17 @@ Use Mobbin references for interaction and information architecture immediately b
 each customer journey. Adapt the patterns to Carbon branding, contracts, authorization, and weekly
 fulfillment rules. Do not copy external branding, assets, prices, or business rules.
 
+The customer experience is intentionally an Uber Eats-style grocery marketplace: fast discovery,
+store/category context, prominent search, clear item detail, persistent cart access, and a short
+checkout path. Every customer slice must be ready on phone and desktop before it is marked complete.
+Admin and delivery slices use Carbon's dashboard pattern: responsive navigation, dense operational
+summaries, tables or queues where appropriate, permission-aware actions, and usable phone layouts.
+
+The Mobbin benchmark flows currently recorded in `docs/frontend-backend-audit.md` are the reference
+set for grocery home, store detail, category browse, product detail, search, checkout, delivery
+tracking, and account journeys. The references guide interaction decisions only; Carbon's product
+rules and server contracts remain authoritative.
+
 Every customer UI slice needs local desktop and phone comparison, interaction corrections,
 Playwright assertions, accessibility checks, and stable loading, empty, error, forbidden, pending,
 offline, and success states where applicable.
