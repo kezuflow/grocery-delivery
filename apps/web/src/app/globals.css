@@ -15,6 +15,14 @@
   --color-success: var(--color-success-value);
   --color-warning: var(--color-warning-value);
   --color-danger: var(--color-danger-value);
+  --color-market-green: var(--color-market-green-value);
+  --color-market-green-dark: var(--color-market-green-dark-value);
+  --color-market-ink: var(--color-market-ink-value);
+  --color-market-muted: var(--color-market-muted-value);
+  --color-market-line: var(--color-market-line-value);
+  --color-market-paper: var(--color-market-paper-value);
+  --color-market-soft: var(--color-market-soft-value);
+  --color-market-banner: var(--color-market-banner-value);
 }
 
 * {

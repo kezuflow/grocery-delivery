@@ -26,11 +26,13 @@ export function CartSummary({
   const hasUnsavedChanges = cartDraftHasChanged(lines, cart);
 
   return (
-    <aside className="border border-line bg-white p-5 lg:sticky lg:top-6">
+    <aside className="rounded-2xl border border-market-line bg-white p-5 shadow-[0_2px_12px_rgba(17,24,39,0.04)] lg:sticky lg:top-6">
       <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Your cart</p>
-          <h2 className="mt-2 text-2xl font-bold">Ready for the week?</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-market-green-dark">
+            Your cart
+          </p>
+          <h2 className="mt-2 text-xl font-bold">Ready for the week?</h2>
         </div>
         <span className="text-sm text-muted">{lines.length} lines</span>
       </div>

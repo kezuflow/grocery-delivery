@@ -50,6 +50,16 @@ test("protected routes enforce session and role guards", async ({ openAs, page }
   await expect(page).toHaveURL(/\/forbidden$/);
 });
 
+test("marketplace converges across phone and desktop layouts", async ({ openAs, page }) => {
+  await openAs("customer", "/shop");
+  await expect(page.getByRole("heading", { level: 1, name: "Shop fresh groceries" })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Search catalog" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Product categories" })).toBeVisible();
+  await expect(page.getByRole("complementary")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("admin product surfaces render server-backed states", async ({ openAs, page }) => {
   await openAs("admin", "/admin/catalog");
   await expect(page.getByRole("heading", { name: "Catalog control" })).toBeVisible();

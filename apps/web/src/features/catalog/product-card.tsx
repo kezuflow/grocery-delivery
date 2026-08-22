@@ -19,8 +19,8 @@ export function ProductCard({
   onQuantityChange: (quantity: number) => void;
 }>) {
   return (
-    <article className="grid gap-4 overflow-hidden border border-line bg-white">
-      <div className="aspect-[4/3] bg-accent/20">
+    <article className="grid gap-3 overflow-hidden rounded-2xl border border-market-line bg-white shadow-[0_2px_12px_rgba(17,24,39,0.04)]">
+      <div className="aspect-square bg-market-soft">
         {item.imageUrl ? (
           <img
             alt={item.name}
@@ -29,24 +29,26 @@ export function ProductCard({
             src={item.imageUrl}
           />
         ) : (
-          <div className="grid size-full place-items-center text-xs font-bold uppercase tracking-[0.16em] text-muted">
-            Available this week
+          <div className="grid size-full place-items-center px-4 text-center text-xs font-bold uppercase tracking-[0.12em] text-market-muted">
+            Fresh this week
           </div>
         )}
       </div>
-      <div className="grid gap-3 p-5 pt-0">
+      <div className="grid gap-2.5 p-4 pt-0 sm:p-5 sm:pt-0">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
+          <p className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b7280]">
             {getCategoryName(categories, item.categoryId)}
           </p>
-          <span className="text-xs font-bold text-success">Available</span>
+          <span className="text-[11px] font-bold text-market-green-dark">Available</span>
         </div>
-        <h2 className="text-xl font-bold">{item.name}</h2>
-        <p className="min-h-12 text-sm leading-6 text-muted">{item.description}</p>
+        <h2 className="line-clamp-2 text-base font-bold sm:text-lg">{item.name}</h2>
+        <p className="line-clamp-2 min-h-10 text-xs leading-5 text-market-muted sm:text-sm">
+          {item.description}
+        </p>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <strong className="text-lg">{formatPhp(item.price.centavos)}</strong>
-            <span className="ml-1 text-xs text-muted">/ {item.unit}</span>
+            <strong className="text-base sm:text-lg">{formatPhp(item.price.centavos)}</strong>
+            <span className="ml-1 text-[11px] text-market-muted">/ {item.unit}</span>
           </div>
           {quantity > 0 ? (
             <QuantityControl
@@ -55,8 +57,13 @@ export function ProductCard({
               quantity={quantity}
             />
           ) : (
-            <Button onClick={onAdd} size="sm" type="button">
-              Add
+            <Button
+              className="rounded-full bg-market-green px-4 hover:bg-market-green-dark"
+              onClick={onAdd}
+              size="sm"
+              type="button"
+            >
+              Add to cart
             </Button>
           )}
         </div>

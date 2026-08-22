@@ -1380,10 +1380,12 @@ vertical slice until its catalog mutation, order read-model, and staff-directory
 real server contracts. Its detailed gaps and outstanding verification are recorded in
 `docs/frontend-backend-audit.md`.
 
-Resume AUD-001 by tracing the prototype routes `/admin/catalog`, `/admin/orders`, and `/admin/staff`
-end to end, recording authorization and local/staging evidence, and ranking their contract gaps
-against the rest of the cross-role audit. Do not promote one of these gaps to VS-001 until AUD-001
-has established its severity and dependency order.
+Resume AUD-001 by tracing the marketplace increment and the prototype routes `/admin/catalog`,
+`/admin/orders`, and `/admin/staff` end to end, recording authorization and local/staging evidence,
+and ranking their contract gaps against the rest of the cross-role audit. The marketplace local
+convergence is implemented, but remains `unverified` until staging browser/accessibility evidence is
+captured. Do not promote one of these gaps to VS-001 until AUD-001 has established its severity and
+dependency order.
 
 ### Unified next-slice queue
 

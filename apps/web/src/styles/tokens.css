@@ -12,6 +12,14 @@
   --color-success-value: #047857;
   --color-warning-value: #b45309;
   --color-danger-value: #b91c1c;
+  --color-market-green-value: #15803d;
+  --color-market-green-dark-value: #166534;
+  --color-market-ink-value: #111827;
+  --color-market-muted-value: #6b7280;
+  --color-market-line-value: #e5e7eb;
+  --color-market-paper-value: #f8faf8;
+  --color-market-soft-value: #f0fdf4;
+  --color-market-banner-value: #dcfce7;
 
   /* Legacy aliases remain temporarily while route styles migrate to utilities. */
   --ink: var(--color-ink-value);
