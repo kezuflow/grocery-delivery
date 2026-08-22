@@ -14,7 +14,8 @@ Before changing frontend structure or styling, read `../../docs/frontend-standar
 
 - Treat the implemented API, shared contracts, typed web client, authentication, RBAC, and
   connected customer/admin/delivery workflows as the existing product baseline. Inspect and
-  preserve them; do not recreate or replace them from the frontend backlog.
+  preserve them; do not recreate or replace them from a historical frontend plan. Current scope
+  comes from `docs/implementation-backlog.md` and its `AUD-*`/`VS-*` queue.
 - Follow this dependency order: tokens -> UI primitives -> layouts -> features -> routes.
 - Reuse an existing token, primitive, or feature component before creating another one.
 - Keep route files focused on data loading, authorization, metadata, and composition.
