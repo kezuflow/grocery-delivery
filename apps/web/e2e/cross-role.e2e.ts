@@ -45,6 +45,21 @@ test("protected routes enforce session and role guards", async ({ openAs, page }
 
   await openAs("admin", "/deliveryman");
   await expect(page).toHaveURL(/\/forbidden$/);
+
+  await openAs("customer", "/admin/catalog");
+  await expect(page).toHaveURL(/\/forbidden$/);
+});
+
+test("admin product surfaces render server-backed states", async ({ openAs, page }) => {
+  await openAs("admin", "/admin/catalog");
+  await expect(page.getByRole("heading", { name: "Catalog control" })).toBeVisible();
+  await expect(page.getByText("Roma tomatoes")).toBeVisible();
+
+  await openAs("admin", "/admin/orders");
+  await expect(page.getByRole("heading", { name: "Order fulfillment queue" })).toBeVisible();
+
+  await openAs("admin", "/admin/staff");
+  await expect(page.getByRole("heading", { name: "Assign server-owned role" })).toBeVisible();
 });
 
 test("keyboard focus and reduced motion remain usable", async ({ openAs, page }) => {

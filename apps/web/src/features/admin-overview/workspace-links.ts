@@ -9,6 +9,24 @@ export type AdminWorkspaceLink = Readonly<{
 
 export const adminWorkspaceLinks: readonly AdminWorkspaceLink[] = [
   {
+    href: "/admin/catalog",
+    label: "Catalog",
+    description: "Active categories, items, and server-confirmed prices",
+    permission: "catalog",
+  },
+  {
+    href: "/admin/orders",
+    label: "Orders",
+    description: "Packing, dispatch, and customer request queues",
+    permission: "dispatch",
+  },
+  {
+    href: "/admin/staff",
+    label: "Staff",
+    description: "Audited role and permission assignments",
+    permission: "superadmin",
+  },
+  {
     href: "/admin/procurement",
     label: "Procurement",
     description: "Demand, purchases, shortages, and substitutions",

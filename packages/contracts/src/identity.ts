@@ -150,4 +150,5 @@ export type AccountExportResponse = z.infer<typeof accountExportResponseSchema>;
 export type AccountProfileUpdateRequest = z.infer<typeof accountProfileUpdateRequestSchema>;
 export type AccountConsentRequest = z.infer<typeof accountConsentRequestSchema>;
 export type AdminRoleAssignmentRequest = z.infer<typeof adminRoleAssignmentRequestSchema>;
+export type AdminRoleAssignmentResponse = z.infer<typeof adminRoleAssignmentResponseSchema>;
 export type AccountDeletionRequestResponse = z.infer<typeof accountDeletionRequestResponseSchema>;

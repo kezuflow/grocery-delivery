@@ -1349,8 +1349,15 @@ landing page, marketplace, cart, checkout, account, orders, support, admin works
 workflow. Record each item as `matched`, `partial`, `mismatch`, `missing`, or `unverified` with
 severity and local/staging evidence in `docs/frontend-backend-audit.md`.
 
-The current uncommitted admin draft is audit evidence and must not be treated as complete until its
-catalog, order read model, and staff-directory capabilities match real server contracts.
+The committed legacy FE-015 admin prototype is audit evidence and must not be treated as a complete
+vertical slice until its catalog mutation, order read-model, and staff-directory capabilities match
+real server contracts. Its detailed gaps and outstanding verification are recorded in
+`docs/frontend-backend-audit.md`.
+
+Resume AUD-001 by tracing the prototype routes `/admin/catalog`, `/admin/orders`, and `/admin/staff`
+end to end, recording authorization and local/staging evidence, and ranking their contract gaps
+against the rest of the cross-role audit. Do not promote one of these gaps to VS-001 until AUD-001
+has established its severity and dependency order.
 
 ### Unified next-slice queue
 

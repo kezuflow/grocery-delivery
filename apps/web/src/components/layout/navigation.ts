@@ -26,12 +26,15 @@ const deliveryNavigation: readonly NavigationItem[] = [
 
 const adminNavigation: readonly NavigationItem[] = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/catalog", label: "Catalog", permission: "catalog" },
+  { href: "/admin/orders", label: "Orders", permission: "dispatch" },
   { href: "/admin/procurement", label: "Procurement", permission: "procurement" },
   { href: "/admin/packing", label: "Packing", permission: "packing" },
   { href: "/admin/dispatch", label: "Dispatch", permission: "dispatch" },
   { href: "/admin/support", label: "Support", permission: "support" },
   { href: "/admin/promotions", label: "Promotions", permission: "marketing" },
   { href: "/admin/reporting", label: "Reporting", permission: "reporting" },
+  { href: "/admin/staff", label: "Staff", permission: "superadmin" },
   { href: "/admin/configuration", label: "Configuration", permission: "superadmin" },
 ];
 

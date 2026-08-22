@@ -168,6 +168,15 @@ function routeResponse(method, url, role, body) {
       ],
     });
   if (url.pathname === "/api/v1/catalog") return ok(catalog);
+  if (url.pathname === "/api/v1/admin/identity/roles" && method === "POST")
+    return requireRole(role, "admin", () =>
+      ok({
+        userId: body.userId,
+        role: body.role,
+        adminPermissions: body.adminPermissions ?? [],
+        mfaRequired: body.role === "admin",
+      }),
+    );
   if (url.pathname === "/api/v1/promotions/banners")
     return ok({
       placement: url.searchParams.get("placement") ?? "home-hero",

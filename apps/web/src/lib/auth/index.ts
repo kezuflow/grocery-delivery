@@ -1,1 +1,7 @@
-export { requireCustomerSession, requirePermission, requireRole, requireSession } from "./guards";
+export {
+  requireAnyPermission,
+  requireCustomerSession,
+  requirePermission,
+  requireRole,
+  requireSession,
+} from "./guards";

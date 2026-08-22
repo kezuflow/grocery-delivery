@@ -52,6 +52,8 @@ import {
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
   adminOrderRequestDecisionSchema,
+  adminRoleAssignmentRequestSchema,
+  adminRoleAssignmentResponseSchema,
   adminOrderRequestsResponseSchema,
   customerOrderSubstitutionDecisionSchema,
   customerOrderSubstitutionResponseSchema,
@@ -108,6 +110,7 @@ import {
   type CustomerOrderRequestResponse,
   type CustomerOrderRequestsResponse,
   type AdminOrderRequestsResponse,
+  type AdminRoleAssignmentResponse,
   type CustomerOrderSubstitutionResponse,
   type CustomerOrderSubstitutionsResponse,
   type LaunchConfigurationResponse,
@@ -297,6 +300,17 @@ export function createApiClient(baseTransport: ApiTransport) {
         transport,
         "/api/v1/admin/order-requests",
         adminOrderRequestsResponseSchema,
+        init,
+      );
+    },
+    assignAdminRole(input: unknown, init?: RequestInit): Promise<AdminRoleAssignmentResponse> {
+      const payload = adminRoleAssignmentRequestSchema.parse(input);
+      return sendJson(
+        transport,
+        "/api/v1/admin/identity/roles",
+        payload,
+        adminRoleAssignmentResponseSchema,
+        "POST",
         init,
       );
     },

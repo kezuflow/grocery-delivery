@@ -28,6 +28,14 @@ export async function requirePermission(permission: AdminPermission): Promise<Se
   return session;
 }
 
+export async function requireAnyPermission(
+  permissions: readonly AdminPermission[],
+): Promise<SessionSummary> {
+  const session = await requireRole("admin");
+  if (!permissions.some((permission) => can(session, permission))) redirect("/forbidden");
+  return session;
+}
+
 export async function requireCustomerSession(): Promise<SessionSummary> {
   const session = await requireRole("customer");
   if (!session.customerId) redirect("/forbidden");

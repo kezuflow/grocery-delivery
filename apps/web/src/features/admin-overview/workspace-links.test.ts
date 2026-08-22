@@ -7,5 +7,11 @@ describe("admin workspace links", () => {
       "/admin/packing",
       "/admin/reporting",
     ]);
+
+    expect(visibleAdminWorkspaceLinks(["catalog", "dispatch"]).map((item) => item.href)).toEqual([
+      "/admin/catalog",
+      "/admin/orders",
+      "/admin/dispatch",
+    ]);
   });
 });
