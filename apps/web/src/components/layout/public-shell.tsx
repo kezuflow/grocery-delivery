@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { Leaf } from "lucide-react";
 
-import { BrandLink } from "./brand-link";
 import { MobileNavigation } from "./mobile-navigation";
 
 export type PublicNavigationItem = Readonly<{ href: string; label: string }>;
@@ -15,16 +15,16 @@ export function PublicShell({
   children: ReactNode;
 }>) {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-paper text-ink">
-      <header className="border-b border-line bg-white/95">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <BrandLink />
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-4">
+    <main className="min-h-screen overflow-x-hidden bg-paper font-sans text-ink">
+      <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
+        <div className="mx-auto flex min-h-[72px] max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <PublicBrandLink />
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-4">
             <MobileNavigation items={navigation} />
-            <nav aria-label="Primary navigation" className="hidden items-center gap-5 lg:flex">
+            <nav aria-label="Primary navigation" className="hidden items-center gap-6 lg:flex">
               {navigation.map((item) => (
                 <a
-                  className="text-sm font-bold text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
+                  className="text-sm font-bold text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
                   href={item.href}
                   key={item.href}
                 >
@@ -38,5 +38,24 @@ export function PublicShell({
       </header>
       {children}
     </main>
+  );
+}
+
+function PublicBrandLink() {
+  return (
+    <a
+      aria-label="Carbon Food Delivery home"
+      className="inline-flex min-w-0 items-center gap-2.5 font-bold text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
+      href="/"
+    >
+      <span
+        aria-hidden="true"
+        className="grid size-9 shrink-0 place-items-center bg-deep text-white"
+      >
+        <Leaf size={17} strokeWidth={2.25} />
+      </span>
+      <span className="sm:hidden">Carbon</span>
+      <span className="hidden truncate sm:inline">Carbon Food Delivery</span>
+    </a>
   );
 }

@@ -6,6 +6,9 @@
   --color-accent-value: #c6e46b;
   --color-accent-dark-value: #527018;
   --color-deep-value: #244d3e;
+  --color-coral-value: #9f3f27;
+  --color-sun-value: #f0c75e;
+  --color-soft-value: #edf2e8;
   --color-success-value: #047857;
   --color-warning-value: #b45309;
   --color-danger-value: #b91c1c;
@@ -18,4 +21,7 @@
   --accent: var(--color-accent-value);
   --accent-dark: var(--color-accent-dark-value);
   --deep: var(--color-deep-value);
+  --coral: var(--color-coral-value);
+  --sun: var(--color-sun-value);
+  --soft: var(--color-soft-value);
 }

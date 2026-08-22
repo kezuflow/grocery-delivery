@@ -168,7 +168,7 @@ function routeResponse(method, url, role, body) {
       ],
     });
   if (url.pathname === "/api/v1/catalog") return ok(catalog);
-  if (url.pathname === "/api/v1/promotion-banners/active")
+  if (url.pathname === "/api/v1/promotions/banners")
     return ok({
       placement: url.searchParams.get("placement") ?? "home-hero",
       banners: [],

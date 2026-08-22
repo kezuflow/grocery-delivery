@@ -2,12 +2,13 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "./cn";
 
-export type ButtonTone = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonTone = "primary" | "secondary" | "accent" | "danger" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const toneClasses: Record<ButtonTone, string> = {
   primary: "bg-deep text-white hover:bg-[#183b30]",
   secondary: "border border-deep bg-transparent text-deep hover:bg-accent/30",
+  accent: "bg-sun text-ink hover:bg-[#f6d77f]",
   danger: "border border-red-700 bg-transparent text-red-800 hover:bg-red-50",
   ghost: "bg-transparent text-muted hover:bg-black/5 hover:text-ink",
 };

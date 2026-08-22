@@ -34,6 +34,7 @@
     "@carbon/contracts": "workspace:*",
     "clsx": "^2.1.1",
     "idb": "^8.0.3",
+    "lucide-react": "^1.33.0",
     "next": "16.3.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"

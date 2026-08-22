@@ -11,7 +11,10 @@ import { getRoleHome } from "../../lib/permissions";
 
 type AuthMode = "sign-in" | "sign-up" | "forgot-password";
 
-export function PublicAuthControls({ session }: Readonly<{ session: SessionSummary | null }>) {
+export function PublicAuthControls({
+  session,
+  inverse = false,
+}: Readonly<{ session: SessionSummary | null; inverse?: boolean }>) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [open, setOpen] = useState(false);
@@ -86,10 +89,21 @@ export function PublicAuthControls({ session }: Readonly<{ session: SessionSumma
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button onClick={() => chooseMode("sign-in")} size="sm" tone="ghost" type="button">
+        <Button
+          className={inverse ? "text-white hover:bg-white/10 hover:text-white" : undefined}
+          onClick={() => chooseMode("sign-in")}
+          size="sm"
+          tone="ghost"
+          type="button"
+        >
           Sign in
         </Button>
-        <Button onClick={() => chooseMode("sign-up")} size="sm" type="button">
+        <Button
+          onClick={() => chooseMode("sign-up")}
+          size="sm"
+          tone={inverse ? "accent" : "primary"}
+          type="button"
+        >
           Join Carbon
         </Button>
       </div>

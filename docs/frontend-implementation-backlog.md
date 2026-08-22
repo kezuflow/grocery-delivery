@@ -155,6 +155,9 @@ from another feature.
 | FE-010 | Delivery dashboard and mobile PWA workflow         | complete | FE-003 -> FE-011     |
 | FE-011 | Browser E2E, responsive, accessibility, visual QA  | complete | FE-004 -> FE-012     |
 | FE-012 | Frontend release hardening and handoff             | complete | FE-011               |
+| FE-013 | Marketplace destination, hydration, and free trial | complete | FE-005 -> FE-014     |
+| FE-014 | Public storefront product and visual completion    | complete | FE-013 -> FE-015     |
+| FE-015 | Admin catalog, orders, and staff product surfaces  | planned  | FE-014               |
 
 ## Slice Details
 
@@ -419,6 +422,63 @@ Acceptance checks: focused web/API/domain/application/DB tests, `pnpm check`, Pl
 the API migration, and staging smoke tests all pass. Resume point: monitor staging marketplace and
 trial activation timings, then tune cache revalidation from observed data.
 
+### FE-014: Public storefront product and visual completion
+
+Finish the public landing page as the customer-facing grocery storefront rather than a functional
+content outline. Preserve the existing server-owned banner, plan, catalog, and session reads while
+adding a strong commerce hierarchy, useful category discovery, trial messaging, delivery/value
+proof, and a complete responsive footer. Use purposeful optimized Unsplash imagery for the hero and
+supporting sections while ImageGen is unavailable; the `E:\grocery\web` template remains a structure
+and density reference only.
+
+Keep each major section in a focused storefront module. The route remains responsible only for
+parallel server reads and composition. Static marketing copy must not introduce prices, delivery
+coverage, availability, or operational promises that conflict with server configuration.
+
+Acceptance checks:
+
+- The first viewport clearly identifies Carbon Food Delivery and shows real grocery imagery on
+  phone and desktop without depending on a configured promotional banner.
+- Plans, catalog items, authentication, and customer destinations remain API/session-backed.
+- Empty catalog and unavailable storefront data still produce useful, visually complete states.
+- The page has no horizontal overflow, serious/critical Axe violations, or incoherent overlap at
+  phone, tablet, and desktop sizes.
+- Focused tests, storefront visual snapshots, production build, `pnpm check`, staging deployment,
+  and desktop/mobile staging smoke checks pass.
+
+Completion record: the public route is now a modular commerce-first storefront composed from focused
+hero, benefits, catalog, process, plans, trial, and footer modules. It preserves server-backed
+banner, session, catalog, and plan data; sends authenticated customers to `/shop`; provides useful
+empty and unavailable states; and includes responsive navigation, accessible imagery, trial messaging,
+and a complete footer. The approved interim imagery uses optimized Unsplash WebP URLs. ImageGen is
+optional under the frontend guardrails; exact replacement paths and prompts are recorded in
+[`docs/runbooks/storefront-imagery-handoff.md`](runbooks/storefront-imagery-handoff.md). Focused web
+tests, lint, typecheck, production build, the 24-test Playwright suite, and full `pnpm check` pass.
+The next slice is FE-015: admin catalog, orders, and staff product surfaces.
+
+### FE-015: Admin catalog, orders, and staff product surfaces
+
+Complete the operations product with dedicated `/admin/catalog`, `/admin/orders`, and
+`/admin/staff` routes plus a refined admin overview that links directly to them. Reuse existing
+catalog, order, identity, audit, and permission contracts and add typed client coverage only where
+an implemented API endpoint is not yet exposed to the web application.
+
+Catalog must support server-owned item/category visibility and pricing operations; orders must
+support dense status inspection and navigation into relevant fulfillment actions; staff must show
+role and permission ownership without allowing the browser to grant authority. Each route must be
+permission-protected, responsive, keyboard usable, and composed from feature-owned modules rather
+than raw form grids.
+
+Acceptance checks:
+
+- Admin navigation exposes catalog, orders, and staff only for sessions with matching permission.
+- Server contracts remain the source for prices, order status, roles, and permissions.
+- Destructive or authority-changing actions require explicit confirmation and retain API-side
+  authorization and audit behavior.
+- Empty, loading, error, forbidden, desktop table, and compact mobile states are covered.
+- Focused tests, browser checks, production build, `pnpm check`, staging deployment, and role smoke
+  tests pass.
+
 ## Definition Of Done
 
 - Clear route/component owner and feature-oriented boundary.
@@ -431,6 +491,12 @@ trial activation timings, then tune cache revalidation from observed data.
   to `origin/main` are complete.
 
 ## Resume Point
+
+### FE-014 Completion Record
+
+FE-014 is complete and deployed as the polished public storefront. The next resume point is FE-015,
+the product-scoped admin catalog, orders, and staff surfaces. Replace the interim Unsplash assets only
+when ImageGen access is available, following the documented handoff.
 
 ### FE-012 Completion Record
 

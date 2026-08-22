@@ -77,6 +77,18 @@ component with many boolean props.
 - Keep global CSS limited to Tailwind import, tokens, reset/base behavior, typography, and temporary
   legacy rules scheduled for migration.
 
+### Imagery
+
+- Product-facing pages must use purposeful bitmap imagery for hero and supporting sections when
+  the subject benefits from visual inspection. Prefer optimized, stable remote sources (for example,
+  Unsplash with explicit `auto=format`, WebP, width, and quality parameters) or committed local
+  assets.
+- ImageGen is optional and must not block a frontend slice. When ImageGen is unavailable, use an
+  approved remote or local image and record the replacement path, prompt, and intended composition
+  in a handoff note so the asset can be swapped without changing layout code.
+- Keep image `alt` text meaningful, reserve layout space with stable dimensions, and do not use
+  decorative gradients, blurred stock imagery, or background images that hide the product subject.
+
 ## Component Rules
 
 - Components use typed, descriptive props and readable named functions.

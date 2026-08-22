@@ -6,7 +6,7 @@ import {
 } from "./fixtures";
 
 const visualPages = [
-  { name: "storefront", role: null, path: "/", heading: "Good food, planned around your week." },
+  { name: "storefront", role: null, path: "/", heading: "Carbon Food Delivery" },
   { name: "checkout", role: "customer" as const, path: "/account/checkout", heading: "Checkout" },
   { name: "admin-overview", role: "admin" as const, path: "/admin", heading: "Weekly operations" },
   {
