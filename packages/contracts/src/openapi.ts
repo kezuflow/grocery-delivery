@@ -55,8 +55,45 @@ export const openApiDocument: OpenApiDocument = {
     "/api/v1/catalog": {
       get: {
         tags: ["catalog"],
-        summary: "List active catalog items",
-        responses: { "200": jsonResponse(), "400": jsonResponse("Invalid pagination") },
+        summary: "Search and list active catalog items",
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 100 },
+          },
+          { name: "cursor", in: "query", required: false, schema: { type: "string" } },
+          { name: "search", in: "query", required: false, schema: { type: "string" } },
+          { name: "category", in: "query", required: false, schema: { type: "string" } },
+          {
+            name: "sort",
+            in: "query",
+            required: false,
+            schema: { type: "string", enum: ["popular", "name", "price-low", "price-high"] },
+          },
+          {
+            name: "minPriceCentavos",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 0 },
+          },
+          {
+            name: "maxPriceCentavos",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 0 },
+          },
+        ],
+        responses: { "200": jsonResponse(), "400": jsonResponse("Invalid query or pagination") },
+      },
+    },
+    "/api/v1/catalog/{slug}": {
+      get: {
+        tags: ["catalog"],
+        summary: "Read one active catalog item",
+        parameters: [{ name: "slug", in: "path", required: true, schema: { type: "string" } }],
+        responses: { "200": jsonResponse(), "404": jsonResponse("Catalog item not found") },
       },
     },
     "/api/v1/promotions/banners": {

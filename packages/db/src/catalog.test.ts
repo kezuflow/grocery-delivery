@@ -82,7 +82,19 @@ describe("catalog repositories", () => {
     expect(page.items.map((item) => item.id)).toEqual(["sku-a"]);
     expect(page.cacheVersion).toBe("7");
     expect(page.nextAfterId).toBe("sku-a");
-    expect(database.calls[1]?.values).toEqual(["produce", null, null, 2]);
+    expect(page.nextOffset).toBe(1);
+    expect(database.calls[1]?.values).toEqual([
+      "produce",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      2,
+    ]);
   });
 
   it("reads effective markup candidates and records a price atomically", async () => {

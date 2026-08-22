@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, URL as NodeURL } from "node:url";
 
-import { currentSessionResponseSchema } from "@carbon/contracts";
+import { apiErrorResponseSchema, currentSessionResponseSchema } from "@carbon/contracts";
 import { InMemoryIdentityEmailSender } from "@carbon/notifications";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -35,7 +35,7 @@ describe("Better Auth D1 integration", () => {
         },
       ],
     });
-    database = await miniflare.getD1Database("DB");
+    database = (await miniflare.getD1Database("DB")) as D1Database;
     for (const migration of [
       "0007_identity.sql",
       "0014_better_auth.sql",
@@ -247,6 +247,90 @@ describe("Better Auth D1 integration", () => {
       .bind(user?.id)
       .first<{ action: string }>();
     expect(audit?.action).toBe("identity.admin-bootstrapped");
+  });
+
+  it("reconciles an existing allowlisted account to superadmin scope", async () => {
+    const emailSender = new InMemoryIdentityEmailSender();
+    const bindings = {
+      APP_ENV: "test",
+      AUTH_MODE: "better-auth",
+      BETTER_AUTH_SECRET: "reconcile-secret-that-is-at-least-32-characters",
+      BETTER_AUTH_URL: "https://api.example.test",
+      ADMIN_BOOTSTRAP_EMAILS: "reconcile-admin@example.com",
+      DB: database,
+    } as const;
+    const app = createConfiguredApi(bindings, {
+      createIdentityEmailSender: () => emailSender,
+    });
+    const signUp = await app.request(
+      "/api/auth/sign-up/email",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Existing Admin",
+          email: "reconcile-admin@example.com",
+          password: "correct-horse-battery-staple",
+        }),
+      },
+      bindings,
+    );
+    expect(signUp.status).toBe(200);
+    await database
+      .prepare(
+        `UPDATE identity_role_assignments
+         SET role = 'customer', customer_id = ?, admin_permissions_json = '[]', mfa_required = 0
+         WHERE user_id = (SELECT id FROM better_auth_user WHERE email = ?)`,
+      )
+      .bind("existing-customer", "reconcile-admin@example.com")
+      .run();
+    const cookie = signUp.headers.get("set-cookie");
+    const session = await app.request(
+      "/api/v1/me",
+      { headers: { cookie: cookie!.split(";")[0]! } },
+      bindings,
+    );
+    expect(session.status).toBe(200);
+    const sessionBody = currentSessionResponseSchema.parse(await session.json());
+    expect(sessionBody.data).toMatchObject({
+      role: "admin",
+      adminPermissions: ["superadmin"],
+      customerId: null,
+    });
+    const assignment = await database
+      .prepare(
+        "SELECT role, admin_permissions_json, mfa_required FROM identity_role_assignments WHERE user_id = (SELECT id FROM better_auth_user WHERE email = ?) LIMIT 1",
+      )
+      .bind("reconcile-admin@example.com")
+      .first<{ role: string; admin_permissions_json: string; mfa_required: number }>();
+    expect(assignment).toEqual({
+      role: "admin",
+      admin_permissions_json: '["superadmin"]',
+      mfa_required: 1,
+    });
+    const protectedMutation = await app.request(
+      "/api/v1/admin/launch-configuration",
+      {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          cookie: cookie!.split(";")[0]!,
+        },
+        body: JSON.stringify({}),
+      },
+      bindings,
+    );
+    expect(protectedMutation.status).toBe(403);
+    expect(apiErrorResponseSchema.parse(await protectedMutation.json()).error.code).toBe(
+      "MFA_REQUIRED",
+    );
+    const audit = await database
+      .prepare(
+        "SELECT COUNT(*) AS count FROM audit_events WHERE target_id = (SELECT id FROM better_auth_user WHERE email = ?) AND action = ?",
+      )
+      .bind("reconcile-admin@example.com", "identity.admin-bootstrap-reconciled")
+      .first<{ count: number }>();
+    expect(audit?.count).toBe(1);
   });
 
   it("delivers verification and password reset actions through the identity email boundary", async () => {

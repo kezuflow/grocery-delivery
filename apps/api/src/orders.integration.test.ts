@@ -35,7 +35,7 @@ describe("D1 order lock integration", () => {
         },
       ],
     });
-    database = await miniflare.getD1Database("DB");
+    database = (await miniflare.getD1Database("DB")) as D1Database;
     for (const migration of [
       "0001_catalog.sql",
       "0002_plans_subscriptions.sql",

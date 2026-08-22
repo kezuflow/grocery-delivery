@@ -13,7 +13,11 @@ export function SignOutButton() {
   async function signOut() {
     setPending(true);
     setError(null);
-    const response = await fetch("/api/auth/sign-out", { method: "POST" });
+    const response = await fetch("/api/auth/sign-out", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
     if (!response.ok) {
       setError("Sign out failed. Please try again.");
       setPending(false);

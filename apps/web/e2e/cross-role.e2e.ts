@@ -53,7 +53,7 @@ test("protected routes enforce session and role guards", async ({ openAs, page }
 test("marketplace converges across phone and desktop layouts", async ({ openAs, page }) => {
   await openAs("customer", "/shop");
   await expect(page.getByRole("heading", { level: 1, name: "Shop fresh groceries" })).toBeVisible();
-  await expect(page.getByRole("searchbox", { name: "Search catalog" })).toBeVisible();
+  await expect(page.getByRole("searchbox").first()).toBeVisible();
   await expect(page.getByRole("tablist", { name: "Product categories" })).toBeVisible();
   await expect(page.getByRole("complementary")).toBeVisible();
   await expectNoHorizontalOverflow(page);

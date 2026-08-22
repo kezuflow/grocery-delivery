@@ -1,4 +1,5 @@
 import type { CatalogCategoryResponse, CatalogSkuResponse } from "@carbon/contracts";
+import { ImageIcon, PackageCheck, Plus } from "lucide-react";
 
 import { Button } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
@@ -10,17 +11,23 @@ export function ProductCard({
   item,
   quantity,
   onAdd,
+  view = "grid",
   onQuantityChange,
 }: Readonly<{
   categories: readonly CatalogCategoryResponse[];
   item: CatalogSkuResponse;
   quantity: number;
   onAdd: () => void;
+  view?: "grid" | "list";
   onQuantityChange: (quantity: number) => void;
 }>) {
   return (
-    <article className="grid gap-3 overflow-hidden rounded-2xl border border-market-line bg-white shadow-[0_2px_12px_rgba(17,24,39,0.04)]">
-      <div className="aspect-square bg-market-soft">
+    <article
+      className={`group overflow-hidden border-b border-r border-market-line bg-white ${view === "list" ? "grid gap-4 p-4 sm:grid-cols-[12rem_1fr]" : "grid gap-3"}`}
+    >
+      <div
+        className={`relative bg-market-soft ${view === "list" ? "aspect-square" : "aspect-square"}`}
+      >
         {item.imageUrl ? (
           <img
             alt={item.name}
@@ -29,25 +36,36 @@ export function ProductCard({
             src={item.imageUrl}
           />
         ) : (
-          <div className="grid size-full place-items-center px-4 text-center text-xs font-bold uppercase tracking-[0.12em] text-market-muted">
-            Fresh this week
+          <div className="grid size-full place-items-center px-4 text-center text-market-muted">
+            <span className="grid justify-items-center gap-2 text-xs">
+              <ImageIcon size={34} strokeWidth={1.5} />
+              No image preview
+            </span>
           </div>
         )}
       </div>
-      <div className="grid gap-2.5 p-4 pt-0 sm:p-5 sm:pt-0">
+      <div className="grid gap-2.5 p-4 sm:p-5 sm:pt-4">
         <div className="flex items-start justify-between gap-3">
           <p className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b7280]">
             {getCategoryName(categories, item.categoryId)}
           </p>
-          <span className="text-[11px] font-bold text-market-green-dark">Available</span>
+          <span className="flex items-center gap-1 text-[11px] font-bold text-market-green-dark">
+            <PackageCheck size={14} /> In stock
+          </span>
         </div>
-        <h2 className="line-clamp-2 text-base font-bold sm:text-lg">{item.name}</h2>
+        <h2 className="line-clamp-2 text-base font-bold sm:text-lg">
+          <a className="hover:text-market-green-dark" href={`/shop/${item.slug}`}>
+            {item.name}
+          </a>
+        </h2>
         <p className="line-clamp-2 min-h-10 text-xs leading-5 text-market-muted sm:text-sm">
           {item.description}
         </p>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <strong className="text-base sm:text-lg">{formatPhp(item.price.centavos)}</strong>
+            <strong className="text-base text-[#ef4444] sm:text-lg">
+              {formatPhp(item.price.centavos)}
+            </strong>
             <span className="ml-1 text-[11px] text-market-muted">/ {item.unit}</span>
           </div>
           {quantity > 0 ? (
@@ -58,12 +76,13 @@ export function ProductCard({
             />
           ) : (
             <Button
-              className="rounded-full bg-market-green px-4 hover:bg-market-green-dark"
+              aria-label={`Add ${item.name} to cart`}
+              className="size-10 rounded-full bg-market-green p-0 hover:bg-market-green-dark"
               onClick={onAdd}
               size="sm"
               type="button"
             >
-              Add to cart
+              <Plus size={22} />
             </Button>
           )}
         </div>

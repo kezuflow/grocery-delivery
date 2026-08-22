@@ -66,4 +66,48 @@ describe("customer catalog hydration", () => {
       error: "We could not load the catalog right now. Please try again shortly.",
     });
   });
+
+  it("keeps the public catalog available when a guest has no cart session", async () => {
+    const fetch: ApiTransport["fetch"] = (input) => {
+      const url = new URL(
+        input instanceof URL ? input : input instanceof Request ? input.url : input,
+      );
+      if (url.pathname === "/api/v1/cart") {
+        return Promise.resolve(
+          Response.json(
+            { error: { code: "UNAUTHENTICATED", message: "an active session is required" }, meta },
+            { status: 401 },
+          ),
+        );
+      }
+      return Promise.resolve(
+        Response.json({
+          data: {
+            categories: [],
+            items: [
+              {
+                id: "sku-guest",
+                categoryId: "fresh",
+                name: "Guest tomatoes",
+                slug: "guest-tomatoes",
+                description: "Fresh tomatoes",
+                unit: "kilogram",
+                imageUrl: null,
+                price: { centavos: 12500, currency: "PHP" },
+                active: true,
+              },
+            ],
+            nextCursor: null,
+          },
+          meta,
+        }),
+      );
+    };
+
+    await expect(resolveCustomerCatalog({ fetch }, "")).resolves.toMatchObject({
+      catalog: { items: [{ id: "sku-guest" }] },
+      cart: { lines: [], subtotal: { centavos: 0 } },
+      error: null,
+    });
+  });
 });

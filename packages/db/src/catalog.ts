@@ -11,7 +11,12 @@ import {
 
 export type CatalogQuery = Readonly<{
   categorySlug?: string;
+  search?: string;
+  sort?: "popular" | "name" | "price-low" | "price-high";
+  minPriceCentavos?: number;
+  maxPriceCentavos?: number;
   afterId?: string;
+  offset?: number;
   limit: number;
 }>;
 
@@ -30,10 +35,12 @@ export type CatalogPage = Readonly<{
   categories: readonly CatalogCategory[];
   items: readonly CatalogSku[];
   nextAfterId: string | null;
+  nextOffset: number | null;
 }>;
 
 export interface CatalogReader {
   listPublic(query: CatalogQuery): Promise<CatalogPage>;
+  findPublicBySlug(slug: string): Promise<CatalogSku | null>;
 }
 
 export interface CatalogCheckoutReader {
@@ -72,27 +79,52 @@ export class InMemoryCatalogReader implements CatalogReader, CatalogCheckoutRead
         categories: this.categories.filter((candidate) => candidate.active),
         items: [],
         nextAfterId: null,
+        nextOffset: null,
       });
     }
-    const categoryItems = this.items.filter(
-      (item) => item.active && (!category || item.categoryId === category.id),
-    );
+    const search = query.search?.toLowerCase();
+    const categoryItems = this.items.filter((item) => {
+      if (!item.active || (category && item.categoryId !== category.id)) return false;
+      if (query.minPriceCentavos !== undefined && item.price.centavos < query.minPriceCentavos)
+        return false;
+      if (query.maxPriceCentavos !== undefined && item.price.centavos > query.maxPriceCentavos)
+        return false;
+      return (
+        !search || `${item.name} ${item.description} ${item.slug}`.toLowerCase().includes(search)
+      );
+    });
+    const sortedItems = [...categoryItems].sort((left, right) => {
+      if (query.sort === "name")
+        return left.name.localeCompare(right.name) || left.id.localeCompare(right.id);
+      if (query.sort === "price-low")
+        return left.price.centavos - right.price.centavos || left.id.localeCompare(right.id);
+      if (query.sort === "price-high")
+        return right.price.centavos - left.price.centavos || left.id.localeCompare(right.id);
+      return left.id.localeCompare(right.id);
+    });
     const afterId = query.afterId;
-    const start = afterId
-      ? (() => {
-          const nextIndex = categoryItems.findIndex((item) => item.id > afterId);
-          return nextIndex === -1 ? categoryItems.length : nextIndex;
-        })()
-      : 0;
-    const items = categoryItems.slice(start, start + query.limit);
+    const start =
+      query.offset ??
+      (afterId
+        ? (() => {
+            const nextIndex = sortedItems.findIndex((item) => item.id > afterId);
+            return nextIndex === -1 ? sortedItems.length : nextIndex;
+          })()
+        : 0);
+    const items = sortedItems.slice(start, start + query.limit);
     const lastItem = items.at(-1);
 
     return Promise.resolve({
       cacheVersion: this.cacheVersion,
       categories: this.categories.filter((candidate) => candidate.active),
       items,
-      nextAfterId: start + items.length < categoryItems.length ? (lastItem?.id ?? null) : null,
+      nextAfterId: start + items.length < sortedItems.length ? (lastItem?.id ?? null) : null,
+      nextOffset: start + items.length < sortedItems.length ? start + items.length : null,
     });
+  }
+
+  findPublicBySlug(slug: string): Promise<CatalogSku | null> {
+    return Promise.resolve(this.items.find((item) => item.active && item.slug === slug) ?? null);
   }
 
   findActiveByIds(skuIds: readonly string[]): Promise<readonly CatalogSku[]> {
@@ -114,26 +146,63 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
       )
       .bind()
       .all<CatalogCategoryRow>();
+    const search = query.search?.trim().toLowerCase();
+    const orderBy =
+      query.sort === "name"
+        ? "s.name COLLATE NOCASE ASC, s.id ASC"
+        : query.sort === "price-low"
+          ? "s.current_price_centavos ASC, s.id ASC"
+          : query.sort === "price-high"
+            ? "s.current_price_centavos DESC, s.id ASC"
+            : "s.id ASC";
+    const useOffset = query.offset !== undefined;
+    const cursorClause = useOffset ? "" : "AND (? IS NULL OR s.id > ?)";
     const itemSql = query.categorySlug
       ? `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
                 s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
          INNER JOIN catalog_categories c ON c.id = s.category_id
          WHERE s.active = 1 AND c.active = 1 AND c.slug = ?
-           AND (? IS NULL OR s.id > ?)
-         ORDER BY s.id ASC
-         LIMIT ?`
+           AND (? IS NULL OR lower(s.name || ' ' || s.description || ' ' || s.slug) LIKE '%' || ? || '%')
+           AND (? IS NULL OR s.current_price_centavos >= ?)
+           AND (? IS NULL OR s.current_price_centavos <= ?)
+           ${cursorClause}
+         ORDER BY ${orderBy}
+         LIMIT ?${useOffset ? " OFFSET ?" : ""}`
       : `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
                 s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
          INNER JOIN catalog_categories c ON c.id = s.category_id
          WHERE s.active = 1 AND c.active = 1
-           AND (? IS NULL OR s.id > ?)
-         ORDER BY s.id ASC
-         LIMIT ?`;
-    const itemValues = query.categorySlug
-      ? [query.categorySlug, query.afterId ?? null, query.afterId ?? null, query.limit + 1]
+           AND (? IS NULL OR lower(s.name || ' ' || s.description || ' ' || s.slug) LIKE '%' || ? || '%')
+           AND (? IS NULL OR s.current_price_centavos >= ?)
+           AND (? IS NULL OR s.current_price_centavos <= ?)
+           ${cursorClause}
+         ORDER BY ${orderBy}
+         LIMIT ?${useOffset ? " OFFSET ?" : ""}`;
+    const paginationValues = useOffset
+      ? [query.limit + 1, query.offset ?? 0]
       : [query.afterId ?? null, query.afterId ?? null, query.limit + 1];
+    const itemValues = query.categorySlug
+      ? [
+          query.categorySlug,
+          search ?? null,
+          search ?? null,
+          query.minPriceCentavos ?? null,
+          query.minPriceCentavos ?? null,
+          query.maxPriceCentavos ?? null,
+          query.maxPriceCentavos ?? null,
+          ...paginationValues,
+        ]
+      : [
+          search ?? null,
+          search ?? null,
+          query.minPriceCentavos ?? null,
+          query.minPriceCentavos ?? null,
+          query.maxPriceCentavos ?? null,
+          query.maxPriceCentavos ?? null,
+          ...paginationValues,
+        ];
     const itemRows = await this.database
       .prepare(itemSql)
       .bind(...itemValues)
@@ -150,7 +219,23 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
       categories: categoryRows.results.map(mapCategory),
       items: rows.map(mapSku),
       nextAfterId: hasNext ? (rows.at(-1)?.id ?? null) : null,
+      nextOffset: hasNext ? (query.offset ?? 0) + rows.length : null,
     };
+  }
+
+  async findPublicBySlug(slug: string): Promise<CatalogSku | null> {
+    const rows = await this.database
+      .prepare(
+        `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
+                s.image_url, s.current_price_centavos, s.active
+         FROM catalog_skus s
+         INNER JOIN catalog_categories c ON c.id = s.category_id
+         WHERE s.active = 1 AND c.active = 1 AND s.slug = ?
+         LIMIT 1`,
+      )
+      .bind(slug)
+      .all<CatalogSkuRow>();
+    return rows.results[0] ? mapSku(rows.results[0]) : null;
   }
 
   async findActiveByIds(skuIds: readonly string[]): Promise<readonly CatalogSku[]> {

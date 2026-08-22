@@ -16,11 +16,13 @@ export function PlanSelector({
   currentPlanId,
   mode,
   trialEligible = false,
+  onCompleted,
 }: Readonly<{
   plans: readonly PlanResponse["data"][];
   currentPlanId?: string;
   mode: "create" | "change";
   trialEligible?: boolean;
+  onCompleted?: () => void;
 }>) {
   const router = useRouter();
   const request = useRef<Readonly<{ planId: string; idempotencyKey: string }> | null>(null);
@@ -54,6 +56,7 @@ export function PlanSelector({
       }
       request.current = null;
       setSelectedPlanId(null);
+      onCompleted?.();
       router.refresh();
     } catch (error) {
       setMessage(

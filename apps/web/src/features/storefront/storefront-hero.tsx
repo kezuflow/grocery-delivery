@@ -12,7 +12,7 @@ export function StorefrontHero({
   banner: StorefrontData["banners"][number] | undefined;
   session: SessionSummary | null;
 }>) {
-  const customerDestination = session?.role === "customer" ? "/shop" : "#plans";
+  const customerDestination = "/shop";
 
   return (
     <section className="relative isolate min-h-[620px] overflow-hidden bg-deep text-white sm:min-h-[680px]">
@@ -50,8 +50,7 @@ export function StorefrontHero({
               size="lg"
               tone="accent"
             >
-              {banner?.ctaLabel ??
-                (session?.role === "customer" ? "Open the market" : "Explore plans")}
+              {banner?.ctaLabel ?? (session?.role === "customer" ? "Open the app" : "Go to app")}
               <ArrowRight aria-hidden="true" size={18} />
             </LinkButton>
             <LinkButton

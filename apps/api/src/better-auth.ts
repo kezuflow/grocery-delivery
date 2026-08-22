@@ -195,8 +195,41 @@ export function createConfiguredBetterAuthApi(
     async getSession(input) {
       const result = await auth.api.getSession(input);
       if (!result) return null;
-      const assignment = await identity.findRoleAssignment(result.user.id);
+      let assignment = await identity.findRoleAssignment(result.user.id);
       if (!assignment) return null;
+      const isBootstrapAdmin = configuration.adminBootstrapEmails.includes(
+        result.user.email?.trim().toLowerCase() ?? "",
+      );
+      if (
+        isBootstrapAdmin &&
+        (assignment.role !== "admin" ||
+          assignment.adminPermissions.length !== 1 ||
+          assignment.adminPermissions[0] !== "superadmin" ||
+          !assignment.mfaRequired)
+      ) {
+        const assignedAt = new Date().toISOString();
+        await identity.saveRoleAssignment(
+          {
+            userId: result.user.id,
+            role: "admin",
+            adminPermissions: ["superadmin"],
+            assignedAt,
+          },
+          null,
+          true,
+        );
+        await identity.saveAuditEvent({
+          id: `audit-bootstrap-reconcile-${result.user.id}`,
+          actorUserId: null,
+          action: "identity.admin-bootstrap-reconciled",
+          targetType: "user",
+          targetId: result.user.id,
+          occurredAt: assignedAt,
+          metadata: { email: result.user.email?.trim().toLowerCase() ?? "" },
+        });
+        assignment = await identity.findRoleAssignment(result.user.id);
+        if (!assignment) return null;
+      }
       return {
         session: { id: result.session.id, expiresAt: result.session.expiresAt },
         user: {

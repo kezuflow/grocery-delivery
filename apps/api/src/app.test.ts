@@ -4,6 +4,7 @@ import {
   apiErrorResponseSchema,
   cartResponseSchema,
   catalogListResponseSchema,
+  catalogItemResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
   deliveryAddressesResponseSchema,
@@ -376,6 +377,69 @@ describe("API worker", () => {
 
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ path: "/api/auth/ok" });
+  });
+
+  it("normalizes bodyless sign-out requests for Better Auth", async () => {
+    const authApp = createApi({
+      sink: () => undefined,
+      betterAuthApi: {
+        getSession: () => Promise.resolve(null),
+        handler: (request) =>
+          Promise.resolve(
+            Response.json({
+              contentType: request.headers.get("content-type"),
+              body: request.body ? "present" : "missing",
+            }),
+          ),
+      },
+    });
+
+    const response = await authApp.request("/api/auth/sign-out", { method: "POST" });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      contentType: "application/json",
+      body: "present",
+    });
+  });
+
+  it("revokes persistent sessions and clears auth cookies on local sign-out", async () => {
+    const calls: string[] = [];
+    const authApp = createApi({
+      identityRepository: {
+        revokeSession: (sessionId: string) => {
+          calls.push(`revoke:${sessionId}`);
+          return Promise.resolve();
+        },
+      } as never,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-local",
+              userId: "customer-local",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-local",
+              expiresAt: "2026-09-20T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+      sink: () => undefined,
+    });
+
+    const response = await authApp.request("/api/auth/sign-out", { method: "POST" });
+
+    expect(response.status).toBe(200);
+    expect(calls).toEqual(["revoke:session-local"]);
+    const cookies = response.headers.getSetCookie?.() ?? [];
+    expect(cookies).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("better-auth.session_token=; Max-Age=0"),
+        expect.stringContaining("carbon.session=; Max-Age=0"),
+      ]),
+    );
   });
 
   const app = createApi({
@@ -2365,6 +2429,33 @@ describe("API worker", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.items).toEqual([]);
+  });
+
+  it("applies server-owned catalog search, sort, and price bounds", async () => {
+    const response = await app.request(
+      "/api/v1/catalog?limit=20&search=rolled&sort=price-high&minPriceCentavos=10000",
+      undefined,
+      { APP_ENV: "test" },
+    );
+    const body = catalogListResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data.items.map((item) => item.id)).toEqual(["sku-oats"]);
+  });
+
+  it("returns a public catalog item by slug", async () => {
+    const response = await app.request("/api/v1/catalog/rolled-oats", undefined, {
+      APP_ENV: "test",
+    });
+    const body = catalogItemResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data.slug).toBe("rolled-oats");
+
+    const missing = await app.request("/api/v1/catalog/missing-item", undefined, {
+      APP_ENV: "test",
+    });
+    expect(missing.status).toBe(404);
   });
 
   it("requires an active session for protected routes", async () => {

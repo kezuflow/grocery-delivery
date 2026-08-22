@@ -3,6 +3,7 @@ import {
   cartResponseSchema,
   cartUpdateRequestSchema,
   catalogListResponseSchema,
+  catalogItemResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
@@ -72,6 +73,8 @@ import {
   type CartResponse,
   type CartUpdateRequest,
   type CatalogListResponse,
+  type CatalogItemResponse,
+  type CatalogSort,
   type CurrentSessionResponse,
   type DeliveryAddressInput,
   type DeliveryAddressResponse,
@@ -153,8 +156,37 @@ export function createApiClient(baseTransport: ApiTransport) {
     listPlans(): Promise<PlansListResponse> {
       return getJson(transport, "/api/v1/plans", plansListResponseSchema);
     },
-    listCatalog(limit = 12): Promise<CatalogListResponse> {
-      return getJson(transport, `/api/v1/catalog?limit=${limit}`, catalogListResponseSchema);
+    listCatalog(
+      options:
+        | number
+        | Readonly<{
+            limit?: number;
+            cursor?: string;
+            search?: string;
+            category?: string;
+            sort?: CatalogSort;
+            minPriceCentavos?: number;
+            maxPriceCentavos?: number;
+          }> = {},
+    ): Promise<CatalogListResponse> {
+      const query = typeof options === "number" ? { limit: options } : options;
+      const params = new URLSearchParams({ limit: String(query.limit ?? 20) });
+      if (query.cursor) params.set("cursor", query.cursor);
+      if (query.search) params.set("search", query.search);
+      if (query.category) params.set("category", query.category);
+      if (query.sort && query.sort !== "popular") params.set("sort", query.sort);
+      if (query.minPriceCentavos !== undefined)
+        params.set("minPriceCentavos", String(query.minPriceCentavos));
+      if (query.maxPriceCentavos !== undefined)
+        params.set("maxPriceCentavos", String(query.maxPriceCentavos));
+      return getJson(transport, `/api/v1/catalog?${params}`, catalogListResponseSchema);
+    },
+    getCatalogItem(slug: string): Promise<CatalogItemResponse> {
+      return getJson(
+        transport,
+        `/api/v1/catalog/${encodeURIComponent(slug)}`,
+        catalogItemResponseSchema,
+      );
     },
     getActivePromotionBanners(
       placement: "home-hero" | "storefront-strip" | "account-banner",

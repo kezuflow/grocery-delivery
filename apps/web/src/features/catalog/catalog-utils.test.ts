@@ -6,6 +6,7 @@ import {
   cartDraftFromResponse,
   filterCatalogItems,
   parseCatalogFilters,
+  parseCatalogQuery,
   setCartQuantity,
   toCartUpdateLines,
 } from "./catalog-utils";
@@ -41,6 +42,14 @@ const items = [
 ] as const;
 
 describe("catalog filters", () => {
+  it("normalizes server-owned search, sort, and price query values", () => {
+    expect(parseCatalogQuery({ search: " apples ", sort: "price-high", minPrice: "100" })).toEqual({
+      search: "apples",
+      category: "",
+      sort: "price-high",
+      minPriceCentavos: 10000,
+    });
+  });
   it("normalizes URL values and filters by category and search", () => {
     const filters = parseCatalogFilters({ search: "  tomatoes ", category: "FRESH-PRODUCE" });
     expect(filters).toEqual({ search: "tomatoes", category: "fresh-produce" });

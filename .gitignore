@@ -9,6 +9,7 @@ node_modules/
 *.tsbuildinfo
 coverage/
 dist/
+test-results/
 
 # Cloudflare local state
 .dev.vars

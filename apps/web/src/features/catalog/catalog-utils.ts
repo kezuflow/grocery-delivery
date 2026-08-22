@@ -2,12 +2,39 @@ import type { CartResponse, CatalogCategoryResponse, CatalogSkuResponse } from "
 
 export type CatalogFilters = Readonly<{ search: string; category: string }>;
 export type CatalogSearchParams = Readonly<Record<string, string | string[] | undefined>>;
+export type CatalogQueryOptions = CatalogFilters &
+  Readonly<{
+    sort: "popular" | "name" | "price-low" | "price-high";
+    minPriceCentavos?: number;
+    maxPriceCentavos?: number;
+    cursor?: string;
+  }>;
 export type CartDraftLine = Readonly<{ skuId: string; quantity: number }>;
 
 export function parseCatalogFilters(params: CatalogSearchParams): CatalogFilters {
   return {
     search: firstValue(params.search).trim(),
     category: firstValue(params.category).trim().toLowerCase(),
+  };
+}
+
+export function parseCatalogQuery(params: CatalogSearchParams): CatalogQueryOptions {
+  const filters = parseCatalogFilters(params);
+  const sort = firstValue(params.sort);
+  const minPriceValue = firstValue(params.minPrice);
+  const maxPriceValue = firstValue(params.maxPrice);
+  const minPrice = Number(minPriceValue);
+  const maxPrice = Number(maxPriceValue);
+  return {
+    ...filters,
+    sort: sort === "name" || sort === "price-low" || sort === "price-high" ? sort : "popular",
+    ...(minPriceValue && Number.isSafeInteger(minPrice) && minPrice >= 0
+      ? { minPriceCentavos: minPrice * 100 }
+      : {}),
+    ...(maxPriceValue && Number.isSafeInteger(maxPrice) && maxPrice >= 0
+      ? { maxPriceCentavos: maxPrice * 100 }
+      : {}),
+    ...(firstValue(params.cursor) ? { cursor: firstValue(params.cursor) } : {}),
   };
 }
 

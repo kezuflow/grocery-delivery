@@ -2,6 +2,7 @@ import {
   createPersistentSessionResolver,
   createBetterAuthSessionResolver,
   resolveActiveSession,
+  SESSION_COOKIE_NAMES,
   toSessionSummary,
   type BetterAuthApi,
   type SessionResolver,
@@ -39,11 +40,14 @@ import {
 } from "@carbon/config";
 import {
   catalogListResponseSchema,
+  catalogItemResponseSchema,
+  catalogQuerySchema,
   cartResponseSchema,
   cartUpdateRequestSchema,
   type ApiErrorResponse,
   type CartResponse,
   type CatalogListResponse,
+  type CatalogItemResponse,
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
@@ -502,6 +506,34 @@ export function createApi(options: ApiOptions = {}): ApiApp {
 
   app.all("/api/auth/*", async (context) => {
     if (!options.betterAuthApi?.handler) {
+      const request = context.req.raw;
+      if (request.method === "POST" && context.req.path === "/api/auth/sign-out") {
+        const bindings: ApiBindings = context.env ?? {};
+        const resolver =
+          options.sessionResolver ??
+          (bindings.DB
+            ? createPersistentSessionResolver(new D1IdentityRepository(bindings.DB))
+            : null);
+        const session = resolver ? await resolver.resolve(request) : null;
+        const repository =
+          options.identityRepository ??
+          (bindings.DB ? new D1IdentityRepository(bindings.DB) : undefined);
+        if (session && repository) {
+          await repository.revokeSession(session.id, now().toISOString());
+        }
+
+        const environment = parseRuntimeEnvironment(bindings.APP_ENV);
+        for (const name of SESSION_COOKIE_NAMES) {
+          context.header(
+            "set-cookie",
+            `${name}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${
+              environment === "staging" || environment === "production" ? "; Secure" : ""
+            }`,
+            { append: true },
+          );
+        }
+        return context.json({ data: { signedOut: true } }, 200);
+      }
       return context.json(
         errorResponse(
           "AUTH_UNAVAILABLE",
@@ -511,7 +543,16 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         503,
       );
     }
-    return options.betterAuthApi.handler(context.req.raw);
+    const request = context.req.raw;
+    if (request.method === "POST" && context.req.path === "/api/auth/sign-out") {
+      const headers = new Headers(request.headers);
+      headers.set("content-type", "application/json");
+      headers.delete("content-length");
+      return options.betterAuthApi.handler(
+        new Request(request.url, { method: "POST", headers, body: "{}" }),
+      );
+    }
+    return options.betterAuthApi.handler(request);
   });
 
   app.use("/api/v1/*", async (context, next) => {
@@ -5271,11 +5312,37 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   app.get("/api/v1/catalog", async (context) => {
     const limitValue = context.req.query("limit");
     const limit = limitValue ? Number(limitValue) : 20;
-    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    const sortValue = context.req.query("sort") || "popular";
+    const minPriceValue = context.req.query("minPriceCentavos");
+    const maxPriceValue = context.req.query("maxPriceCentavos");
+    const minPriceCentavos = minPriceValue === undefined ? undefined : Number(minPriceValue);
+    const maxPriceCentavos = maxPriceValue === undefined ? undefined : Number(maxPriceValue);
+    const query = catalogQuerySchema.safeParse({
+      ...(context.req.query("search") !== undefined ? { search: context.req.query("search") } : {}),
+      ...(context.req.query("category") !== undefined
+        ? { category: context.req.query("category") }
+        : {}),
+      sort: sortValue,
+      ...(minPriceValue !== undefined ? { minPriceCentavos } : {}),
+      ...(maxPriceValue !== undefined ? { maxPriceCentavos } : {}),
+      ...(context.req.query("cursor") ? { cursor: context.req.query("cursor") } : {}),
+      limit,
+    });
+    if (
+      !query.success ||
+      (query.data.minPriceCentavos !== undefined &&
+        !Number.isSafeInteger(query.data.minPriceCentavos)) ||
+      (query.data.maxPriceCentavos !== undefined &&
+        !Number.isSafeInteger(query.data.maxPriceCentavos))
+    ) {
       return context.json(
         errorResponse(
-          "INVALID_CATALOG_PAGINATION",
-          "limit must be an integer from 1 to 100",
+          limitValue !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 100)
+            ? "INVALID_CATALOG_PAGINATION"
+            : "INVALID_CATALOG_QUERY",
+          limitValue !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 100)
+            ? "limit must be an integer from 1 to 100"
+            : "catalog query parameters are invalid",
           context.get("correlationId"),
         ),
         400,
@@ -5283,8 +5350,9 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }
 
     const cursor = context.req.query("cursor");
-    const afterId = cursor ? decodeCursor(cursor) : undefined;
-    if (cursor && !afterId) {
+    const offsetValue = cursor ? decodeCursor(cursor) : undefined;
+    const offset = offsetValue === undefined ? undefined : Number(offsetValue);
+    if (cursor && (offset === undefined || !Number.isSafeInteger(offset) || offset < 0)) {
       return context.json(
         errorResponse("INVALID_CATALOG_CURSOR", "cursor is invalid", context.get("correlationId")),
         400,
@@ -5295,17 +5363,24 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const catalogReader =
       options.catalogReader ??
       (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
-    const categorySlug = context.req.query("category");
     const page = await catalogReader.listPublic({
-      ...(afterId ? { afterId } : {}),
-      ...(categorySlug ? { categorySlug } : {}),
-      limit,
+      ...(offset !== undefined ? { offset } : {}),
+      ...(query.data.category ? { categorySlug: query.data.category } : {}),
+      ...(query.data.search ? { search: query.data.search } : {}),
+      ...(query.data.sort ? { sort: query.data.sort } : {}),
+      ...(query.data.minPriceCentavos !== undefined
+        ? { minPriceCentavos: query.data.minPriceCentavos }
+        : {}),
+      ...(query.data.maxPriceCentavos !== undefined
+        ? { maxPriceCentavos: query.data.maxPriceCentavos }
+        : {}),
+      limit: query.data.limit,
     });
     const body: CatalogListResponse = {
       data: {
         categories: [...page.categories],
         items: [...page.items],
-        nextCursor: page.nextAfterId ? encodeCursor(page.nextAfterId) : null,
+        nextCursor: page.nextOffset !== null ? encodeCursor(String(page.nextOffset)) : null,
       },
       meta: { correlationId: context.get("correlationId") },
     };
@@ -5320,6 +5395,32 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     if (context.req.header("if-none-match") === etag) {
       return context.body(null, 304);
     }
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/catalog/:slug", async (context) => {
+    const slug = context.req.param("slug");
+    const bindings: ApiBindings = context.env ?? {};
+    const catalogReader =
+      options.catalogReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    const item = await catalogReader.findPublicBySlug(slug);
+    if (!item) {
+      return context.json(
+        errorResponse(
+          "CATALOG_ITEM_NOT_FOUND",
+          "catalog item was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const body: CatalogItemResponse = {
+      data: item,
+      meta: { correlationId: context.get("correlationId") },
+    };
+    catalogItemResponseSchema.parse(body);
+    context.header("cache-control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
     return context.json(body, 200);
   });
 

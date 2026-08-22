@@ -13,6 +13,7 @@ export function CartSummary({
   onQuantityChange,
   onSave,
   pending,
+  canEdit,
 }: Readonly<{
   cart: CartResponse["data"];
   catalog: readonly CatalogSkuResponse[];
@@ -21,6 +22,7 @@ export function CartSummary({
   onQuantityChange: (skuId: string, quantity: number) => void;
   onSave: () => void;
   pending: boolean;
+  canEdit: boolean;
 }>) {
   const names = new Map(catalog.map((item) => [item.id, item.name]));
   const hasUnsavedChanges = cartDraftHasChanged(lines, cart);
@@ -70,12 +72,21 @@ export function CartSummary({
           The subtotal reflects the last server-confirmed cart. Save changes to refresh prices and
           totals.
         </p>
-        <Button disabled={!hasUnsavedChanges} loading={pending} onClick={onSave} type="button">
+        <Button
+          disabled={!canEdit || !hasUnsavedChanges}
+          loading={pending}
+          onClick={onSave}
+          type="button"
+        >
           Save cart changes
         </Button>
-        <LinkButton href="/account/cart" size="sm" tone="secondary">
-          Review cart
-        </LinkButton>
+        {canEdit ? (
+          <LinkButton href="/account/cart" size="sm" tone="secondary">
+            Review cart
+          </LinkButton>
+        ) : (
+          <p className="text-xs leading-5 text-muted">Sign in before adding items to your cart.</p>
+        )}
         {message ? (
           <p className="text-sm text-muted" role="status">
             {message}

@@ -2,13 +2,9 @@ import { Check } from "lucide-react";
 
 import { EmptyState, ErrorState, LinkButton } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
-import type { SessionSummary } from "../../lib/permissions";
 import type { StorefrontData } from "../../lib/storefront";
 
-export function StorefrontPlans({
-  storefront,
-  session,
-}: Readonly<{ storefront: StorefrontData; session: SessionSummary | null }>) {
+export function StorefrontPlans({ storefront }: Readonly<{ storefront: StorefrontData }>) {
   return (
     <section className="bg-deep py-20 text-white sm:py-24" id="plans">
       <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
@@ -62,12 +58,8 @@ export function StorefrontPlans({
                     Activate a one-calendar-month free trial once.
                   </li>
                 </ul>
-                <LinkButton
-                  className="mt-auto"
-                  href={session?.role === "customer" ? "/account" : "#join"}
-                  tone="secondary"
-                >
-                  {session?.role === "customer" ? "Manage this plan" : "Start free for one month"}
+                <LinkButton className="mt-auto" href="/shop" tone="secondary">
+                  Go to app
                 </LinkButton>
               </article>
             ))}

@@ -1,7 +1,8 @@
 import { PublicShell } from "../../components/layout";
+import { ArrowRight } from "lucide-react";
+import { LinkButton } from "../../components/ui";
 import type { SessionSummary } from "../../lib/permissions";
 import type { StorefrontData } from "../../lib/storefront";
-import { PublicAuthControls } from "../auth";
 import { StorefrontBenefits } from "./storefront-benefits";
 import { StorefrontCatalog } from "./storefront-catalog";
 import { StorefrontFooter } from "./storefront-footer";
@@ -13,15 +14,18 @@ import { StorefrontTrial } from "./storefront-trial";
 export function StorefrontContent({
   storefront,
   session,
-  sessionError,
 }: Readonly<{
   storefront: StorefrontData;
   session: SessionSummary | null;
-  sessionError: string | null;
 }>) {
   return (
     <PublicShell
-      actions={<PublicAuthControls session={session} />}
+      actions={
+        <LinkButton href="/shop" size="sm">
+          Go to app
+          <ArrowRight aria-hidden="true" size={16} />
+        </LinkButton>
+      }
       navigation={[
         { href: "#market", label: "Market" },
         { href: "#how-it-works", label: "How it works" },
@@ -29,33 +33,22 @@ export function StorefrontContent({
       ]}
     >
       <StorefrontHero banner={storefront.banners[0]} session={session} />
-      <SessionNotice error={sessionError} session={session} />
       <StorefrontBenefits />
-      <StorefrontCatalog session={session} storefront={storefront} />
+      <StorefrontCatalog storefront={storefront} />
       <StorefrontProcess />
-      <StorefrontPlans session={session} storefront={storefront} />
+      <StorefrontPlans storefront={storefront} />
       <StorefrontTrial session={session} />
       <StorefrontFooter />
     </PublicShell>
   );
 }
 
-function SessionNotice({
-  error,
-  session,
-}: Readonly<{ error: string | null; session: SessionSummary | null }>) {
-  if (!error && !session) return null;
-
-  return (
-    <div
-      className={
-        error
-          ? "border-b border-red-200 bg-red-50 px-5 py-3 text-center text-sm font-bold text-danger"
-          : "border-b border-[#d8ad42] bg-sun px-5 py-3 text-center text-sm font-bold text-ink"
-      }
-      role="status"
-    >
-      {error ?? `Your ${session?.role ?? "customer"} session is active.`}
-    </div>
-  );
+export function getSessionErrorMessage(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  if (typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return "We could not verify your session. Please try again shortly.";
 }

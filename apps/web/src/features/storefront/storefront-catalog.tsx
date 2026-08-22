@@ -2,14 +2,10 @@ import { ArrowRight, Carrot, PackageOpen } from "lucide-react";
 
 import { EmptyState, LinkButton } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
-import type { SessionSummary } from "../../lib/permissions";
 import type { StorefrontData } from "../../lib/storefront";
 
-export function StorefrontCatalog({
-  storefront,
-  session,
-}: Readonly<{ storefront: StorefrontData; session: SessionSummary | null }>) {
-  const destination = session?.role === "customer" ? "/shop" : "#join";
+export function StorefrontCatalog({ storefront }: Readonly<{ storefront: StorefrontData }>) {
+  const destination = "/shop";
 
   return (
     <section className="bg-paper py-20 sm:py-24" id="market">

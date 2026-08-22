@@ -24,6 +24,7 @@ export type BetterAuthSessionResult = Readonly<{
   }>;
   user: Readonly<{
     id: string;
+    email?: string;
     role?: Role;
     adminPermissions?: readonly AdminPermission[];
     customerId?: string | null;

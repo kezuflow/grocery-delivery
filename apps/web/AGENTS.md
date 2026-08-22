@@ -24,6 +24,8 @@ Before changing frontend structure or styling, read `../../docs/frontend-standar
 - Keep Tailwind classes local when they describe one-off layout; extract repeated visual behavior.
 - Preserve server ownership of prices, totals, roles, permissions, statuses, and availability.
 - Include responsive, keyboard, focus, loading, empty, error, disabled, and success states.
-- Run the relevant Playwright role, responsive, accessibility, and visual checks in every vertical
-  slice that changes a user workflow. Continue focused unit/component checks, production builds,
-  and the repository `pnpm check` for every slice.
+- Run the relevant local Playwright role, responsive, accessibility, and visual checks in every
+  vertical slice that changes a user workflow. Continue focused unit/component checks, local web
+  builds, and the repository `pnpm check` for every slice.
+- Use local API/D1 data and deterministic fixtures while iterating. Do not require or invoke a
+  deployed staging workflow unless the user explicitly starts a staging phase.

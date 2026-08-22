@@ -1,8 +1,12 @@
 # Contributing
 
 Read `docs/project-guidance.md` before making cross-cutting changes. It indexes the authoritative
-architecture, backlog, audit, skill references, standards, and runbooks and defines the required
-evidence for a complete vertical slice.
+architecture, backlog, audit, and standards and defines the local-first evidence for a complete
+development slice.
+
+Local implementation and verification are the default. Do not deploy, publish remote data, commit,
+or push unless the user explicitly requests that action. Existing release tooling is retained for a
+later promotion phase.
 
 ## Git Workflow
 
@@ -106,6 +110,7 @@ Allowed branch types are the same as commit types, with `hotfix` and `release` a
 ## Pull Requests
 
 - Explain the behavior change and operational impact.
-- Include migration, rollout, rollback, and observability notes when relevant.
+- Include local migration and observability notes when relevant. Add rollout and rollback notes only
+  when the change is being promoted to a remote environment.
 - Add tests at the narrowest useful layer.
 - Do not include credentials, customer data, payment data, or generated build output.

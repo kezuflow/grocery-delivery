@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { getAuthErrorMessage } from "../../lib/auth-error";
+
 export function ResetPasswordForm({ token }: Readonly<{ token: string | null }>) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -29,12 +31,11 @@ export function ResetPasswordForm({ token }: Readonly<{ token: string | null }>)
             body: JSON.stringify({ token, newPassword: form.get("password") }),
           });
           if (!response.ok) {
-            const payload = (await response.json().catch(() => null)) as {
-              message?: string;
-              error?: string;
-            } | null;
             setMessage(
-              payload?.message ?? payload?.error ?? "The reset link is invalid or expired.",
+              getAuthErrorMessage(
+                await response.json().catch(() => null),
+                "The reset link is invalid or expired.",
+              ),
             );
             setPending(false);
             return;

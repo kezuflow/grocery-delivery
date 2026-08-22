@@ -31,7 +31,9 @@
     "typecheck": "turbo run typecheck",
     "check": "pnpm guidance:check && pnpm format:check && turbo run lint typecheck test",
     "generate:openapi": "node --experimental-strip-types scripts/generate-openapi.mjs",
-    "rehearsal:check": "node scripts/rehearsal.mjs"
+    "rehearsal:check": "node scripts/rehearsal.mjs",
+    "marketplace:publish:staging": "node scripts/run-vite-node.mjs scripts/marketplace/publish-staging-carbon-market-catalog-v1.ts --staging",
+    "marketplace:publish:local": "node scripts/run-vite-node.mjs scripts/marketplace/publish-staging-carbon-market-catalog-v1.ts --local"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

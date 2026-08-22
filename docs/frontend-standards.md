@@ -21,30 +21,26 @@ and server endpoint. Refactor connected behavior into the modular structure; do 
 API layer, parallel DTOs, mock business rules, or replacement authentication flow. A visual redesign
 must preserve working behavior unless the slice explicitly changes a product requirement.
 
-## Design Reference Baseline
+## Design Reference Workflow
 
-Use the following references consistently when auditing or building frontend slices. They define
-visual direction and interaction patterns only; repository contracts, authorization, domain rules,
-and server-owned values remain authoritative for product behavior.
+Use the Mobbin MCP search tools to inspect the target product flow or screen immediately before
+building a frontend slice. Mobbin references define visual direction and interaction patterns only;
+repository contracts, authorization, domain rules, and server-owned values remain authoritative for
+product behavior. Do not commit screenshots, exported design files, copied template assets, or local
+reference paths to this repository.
 
-| Surface | Primary reference | Usage |
-| ------- | ----------------- | ----- |
-| Customer mobile experience | [Figma mobile UI](https://www.figma.com/design/h7jAYr1rVKvT2jkggzS88j/Main-File?node-id=0-1) | Customer onboarding, authentication, categories, search, product detail, cart, checkout, addresses, payments, orders, tracking, account, support, and privacy patterns at the 375 by 812 reference viewport. |
-| Shared customer visual language | [Figma style guide](https://www.figma.com/design/h7jAYr1rVKvT2jkggzS88j/Main-File?node-id=51-12484) | Color roles, Satoshi typography, type scale, component density, control sizing, spacing, and interaction states. Map these into Carbon semantic tokens and primitives rather than scattering literal values through features. |
-| Public landing and desktop marketplace | `E:/grocery/web/Hatbazar/index.html` and `E:/grocery/web/Hatbazar/shop.html` | Reference the information hierarchy, grocery merchandising, category/search navigation, product-grid density, promotional sections, and desktop composition. Do not copy template scripts, vendor assumptions, fake prices, or inaccessible markup. |
-| Admin console | Existing Carbon admin routes, layout primitives, and permission-scoped workflows | Use a conventional responsive operations dashboard: clear navigation, metrics, tables, filters, forms, alerts, confirmations, audit context, and role-aware states. It does not need to imitate the customer-mobile Figma composition. |
-| Delivery console | Existing Carbon delivery routes, PWA shell, and offline workflow | Use a conventional task-focused delivery dashboard optimized for phone use, route order, large actions, minimum customer data, connectivity state, offline queueing, conflicts, and proof capture. |
+| Surface                                | Primary reference                                                                | Usage                                                                                                                                                                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer mobile experience             | Mobbin MCP screen and flow search                                                | Inspect the relevant customer journey at the target phone viewport. Capture only the interaction decisions in code; do not add Mobbin exports to the repository.                                                             |
+| Shared customer visual language        | Mobbin MCP screen search plus Carbon tokens                                      | Reconcile typography, color, spacing, density, controls, and states through the existing semantic tokens and primitives.                                                                                                     |
+| Public landing and desktop marketplace | Mobbin MCP web screen and section search                                         | Use real commerce patterns for hierarchy, discovery, merchandising, and responsive behavior. Do not copy scripts, vendor assumptions, fake prices, or inaccessible markup.                                                   |
+| Admin console                          | Existing Carbon admin routes, layout primitives, and permission-scoped workflows | Use a conventional responsive operations dashboard: clear navigation, metrics, tables, filters, forms, alerts, confirmations, audit context, and role-aware states. It does not need to imitate consumer-mobile composition. |
+| Delivery console                       | Existing Carbon delivery routes, PWA shell, and offline workflow                 | Use a conventional task-focused delivery dashboard optimized for phone use, route order, large actions, minimum customer data, connectivity state, offline queueing, conflicts, and proof capture.                           |
 
-Useful customer-mobile frame IDs include `26:421` for categories, `25:685` for search, `48:840`
-for product detail, `3:589` for checkout, `3:893` for orders, `3:942` for tracking, and `35:696`
-for account settings. Read the target frame through the Figma integration before implementing that
-journey; do not infer a screen from the page-level overview alone.
-
-When references differ, preserve the Carbon product contract first, use the Figma customer patterns
-for phone behavior, use Hatbazar for public and desktop merchandising composition, and resolve the
-result through the existing semantic-token and component layers. Admin and delivery surfaces should
-remain operationally dense, accessible, and role-specific rather than being styled as consumer
-storefront pages.
+When references differ, preserve the Carbon product contract first, use the Mobbin result for the
+target platform's behavior and composition, and resolve the result through the existing semantic
+token and component layers. Admin and delivery surfaces should remain operationally dense,
+accessible, and role-specific rather than being styled as consumer storefront pages.
 
 ## Dependency Direction
 
@@ -147,7 +143,8 @@ component with many boolean props.
   and the repository `pnpm check`.
 - Perform practical responsive checks while building and run the relevant cross-role Playwright,
   accessibility, and visual checks before the slice is complete.
-- Verify both deterministic local fixture behavior and the deployed staging workflow.
+- Verify deterministic local fixture behavior and the complete local browser workflow. Deployed
+  staging verification begins only when the user explicitly starts a promotion phase.
 - Do not replace missing server-backed behavior with placeholders; record it as a contract gap and
   complete the backend and frontend together in the same slice.
 

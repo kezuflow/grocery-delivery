@@ -49,8 +49,8 @@ business rules.
 
 The current screens are placeholders and the existing styling is one global CSS layer. Adopting
 Tailwind now is sound because it avoids preserving a styling system that has not yet become a
-product contract. `E:\grocery\web` is a visual reference only; its Bootstrap, jQuery, and
-template CSS/JavaScript should not be copied into this Next.js application.
+product contract. External design references are visual guidance only; their framework code,
+scripts, and template CSS/JavaScript should not be copied into this Next.js application.
 
 ### Application
 
@@ -201,7 +201,7 @@ overflow; guard and navigation tests cover missing session, wrong role, and miss
 ### FE-004: Public landing page
 
 Redesign the existing `/` experience around its server-owned storefront banners, plans, catalog
-preview, session state, and authentication controls. Use Figma and `E:\grocery\web` for visual
+preview, session state, and authentication controls. Use the Mobbin MCP references for visual
 direction only. Include accessible navigation, hero, value proposition, plans, catalog preview,
 account calls to action, footer/legal links, image loading, alt text, and empty/error states.
 
@@ -428,8 +428,8 @@ Finish the public landing page as the customer-facing grocery storefront rather 
 content outline. Preserve the existing server-owned banner, plan, catalog, and session reads while
 adding a strong commerce hierarchy, useful category discovery, trial messaging, delivery/value
 proof, and a complete responsive footer. Use purposeful optimized Unsplash imagery for the hero and
-supporting sections while ImageGen is unavailable; the `E:\grocery\web` template remains a structure
-and density reference only.
+supporting sections while ImageGen is unavailable; external templates remain structure and density
+references only.
 
 Keep each major section in a focused storefront module. The route remains responsible only for
 parallel server reads and composition. Static marketing copy must not introduce prices, delivery

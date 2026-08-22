@@ -40,4 +40,28 @@ describe("web API runtime transport", () => {
 
     expect(response.headers.get("set-cookie")).toContain("better-auth.session_token=secret");
   });
+
+  it("forwards a JSON sign-out request body", async () => {
+    const fetchImplementation = vi.fn<typeof fetch>((input, init) => {
+      const inputUrl =
+        input instanceof URL ? input : input instanceof Request ? input.url : new URL(input);
+      expect(new URL(inputUrl).pathname).toBe("/api/auth/sign-out");
+      expect(new Headers(init?.headers).get("content-type")).toBe("application/json");
+      expect(init?.body).toBeInstanceOf(ArrayBuffer);
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
+
+    const request = new Request("https://web.example/api/auth/sign-out", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    const response = await forwardApiRequest(
+      request,
+      createHttpApiTransport("https://api.example", fetchImplementation),
+      "/api/auth/sign-out",
+    );
+
+    expect(response.status).toBe(200);
+  });
 });

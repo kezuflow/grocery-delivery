@@ -18,13 +18,15 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 ## Working Rules
 
 - Read `docs/project-guidance.md` when planning or reviewing repository-wide work. It defines the
-  source-of-truth hierarchy, change classifications, required slice dossier, cross-cutting policies,
-  and guidance coverage matrix.
-- Use the repository skill at `.codex/skills/carbon-vertical-slice/SKILL.md` for feature work,
-  audits, refactors, performance work, and release decisions. Load only the concern references
-  relevant to the task. The skill supplements these instructions; it does not replace the
-  canonical backlog or architecture documents.
-- Work directly on `main`; completed work is committed and pushed to `origin/main`.
+  source-of-truth hierarchy, local-first change classifications, and verification expectations.
+- Local development is the default phase. Implement and iterate against local Workers, local D1,
+  deterministic fixtures, and local browser sessions.
+- Do not deploy, publish remote fixture data, run staging rehearsals, provision remote resources,
+  commit, or push unless the user explicitly requests that action in the current conversation.
+- Staging and production are later promotion phases. Their existing scripts, configuration, and
+  historical records remain available, but they are not prerequisites for completing local work.
+- Work on the current branch and preserve the user's working tree. Do not create or switch branches
+  unless explicitly requested.
 - Preserve unrelated user changes. Do not reset, checkout, or discard work without an
   explicit request.
 - Use conventional commits with a kebab-case scope, for example:
@@ -39,10 +41,8 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 - Use ASCII by default and `apply_patch` for manual edits.
 - Keep admin-configurable values configurable. Do not encode current plan prices or other
   operational settings as domain invariants unless the requirement explicitly calls for it.
-- Before committing a completed slice, update `docs/implementation-backlog.md` with the slice's
-  completion record and resume point. Stage that handoff update together with the implementation
-  so each slice lands as one clean conventional commit; do not create a separate documentation
-  commit afterward.
+- Update `docs/implementation-backlog.md` when active scope, local completion evidence, or the resume
+  point changes. A local slice may be complete without a commit, push, deployment, or staging proof.
 
 ## Data And API Rules
 
@@ -61,7 +61,7 @@ import Hono, Cloudflare bindings, D1 APIs, frontend frameworks, or payment SDKs.
 ## Verification
 
 Run pnpm commands serially because concurrent installs or package operations can corrupt
-Windows workspace links. Before committing a slice, run the narrowest relevant checks, then:
+Windows workspace links. For a completed local slice, run the narrowest relevant checks, then:
 
 ```text
 pnpm check
@@ -71,15 +71,13 @@ pnpm check
 update focused tests with every behavior change, including invalid input, authorization,
 idempotency, persistence, and server-side price resolution where applicable.
 
-Each completed vertical slice must also record the end-to-end trace, local versus staging
-evidence, request/latency impact, observability signals, rollout, and rollback target. A passing
-check without required staging or workflow evidence is `unverified`, not complete.
+Each completed local slice must record the end-to-end trace, local fixture/browser evidence, and
+relevant request, latency, persistence, and observability impact. Missing staging or production
+evidence does not block local completion; record it only when the user starts a promotion phase.
 
 ## Delivery
 
-Before pushing, inspect `git status`, `git diff --check`, and the staged diff. Push only the
-intentional slice to `origin main`:
-
-```text
-git -c safe.directory=E:/GithubProjects/carbon-food-delivery push origin main
-```
+The default handoff is an uncommitted, locally verified working tree. When the user explicitly asks
+for a commit, inspect `git status`, `git diff --check`, and the staged diff before committing. When
+the user explicitly asks for a push or deployment, perform that separately and report the exact
+target and evidence.

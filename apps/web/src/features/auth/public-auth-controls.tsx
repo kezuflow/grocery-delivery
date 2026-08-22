@@ -6,20 +6,42 @@ import { useState } from "react";
 
 import { SignOutButton } from "../../components/layout";
 import { Button, Dialog, Input, LinkButton } from "../../components/ui";
+import { getAuthErrorMessage } from "../../lib/auth-error";
 import type { SessionSummary } from "../../lib/permissions";
 import { getRoleHome } from "../../lib/permissions";
 
 type AuthMode = "sign-in" | "sign-up" | "forgot-password";
 
+type PublicAuthControlsProps = Readonly<{
+  session: SessionSummary | null;
+  inverse?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onAuthenticated?: (role: SessionSummary["role"]) => void;
+  showTriggers?: boolean;
+  redirectAfterAuth?: string | false;
+}>;
+
 export function PublicAuthControls({
   session,
   inverse = false,
-}: Readonly<{ session: SessionSummary | null; inverse?: boolean }>) {
+  open: controlledOpen,
+  onOpenChange,
+  onAuthenticated,
+  showTriggers = true,
+  redirectAfterAuth,
+}: PublicAuthControlsProps) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("sign-in");
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+
+  function setDialogOpen(nextOpen: boolean) {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  }
 
   if (session) {
     return (
@@ -35,7 +57,7 @@ export function PublicAuthControls({
   function chooseMode(nextMode: AuthMode) {
     setMode(nextMode);
     setMessage(null);
-    setOpen(true);
+    setDialogOpen(true);
   }
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
@@ -73,43 +95,53 @@ export function PublicAuthControls({
       }),
     });
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as {
-        message?: string;
-        error?: string;
-      } | null;
-      setMessage(payload?.message ?? payload?.error ?? "Authentication failed.");
+      setMessage(
+        getAuthErrorMessage(await response.json().catch(() => null), "Authentication failed."),
+      );
       setPending(false);
       return;
     }
-    setOpen(false);
-    router.replace("/shop");
+    const sessionResponse = await fetch("/api/v1/me", { cache: "no-store" });
+    const sessionPayload = (await sessionResponse.json().catch(() => null)) as {
+      data?: { role?: SessionSummary["role"] };
+    } | null;
+    setDialogOpen(false);
+    if (sessionPayload?.data?.role) onAuthenticated?.(sessionPayload.data.role);
+    const destination =
+      redirectAfterAuth === false
+        ? null
+        : (redirectAfterAuth ??
+          (sessionPayload?.data?.role ? getRoleHome(sessionPayload.data.role) : "/"));
+    if (destination) router.replace(destination);
     router.refresh();
   }
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        <Button
-          className={inverse ? "text-white hover:bg-white/10 hover:text-white" : undefined}
-          onClick={() => chooseMode("sign-in")}
-          size="sm"
-          tone="ghost"
-          type="button"
-        >
-          Sign in
-        </Button>
-        <Button
-          onClick={() => chooseMode("sign-up")}
-          size="sm"
-          tone={inverse ? "accent" : "primary"}
-          type="button"
-        >
-          Join Carbon
-        </Button>
-      </div>
+      {showTriggers ? (
+        <div className="flex items-center gap-2">
+          <Button
+            className={inverse ? "text-white hover:bg-white/10 hover:text-white" : undefined}
+            onClick={() => chooseMode("sign-in")}
+            size="sm"
+            tone="ghost"
+            type="button"
+          >
+            Sign in
+          </Button>
+          <Button
+            onClick={() => chooseMode("sign-up")}
+            size="sm"
+            tone={inverse ? "accent" : "primary"}
+            type="button"
+          >
+            Join Carbon
+          </Button>
+        </div>
+      ) : null}
       <Dialog
         description="Use your email to access your weekly shop."
-        onClose={() => setOpen(false)}
+        onClose={() => setDialogOpen(false)}
         open={open}
         title={getDialogTitle(mode)}
       >

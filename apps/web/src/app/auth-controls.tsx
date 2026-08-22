@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { getAuthErrorMessage } from "../lib/auth-error";
+import { getRoleHome, type UserRole } from "../lib/permissions";
+
 type AuthMode = "sign-in" | "sign-up" | "forgot-password";
 
 export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
@@ -21,7 +24,11 @@ export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
             void (async () => {
               setPending(true);
               setMessage(null);
-              const response = await fetch("/api/auth/sign-out", { method: "POST" });
+              const response = await fetch("/api/auth/sign-out", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: "{}",
+              });
               if (!response.ok) {
                 setMessage("We could not sign you out. Please try again.");
                 setPending(false);
@@ -82,15 +89,22 @@ export function AuthControls({ signedIn }: Readonly<{ signedIn: boolean }>) {
               }),
             });
             if (!response.ok) {
-              const payload = (await response.json().catch(() => null)) as {
-                message?: string;
-                error?: string;
-              } | null;
-              setMessage(payload?.message ?? payload?.error ?? "Authentication failed.");
+              setMessage(
+                getAuthErrorMessage(
+                  await response.json().catch(() => null),
+                  "Authentication failed.",
+                ),
+              );
               setPending(false);
               return;
             }
-            router.replace("/shop");
+            const sessionResponse = await fetch("/api/v1/me", { cache: "no-store" });
+            const sessionPayload = (await sessionResponse.json().catch(() => null)) as {
+              data?: { role?: UserRole };
+            } | null;
+            router.replace(
+              sessionPayload?.data?.role ? getRoleHome(sessionPayload.data.role) : "/",
+            );
             router.refresh();
           })();
         }}

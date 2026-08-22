@@ -4,20 +4,20 @@ import { storefrontMedia } from "./storefront-media";
 
 const steps = [
   {
-    icon: ShoppingBasket,
+    icon: "basket",
     number: "01",
     title: "Build your weekly basket",
     description:
       "Search the active catalog, adjust quantities, and keep a saved cart across visits.",
   },
   {
-    icon: CalendarDays,
+    icon: "calendar",
     number: "02",
     title: "Choose the plan and window",
     description: "Pick the plan and available delivery time that suit your household rhythm.",
   },
   {
-    icon: Truck,
+    icon: "truck",
     number: "03",
     title: "Follow it to your door",
     description: "Review server-confirmed totals and track fulfillment after the order is locked.",
@@ -54,10 +54,12 @@ export function StorefrontProcess() {
             together while the server owns every commerce decision.
           </p>
           <ol className="mt-10 divide-y divide-line border-y border-line">
-            {steps.map(({ icon: Icon, number, title, description }) => (
+            {steps.map(({ icon, number, title, description }) => (
               <li className="grid grid-cols-[auto_1fr] gap-4 py-6" key={number}>
                 <span className="grid size-11 place-items-center bg-soft text-deep">
-                  <Icon aria-hidden="true" size={21} />
+                  {icon === "basket" ? <ShoppingBasket aria-hidden="true" size={21} /> : null}
+                  {icon === "calendar" ? <CalendarDays aria-hidden="true" size={21} /> : null}
+                  {icon === "truck" ? <Truck aria-hidden="true" size={21} /> : null}
                 </span>
                 <div>
                   <p className="text-xs font-bold text-coral">{number}</p>

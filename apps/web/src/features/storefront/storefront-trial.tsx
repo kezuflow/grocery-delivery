@@ -2,7 +2,6 @@ import { ArrowRight, CalendarHeart } from "lucide-react";
 
 import { LinkButton } from "../../components/ui";
 import type { SessionSummary } from "../../lib/permissions";
-import { PublicAuthControls } from "../auth";
 import { storefrontMedia } from "./storefront-media";
 
 export function StorefrontTrial({ session }: Readonly<{ session: SessionSummary | null }>) {
@@ -23,14 +22,10 @@ export function StorefrontTrial({ session }: Readonly<{ session: SessionSummary 
               the server, and recurring billing waits until the trial ends.
             </p>
             <div className="mt-8">
-              {session?.role === "customer" ? (
-                <LinkButton href="/shop" size="lg" tone="accent">
-                  Activate from the marketplace
-                  <ArrowRight aria-hidden="true" size={18} />
-                </LinkButton>
-              ) : (
-                <PublicAuthControls inverse session={session} />
-              )}
+              <LinkButton href="/shop" size="lg" tone="accent">
+                {session?.role === "customer" ? "Open the app" : "Go to app"}
+                <ArrowRight aria-hidden="true" size={18} />
+              </LinkButton>
             </div>
           </div>
         </div>
