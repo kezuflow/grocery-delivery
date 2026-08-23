@@ -68,6 +68,9 @@ test("marketplace converges across phone and desktop layouts", async ({
   await expect(page.getByRole("link", { name: "Your cart, 2 items" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Featured offers" })).toBeVisible();
   await expect(page.getByText("Crave it? Get it.")).toBeVisible();
+  await expect(
+    page.getByPlaceholder("Search for vegetables, healthy food, or a dish"),
+  ).toBeVisible();
   if (testInfo.project.name === "phone") {
     await expect(page.getByRole("navigation", { name: "Customer navigation" })).toBeVisible();
     await expect(page.getByRole("link", { name: "My list" })).toBeVisible();
@@ -108,7 +111,7 @@ test("marketplace converges across phone and desktop layouts", async ({
 test("marketplace header search submits the server-backed query", async ({ openAs, page }) => {
   await openAs("customer", "/shop");
   const search = page.locator('input[type="search"]:visible').first();
-  await expect(search).toHaveAttribute("placeholder", "Search Carbon Market");
+  await expect(search).toHaveAttribute("placeholder", "Search freshmarkets");
   await search.fill("broccoli");
   await search.press("Enter");
   await expect(page).toHaveURL(/\/shop\?search=broccoli$/);

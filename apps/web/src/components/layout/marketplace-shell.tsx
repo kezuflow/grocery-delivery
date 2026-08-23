@@ -109,7 +109,7 @@ export function MarketplaceShell({
                 defaultValue={search}
                 id="header-search"
                 name="search"
-                placeholder="Search Carbon Market"
+                placeholder="Search freshmarkets"
                 type="search"
               />
             </div>
@@ -148,7 +148,7 @@ export function MarketplaceShell({
                   defaultValue={search}
                   id="mobile-market-search"
                   name="search"
-                  placeholder="Search Carbon Market"
+                  placeholder="Search freshmarkets"
                   type="search"
                 />
               </form>

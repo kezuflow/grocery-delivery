@@ -10,7 +10,7 @@ import type {
   CatalogSkuResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
-import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
 import { Button, EmptyState, ErrorState } from "../../components/ui";
 import { PublicAuthControls } from "../auth";
 import {
@@ -240,6 +240,39 @@ export function CustomerCatalog({
           showTriggers={false}
         />
       ) : null}
+      <section aria-labelledby="freshmarkets-prompt" className="mb-8 max-w-2xl">
+        <h2
+          className="!m-0 text-[28px] font-extrabold leading-tight tracking-normal sm:text-[34px]"
+          id="freshmarkets-prompt"
+        >
+          Crave it? Get it.
+        </h2>
+        <form
+          className="mt-5 flex items-center gap-3 border-b-2 border-market-ink pb-2"
+          onSubmit={submitSearch}
+          role="search"
+        >
+          <Search className="shrink-0 text-market-muted" size={19} />
+          <label className="sr-only" htmlFor="freshmarkets-search">
+            Search freshmarkets
+          </label>
+          <input
+            className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-market-muted"
+            id="freshmarkets-search"
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search for vegetables, healthy food, or a dish"
+            value={searchInput}
+          />
+          <button
+            aria-label="Search freshmarkets"
+            className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-base-surface"
+            title="Search freshmarkets"
+            type="submit"
+          >
+            <ArrowRight size={18} />
+          </button>
+        </form>
+      </section>
       <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-base-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           {categoryShortcuts(catalog.categories).map((category) => (
@@ -323,23 +356,6 @@ export function CustomerCatalog({
           </details>
         </div>
       </div>
-
-      {activeFilters.search ? (
-        <form className="mb-6 flex max-w-xl gap-2" onSubmit={submitSearch} role="search">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">Search products</span>
-            <Search className="absolute left-3 top-3 text-market-muted" size={16} />
-            <input
-              className="h-10 w-full rounded-full bg-base-surface pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-market-green"
-              onChange={(event) => setSearchInput(event.target.value)}
-              value={searchInput}
-            />
-          </label>
-          <Button size="sm" type="submit">
-            Search
-          </Button>
-        </form>
-      ) : null}
 
       {!hasFilters && visibleItems.length > 1 ? (
         <MerchandisingRail banners={banners} items={visibleItems} />
@@ -689,13 +705,6 @@ function MerchandisingRail({
   }
 
   const cards = [
-    {
-      eyebrow: "Carbon picks",
-      title: "Crave it? Get it.",
-      copy: "Build a fresher basket from this week's market picks.",
-      item: items[0],
-      href: "/shop",
-    },
     {
       eyebrow: "Featured in fresh markets",
       title: "Bright greens for every table",
