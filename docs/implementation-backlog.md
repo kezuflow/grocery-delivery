@@ -550,6 +550,14 @@ authentication and promotion remain deferred.
 
 ### VS-MKT-13 Responsive, Accessibility, Performance, And Workflow Hardening
 
+- **Local UI refinement:** the marketplace desktop shell now opens an account drawer from the
+  top-left account control, replacing sidebar collapse/expand behavior. The desktop rail is now
+  category-first (`Home`, `Grocery`, `Vegetables`, live catalog categories, and `Promo`), with the
+  promotions anchor wired to the featured-offers section. Focused marketplace Playwright passes
+  on phone, tablet, and desktop; `pnpm check` passes all workspace checks. Commit `6a062ee` is
+  pushed to `origin/main`. The remaining unstaged files are unrelated pre-existing fixture,
+  generated typing, Playwright, and asset changes.
+
 - **Status:** locally complete. The local browser audit hardened storefront CTA contrast, corrected
   the protected-route expectation for the intentionally public `/shop` route, added deterministic
   guest responses for optional cart/subscription reads, and refreshed six responsive visual
