@@ -309,17 +309,21 @@ export function AdminActions({
                   </button>
                 ) : null}
                 {promotion.status === "paused" ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(() =>
-                        client.updateAdminPromotionStatus(promotion.id, { status: "active" }),
-                      )
-                    }
-                  >
-                    Resume
-                  </button>
+                  can("finance") ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(() =>
+                          client.updateAdminPromotionStatus(promotion.id, { status: "active" }),
+                        )
+                      }
+                    >
+                      Resume
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted">Finance approval required to resume</span>
+                  )
                 ) : null}
                 {promotion.status !== "archived" ? (
                   <button

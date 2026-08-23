@@ -1,4 +1,5 @@
 import type { AdminOrdersData } from "../../lib/admin-product";
+import type { AdminFeedState } from "../../lib/admin";
 
 import {
   Card,
@@ -6,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
+  ErrorState,
   LinkButton,
   StatusPill,
   Table,
@@ -25,18 +27,28 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         aria-label="Order operations summary"
       >
-        <Metric label="Orders in dispatch" value={assignments.length} />
-        <Metric label="Packing manifests" value={manifests.length} />
-        <Metric label="Customer requests" value={requests.length} />
+        <Metric
+          label="Orders in dispatch"
+          value={feedCount(data.states.dispatch, assignments.length)}
+        />
+        <Metric
+          label="Packing manifests"
+          value={feedCount(data.states.procurement, manifests.length)}
+        />
+        <Metric
+          label="Customer requests"
+          value={feedCount(data.states.orderRequests, requests.length)}
+        />
         <Metric
           label="Failed deliveries"
-          value={String(
-            data.projection?.delivery.failed ??
-              assignments.filter((item) => item.status === "failed").length,
-          )}
+          value={
+            data.states.projection.status === "ready" || data.states.projection.status === "empty"
+              ? String(data.projection?.delivery.failed ?? 0)
+              : "Unavailable"
+          }
         />
       </section>
-      {data.error ? (
+      {data.error && Object.values(data.states).some((state) => state.status === "unavailable") ? (
         <p className="border border-danger/40 bg-danger/10 p-4 text-sm text-danger" role="alert">
           {data.error}
         </p>
@@ -48,7 +60,10 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
             Server-owned dispatch and packing statuses for the active cycle.
           </CardDescription>
         </CardHeader>
-        {assignments.length ? (
+        {data.states.dispatch.status === "unavailable" ||
+        data.states.dispatch.status === "forbidden" ? (
+          <FeedError label="Dispatch assignments" state={data.states.dispatch} />
+        ) : assignments.length ? (
           <Table>
             <TableHeader>
               <tr>
@@ -91,7 +106,10 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
             Cancellation and refund requests requiring the matching support or finance workflow.
           </CardDescription>
         </CardHeader>
-        {requests.length ? (
+        {data.states.orderRequests.status === "unavailable" ||
+        data.states.orderRequests.status === "forbidden" ? (
+          <FeedError label="Customer requests" state={data.states.orderRequests} />
+        ) : requests.length ? (
           <Table>
             <TableHeader>
               <tr>
@@ -137,5 +155,23 @@ function Metric({ label, value }: Readonly<{ label: string; value: number | stri
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">{label}</p>
       <p className="mt-3 text-3xl font-bold">{value}</p>
     </Card>
+  );
+}
+
+function feedCount(state: AdminFeedState, count: number): number | string {
+  return state.status === "ready" || state.status === "empty" ? count : "Unavailable";
+}
+
+function FeedError({ label, state }: Readonly<{ label: string; state: AdminFeedState }>) {
+  return state.status === "forbidden" ? (
+    <EmptyState
+      description="Your role does not include this feed."
+      title={`${label} access restricted`}
+    />
+  ) : (
+    <ErrorState
+      description={state.correlationId ? `Reference ${state.correlationId}.` : "Try again shortly."}
+      title={`${label} unavailable`}
+    />
   );
 }

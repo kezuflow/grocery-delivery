@@ -30,6 +30,7 @@ import {
 } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
 import type { AdminPermission } from "../../lib/permissions";
+import type { AdminFeedState } from "../../lib/admin";
 import {
   ApiClientError,
   createApiClient,
@@ -63,10 +64,12 @@ const imageLibrary = [
 export function AdminCatalog({
   catalog,
   error,
+  state,
   permissions,
 }: Readonly<{
   catalog: CatalogListResponse["data"] | null;
   error: string | null;
+  state: AdminFeedState;
   permissions: readonly AdminPermission[];
 }>) {
   const router = useRouter();
@@ -80,6 +83,7 @@ export function AdminCatalog({
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const canConfigure = permissions.includes("superadmin");
+  const canManageCatalog = permissions.includes("catalog") || canConfigure;
   const categoryNames = new Map(catalog?.categories.map((item) => [item.id, item.name]));
   const items = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -164,7 +168,14 @@ export function AdminCatalog({
           </label>
           <span className="self-center text-[11px] text-[#777]">{items.length} shown</span>
         </div>
-        {error ? (
+        {state.status === "forbidden" ? (
+          <p
+            className="m-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+            role="alert"
+          >
+            Catalog access is restricted for this role.
+          </p>
+        ) : error ? (
           <p
             className="m-4 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700"
             role="alert"
@@ -180,7 +191,14 @@ export function AdminCatalog({
             {actionMessage}
           </p>
         ) : null}
-        {items.length ? (
+        {state.status === "unavailable" ? (
+          <EmptyState
+            description={
+              state.correlationId ? `Reference ${state.correlationId}.` : "Try again shortly."
+            }
+            title="Catalog unavailable"
+          />
+        ) : items.length ? (
           <Table wrapperClassName="mt-4 rounded-none border-x-0 border-t-0">
             <TableHeader>
               <tr>
@@ -257,30 +275,39 @@ export function AdminCatalog({
                             }}
                             type="button"
                           >
-                            <Pencil aria-hidden="true" size={14} /> Edit
+                            <Pencil aria-hidden="true" size={14} />{" "}
+                            {canManageCatalog ? "Edit" : "View details"}
                           </button>
-                          <button
-                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-[#333] hover:bg-[#f2f2f2] disabled:opacity-50"
-                            disabled={updatingId === item.id}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void updateStatus(item.id, "paused", item.name);
-                            }}
-                            type="button"
-                          >
-                            <Pause aria-hidden="true" size={14} /> Pause
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                            disabled={updatingId === item.id}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void updateStatus(item.id, "archived", item.name);
-                            }}
-                            type="button"
-                          >
-                            <Trash2 aria-hidden="true" size={14} /> Delete
-                          </button>
+                          {canManageCatalog ? (
+                            <>
+                              <button
+                                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-[#333] hover:bg-[#f2f2f2] disabled:opacity-50"
+                                disabled={updatingId === item.id}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void updateStatus(item.id, "paused", item.name);
+                                }}
+                                type="button"
+                              >
+                                <Pause aria-hidden="true" size={14} /> Pause
+                              </button>
+                              <button
+                                className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                disabled={updatingId === item.id}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void updateStatus(item.id, "archived", item.name);
+                                }}
+                                type="button"
+                              >
+                                <Trash2 aria-hidden="true" size={14} /> Delete
+                              </button>
+                            </>
+                          ) : (
+                            <p className="px-2.5 py-2 text-[11px] text-[#777]">
+                              Catalog permission required
+                            </p>
+                          )}
                         </div>
                       ) : null}
                     </TableCell>

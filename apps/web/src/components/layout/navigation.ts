@@ -1,10 +1,12 @@
 import type { AdminPermission, SessionSummary, UserRole } from "../../lib/permissions";
 import { can } from "../../lib/permissions";
+import { adminWorkspacePermissions } from "../../lib/permissions";
 
 export type NavigationItem = Readonly<{
   href: string;
   label: string;
   permission?: AdminPermission;
+  permissions?: readonly AdminPermission[];
   group?: "Workspace" | "Operations" | "Manage";
 }>;
 
@@ -28,8 +30,18 @@ const deliveryNavigation: readonly NavigationItem[] = [
 
 const adminNavigation: readonly NavigationItem[] = [
   { href: "/admin", label: "Overview", group: "Workspace" },
-  { href: "/admin/catalog", label: "Catalog", permission: "catalog", group: "Workspace" },
-  { href: "/admin/orders", label: "Orders", permission: "dispatch", group: "Operations" },
+  {
+    href: "/admin/catalog",
+    label: "Catalog",
+    permissions: adminWorkspacePermissions.catalog,
+    group: "Workspace",
+  },
+  {
+    href: "/admin/orders",
+    label: "Orders",
+    permissions: adminWorkspacePermissions.orders,
+    group: "Operations",
+  },
   {
     href: "/admin/procurement",
     label: "Procurement",
@@ -53,7 +65,11 @@ const adminNavigation: readonly NavigationItem[] = [
 export function getNavigation(session: SessionSummary): readonly NavigationItem[] {
   if (session.role === "customer") return customerNavigation;
   if (session.role === "deliveryman") return deliveryNavigation;
-  return adminNavigation.filter((item) => !item.permission || can(session, item.permission));
+  return adminNavigation.filter((item) => {
+    if (item.permission) return can(session, item.permission);
+    if (item.permissions) return item.permissions.some((permission) => can(session, permission));
+    return true;
+  });
 }
 
 export function getRoleLabel(role: UserRole): string {

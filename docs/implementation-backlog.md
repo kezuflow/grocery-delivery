@@ -57,6 +57,136 @@ Every customer UI slice needs local desktop and phone comparison, interaction co
 Playwright assertions, accessibility checks, and stable loading, empty, error, forbidden, pending,
 offline, and success states where applicable.
 
+## Admin Dashboard Recovery Program
+
+**Status:** active. This program supersedes the prior direction that treated the launch
+configuration manifest as the ordinary catalog editor. Historical completion records below remain
+evidence for their original local slices, not the target product model.
+
+### Product Decisions
+
+- Catalog is the normal product CRUD surface. Editing a SKU must not require reconstructing a full
+  launch manifest.
+- Configuration is a superadmin operational-policy console with buttons, toggles, segmented
+  choices, and bounded inputs. It is not a catalog, category, or SKU editor.
+- Weekly scheduled delivery remains the active fulfillment model. Instant delivery is displayed as
+  a disabled future option until inventory, availability, pricing, checkout, and dispatch support
+  exist end to end.
+- Guests may browse and build a cart. Sign-in or account creation remains required before payment
+  and order creation; do not create anonymous or orphan orders.
+- Operational values remain server-owned, validated, authorized, idempotent where retriable, and
+  audited. Store PHP money in centavos and interpret weekly schedules in `Asia/Manila`.
+
+### Configuration Target
+
+The replacement `/admin/configuration` route loads current server truth and groups these policies:
+
+- **Store operations:** open/paused ordering state, pause reason, optional resume date, current
+  cycle, and an explicitly confirmed close-ordering action.
+- **Delivery model:** weekly scheduled delivery, disabled instant-delivery choice, delivery fee,
+  minimum order, and service-area availability.
+- **Weekly delivery:** cutoff day/time, next-cutoff preview, manual cycle-lock override,
+  delivery-window active state, capacity, and lead time.
+- **Checkout access:** guest-cart policy, required sign-in before payment, and customer contact
+  verification requirements.
+- **Later policies:** cancellation/subscription cutoffs, substitutions, per-SKU quantity limits,
+  stock-out behavior, and customer-support contact details.
+
+The backend needs a dedicated typed operational-settings contract, repository, forward-only D1
+migration, revision/concurrency check, protected read/update endpoints, validation, audit events,
+and field-level errors. Preserve `/api/v1/admin/launch-configuration` only as an explicitly named
+batch launch/import process with a complete-data preview and strong confirmation.
+
+### Ordered Local Slices
+
+| Slice | Outcome                                                                                         | Status   |
+| ----- | ----------------------------------------------------------------------------------------------- | -------- |
+| AD-00 | Truthful per-feed dashboard states and permission/navigation/action parity                      | complete |
+| AD-01 | Shared admin list, queue, drawer, confirmation, feedback, and responsive interaction primitives | next     |
+| AD-02 | Server-owned operational settings and Configuration policy console                              | planned  |
+| AD-03 | Catalog CRUD, active/paused/archived lifecycle, and persistent product-media library            | planned  |
+| AD-04 | Canonical Orders list, filters, pagination, and lifecycle detail                                | planned  |
+| AD-05 | Contextual Procurement demand, purchase, shortage, and substitution workflow                    | planned  |
+| AD-06 | Packing queue, exceptions, and completion workflow                                              | planned  |
+| AD-07 | Dispatch board with eligible order/window/driver assignment and conflict visibility             | planned  |
+| AD-08 | Support case lifecycle, Promotions, Staff directory, and Reporting completion                   | planned  |
+| AD-09 | Shell cleanup, accessibility, mobile behavior, and full cross-role E2E coverage                 | planned  |
+
+### AD-00 Local Completion Record
+
+- **Outcome:** Overview, Orders, Catalog, and workspace feeds now load independently and preserve
+  successful data when another feed fails. Each feed records `not_requested`, `ready`, `empty`,
+  `forbidden`, or `unavailable` with the server message and correlation ID where available.
+- **Permission parity:** Shared workspace permission maps now drive route guards, navigation,
+  overview links, Orders access, Catalog access, and visible Catalog mutations. Packing and Support
+  roles can reach the Orders workspace; Pricing-only users can read Catalog without edit actions;
+  superadmin-only configuration and staff routes remain protected. The API remains authoritative for
+  every mutation.
+- **Truthful UI:** Overview health and metrics no longer imply operational zero values when a feed
+  is missing or failed. Alerts, activity, cycle metrics, Orders metrics, Catalog availability, and
+  Staff audit reads distinguish restricted, unavailable, empty, and successful states. Correlation
+  references remain visible for recoverable server failures.
+- **Trace and server ownership:** This slice changes the web server loaders and UI composition only;
+  existing typed API contracts, Hono authorization, repository persistence, validation, idempotency,
+  audit, PHP-centavo money, and Asia/Manila weekly-cycle rules remain unchanged. Independent feed
+  requests run in parallel, so one unavailable endpoint does not erase other responses.
+- **Focused verification:** Admin feed classification, navigation parity, and workspace visibility
+  tests pass. The web suite passes 21 files and 69 tests; web lint and typecheck pass. Repository
+  `pnpm check` passes all 55 Turbo tasks, including formatting, lint, typecheck, unit, API, and D1
+  integration checks. `git diff --check` passes before commit.
+- **Browser evidence:** Local in-app browser verification passed on `/admin`, `/admin/orders`,
+  `/admin/catalog`, and `/admin/dispatch`. Desktop and 390x844 phone overview layouts show explicit
+  restricted/unavailable states without false zeros; phone document width is 375px within a 390px
+  viewport. The superadmin Catalog fixture rendered 22 server-backed rows and its item menu exposed
+  `Edit`, `Pause`, and `Delete`. Orders rendered unavailable/restricted feed states. No new API
+  requests, migrations, dependencies, polling, or observability surfaces were added.
+- **Mobbin limitation:** The required pre-UI Mobbin MCP search for Supabase/admin dashboard patterns
+  was attempted, but the connector returned `Auth required`; no Mobbin image or visual claim was
+  used for AD-00. Carbon's existing dashboard language and the repository's product direction remain
+  the reference.
+- **Known gaps:** Packing currently has no separate read endpoint and therefore truthfully reports
+  its procurement-backed feed as not connected for packing-only roles. Catalog lifecycle semantics,
+  shared interaction primitives, operational Configuration policy editing, and full cross-role E2E
+  coverage remain in later slices.
+
+### Slice Acceptance Baseline
+
+Every admin slice must include explicit loading, empty, unavailable, forbidden, validation,
+pending, retry, and success states; focused contract, repository, API, UI, authorization, and
+idempotency tests where relevant; local desktop and phone browser evidence; `pnpm check`; and a
+conventional commit pushed to the configured upstream before the next slice begins. Preserve
+unrelated working-tree changes.
+
+### AD-00 Acceptance Checks
+
+- A failed dashboard feed does not erase independent feeds or render as a healthy zero state.
+- Overview never reports systems operational without a confirmed healthy relevant feed.
+- Navigation, route guards, workspace links, and visible mutations use the same permission model.
+- Unauthorized mutations are absent or disabled with a meaningful reason; the server remains the
+  authority.
+- Partial-feed failure and cross-permission route/action behavior have focused automated coverage.
+
+### Resume Prompt
+
+```text
+Continue the Carbon Food Delivery Admin Dashboard Recovery Program from the next unfinished AD
+slice in docs/implementation-backlog.md. Read AGENTS.md, docs/project-guidance.md,
+docs/implementation-backlog.md, and docs/frontend-backend-audit.md first. Preserve unrelated
+working-tree changes and work locally only.
+
+The product direction is fixed: Catalog is normal product CRUD; Configuration is server-owned
+operational policy management, not catalog editing; weekly scheduled delivery is active; instant
+delivery is visible only as a disabled future option; and guests may build a cart but must sign in
+or create an account before payment and order creation.
+
+Implement only the next independently reviewable slice. AD-00 is complete; begin with AD-01 unless
+the backlog says another slice is `next`. Trace route,
+contract, API, application/domain, repository/migration, UI states, and tests before editing. Add
+focused tests, run pnpm check, inspect git diff --check and the staged diff, update this backlog
+with local evidence and the next resume point, commit with a conventional commit, and push to the
+configured upstream. Do not deploy, publish fixtures, or make remote configuration changes.
+```
+
 ## Local Marketplace Queue
 
 | Slice     | Outcome                                                                 | Status   |

@@ -115,9 +115,14 @@ export function AdminStaff({ data }: Readonly<{ data: AdminStaffData }>) {
             available.
           </CardDescription>
         </CardHeader>
-        {data.error ? (
+        {data.state.status === "forbidden" ? (
+          <p className="text-sm text-muted" role="status">
+            Audit activity access is restricted for this role.
+          </p>
+        ) : data.error ? (
           <p className="text-sm text-danger" role="alert">
             {data.error}
+            {data.state.correlationId ? ` Reference ${data.state.correlationId}.` : ""}
           </p>
         ) : data.auditEvents.length ? (
           <ul className="grid gap-3 text-sm">

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { AdminPermission } from "../../lib/permissions";
-import type { AdminDashboardData } from "../../lib/admin";
+import type { AdminDashboardData, AdminFeedState } from "../../lib/admin";
 import {
   Card,
   CardDescription,
@@ -125,7 +125,10 @@ function ReportingPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData 
           <CardTitle>Alerts</CardTitle>
           <CardDescription>Server-generated operational thresholds.</CardDescription>
         </CardHeader>
-        {dashboard.projection?.alerts.length ? (
+        {dashboard.states.projection.status === "unavailable" ||
+        dashboard.states.projection.status === "forbidden" ? (
+          <UnavailableState label="Alerts" state={dashboard.states.projection} />
+        ) : dashboard.projection?.alerts.length ? (
           <ul className="grid gap-3">
             {dashboard.projection.alerts.map((alert) => (
               <li className="border-b border-line pb-3 last:border-0" key={alert.id}>
@@ -145,7 +148,10 @@ function ReportingPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData 
           <CardTitle>Audit activity</CardTitle>
           <CardDescription>Recent server-recorded actions.</CardDescription>
         </CardHeader>
-        {dashboard.auditEvents.length ? (
+        {dashboard.states.audit.status === "unavailable" ||
+        dashboard.states.audit.status === "forbidden" ? (
+          <UnavailableState label="Audit activity" state={dashboard.states.audit} />
+        ) : dashboard.auditEvents.length ? (
           <ul className="grid gap-3">
             {dashboard.auditEvents.map((event) => (
               <li className="border-b border-line pb-3 last:border-0" key={event.id}>
@@ -166,12 +172,17 @@ function ReportingPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData 
 
 function ProcurementPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>) {
   const procurement = dashboard.procurement;
-  if (!procurement) return <UnavailableState label="Procurement feed" />;
+  if (!procurement) {
+    return <UnavailableState label="Procurement feed" state={dashboard.states.procurement} />;
+  }
   return (
     <div className="grid gap-5">
       <WorkspaceTable
         title="Demand queue"
         description="Order demand and purchase progress for the active cycle."
+        empty={procurement.demand.length === 0}
+        emptyTitle="Demand queue is empty"
+        state={dashboard.states.procurement}
       >
         <TableHeader>
           <tr>
@@ -197,6 +208,9 @@ function ProcurementPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardDat
       <WorkspaceTable
         title="Shortages"
         description="Exceptions requiring a purchase or approved substitution."
+        empty={procurement.shortages.length === 0}
+        emptyTitle="No shortages"
+        state={dashboard.states.procurement}
       >
         <TableHeader>
           <tr>
@@ -231,6 +245,9 @@ function PackingPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>
     <WorkspaceTable
       title="Packing manifests"
       description="Track every order manifest through packing and exceptions."
+      empty={manifests.length === 0}
+      emptyTitle="No packing manifests"
+      state={dashboard.states.procurement}
     >
       <TableHeader>
         <tr>
@@ -262,6 +279,9 @@ function DispatchPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }
     <WorkspaceTable
       title="Dispatch board"
       description="Delivery windows, drivers, and fulfillment state for this cycle."
+      empty={assignments.length === 0}
+      emptyTitle="No dispatch assignments"
+      state={dashboard.states.dispatch}
     >
       <TableHeader>
         <tr>
@@ -293,6 +313,9 @@ function SupportPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>
     <WorkspaceTable
       title="Support queue"
       description="Customer cases awaiting triage or resolution."
+      empty={cases.length === 0}
+      emptyTitle="Support queue is clear"
+      state={dashboard.states.supportCases}
     >
       <TableHeader>
         <tr>
@@ -325,6 +348,9 @@ function PromotionsPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData
     <WorkspaceTable
       title="Campaigns"
       description="Review status, redemption volume, and budget before taking action."
+      empty={dashboard.promotions.length === 0}
+      emptyTitle="No campaigns"
+      state={dashboard.states.promotions}
     >
       <TableHeader>
         <tr>
@@ -356,24 +382,57 @@ function PromotionsPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData
 function WorkspaceTable({
   title,
   description,
+  state,
+  empty = false,
+  emptyTitle = "No records",
   children,
-}: Readonly<{ title: string; description: string; children: ReactNode }>) {
+}: Readonly<{
+  title: string;
+  description: string;
+  state?: AdminFeedState;
+  empty?: boolean;
+  emptyTitle?: string;
+  children: ReactNode;
+}>) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <Table>{children}</Table>
+      {state && (state.status === "unavailable" || state.status === "forbidden") ? (
+        <UnavailableState label={title} state={state} />
+      ) : empty ? (
+        <EmptyState
+          description="There is nothing requiring attention in this queue."
+          title={emptyTitle}
+        />
+      ) : (
+        <Table>{children}</Table>
+      )}
     </Card>
   );
 }
 
-function UnavailableState({ label }: Readonly<{ label: string }>) {
+function UnavailableState({ label, state }: Readonly<{ label: string; state?: AdminFeedState }>) {
   return (
     <EmptyState
-      description="The server feed is unavailable or returned no rows for this cycle."
-      title={`${label} unavailable`}
+      description={
+        state?.status === "not_requested"
+          ? "This workspace does not currently have a server read feed for this data."
+          : state?.status === "forbidden"
+            ? "Your role does not include access to this server feed."
+            : state?.correlationId
+              ? `The server feed could not be loaded. Reference ${state.correlationId}.`
+              : "The server feed could not be loaded."
+      }
+      title={
+        state?.status === "not_requested"
+          ? `${label} not connected`
+          : state?.status === "forbidden"
+            ? `${label} access restricted`
+            : `${label} unavailable`
+      }
     />
   );
 }

@@ -1,10 +1,11 @@
 import type { AdminPermission } from "../../lib/permissions";
+import { adminWorkspacePermissions } from "../../lib/permissions";
 
 export type AdminWorkspaceLink = Readonly<{
   href: string;
   label: string;
   description: string;
-  permission: AdminPermission;
+  permissions: readonly AdminPermission[];
 }>;
 
 export const adminWorkspaceLinks: readonly AdminWorkspaceLink[] = [
@@ -12,64 +13,66 @@ export const adminWorkspaceLinks: readonly AdminWorkspaceLink[] = [
     href: "/admin/catalog",
     label: "Catalog",
     description: "Active categories, items, and server-confirmed prices",
-    permission: "catalog",
+    permissions: adminWorkspacePermissions.catalog,
   },
   {
     href: "/admin/orders",
     label: "Orders",
     description: "Packing, dispatch, and customer request queues",
-    permission: "dispatch",
+    permissions: adminWorkspacePermissions.orders,
   },
   {
     href: "/admin/staff",
     label: "Staff",
     description: "Audited role and permission assignments",
-    permission: "superadmin",
+    permissions: ["superadmin"],
   },
   {
     href: "/admin/procurement",
     label: "Procurement",
     description: "Demand, purchases, shortages, and substitutions",
-    permission: "procurement",
+    permissions: ["procurement"],
   },
   {
     href: "/admin/packing",
     label: "Packing",
     description: "Order manifests and packing exceptions",
-    permission: "packing",
+    permissions: ["packing"],
   },
   {
     href: "/admin/dispatch",
     label: "Dispatch",
     description: "Delivery windows and driver assignments",
-    permission: "dispatch",
+    permissions: ["dispatch"],
   },
   {
     href: "/admin/support",
     label: "Support",
     description: "Cases, cancellations, and refund requests",
-    permission: "support",
+    permissions: ["support"],
   },
   {
     href: "/admin/promotions",
     label: "Promotions",
     description: "Campaign status and redemption activity",
-    permission: "marketing",
+    permissions: ["marketing"],
   },
   {
     href: "/admin/reporting",
     label: "Reporting",
     description: "Operational alerts and audit activity",
-    permission: "reporting",
+    permissions: ["reporting"],
   },
   {
     href: "/admin/configuration",
     label: "Configuration",
     description: "Approved launch manifests",
-    permission: "superadmin",
+    permissions: ["superadmin"],
   },
 ];
 
 export function visibleAdminWorkspaceLinks(permissions: readonly AdminPermission[]) {
-  return adminWorkspaceLinks.filter((link) => permissions.includes(link.permission));
+  return adminWorkspaceLinks.filter((link) =>
+    link.permissions.some((permission) => permissions.includes(permission)),
+  );
 }

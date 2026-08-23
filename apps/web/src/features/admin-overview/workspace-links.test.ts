@@ -4,6 +4,7 @@ import { visibleAdminWorkspaceLinks } from "./workspace-links";
 describe("admin workspace links", () => {
   it("shows only workspaces allowed by effective permissions", () => {
     expect(visibleAdminWorkspaceLinks(["packing", "reporting"]).map((item) => item.href)).toEqual([
+      "/admin/orders",
       "/admin/packing",
       "/admin/reporting",
     ]);
@@ -12,6 +13,15 @@ describe("admin workspace links", () => {
       "/admin/catalog",
       "/admin/orders",
       "/admin/dispatch",
+    ]);
+
+    expect(visibleAdminWorkspaceLinks(["pricing"]).map((item) => item.href)).toEqual([
+      "/admin/catalog",
+    ]);
+
+    expect(visibleAdminWorkspaceLinks(["support"]).map((item) => item.href)).toEqual([
+      "/admin/orders",
+      "/admin/support",
     ]);
   });
 });

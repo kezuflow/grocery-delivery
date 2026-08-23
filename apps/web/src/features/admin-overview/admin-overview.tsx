@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 
 import { EmptyState, StatusPill } from "../../components/ui";
-import type { AdminDashboardData } from "../../lib/admin";
+import type { AdminDashboardData, AdminFeedState } from "../../lib/admin";
 import type { AdminPermission } from "../../lib/permissions";
 import { visibleAdminWorkspaceLinks } from "./workspace-links";
 
@@ -21,8 +21,30 @@ export function AdminOverview({
   permissions,
 }: Readonly<{ dashboard: AdminDashboardData; permissions: readonly AdminPermission[] }>) {
   const projection = dashboard.projection;
+  const projectionState = dashboard.states.projection;
+  const projectionData = projectionState.status === "ready" ? projection : null;
   const links = visibleAdminWorkspaceLinks(permissions);
-  const openCases = dashboard.supportCases.filter((item) => item.status !== "resolved").length;
+  const openCases =
+    dashboard.states.supportCases.status === "ready" ||
+    dashboard.states.supportCases.status === "empty"
+      ? dashboard.supportCases.filter((item) => item.status !== "resolved").length
+      : "Unavailable";
+  const hasUnavailableFeed = Object.values(dashboard.states).some(
+    (state) => state.status === "unavailable",
+  );
+  const hasForbiddenFeed = Object.values(dashboard.states).some(
+    (state) => state.status === "forbidden",
+  );
+  const healthLabel = hasUnavailableFeed
+    ? "Some feeds unavailable"
+    : hasForbiddenFeed || projectionState.status !== "ready"
+      ? "Limited access"
+      : "Systems operational";
+  const healthTone = hasUnavailableFeed
+    ? "border-amber-200 bg-amber-50 text-amber-800"
+    : hasForbiddenFeed || projectionState.status !== "ready"
+      ? "border-slate-200 bg-slate-50 text-slate-700"
+      : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
   return (
     <div className="grid gap-5">
@@ -39,9 +61,11 @@ export function AdminOverview({
               Live signals for the active delivery cycle.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Systems operational
+          <div
+            className={`flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${healthTone}`}
+          >
+            <span className="size-1.5 rounded-full bg-current" />
+            {healthLabel}
           </div>
         </div>
         <div className="grid sm:grid-cols-2 xl:grid-cols-4">
@@ -49,31 +73,45 @@ export function AdminOverview({
             icon={<Clock3 aria-hidden="true" size={14} strokeWidth={1.8} />}
             label="Active cycle"
             note={
-              projection
-                ? `Updated ${new Date(projection.generatedAt).toLocaleString("en-PH")}`
-                : "Reporting access required"
+              projectionData
+                ? `Updated ${new Date(projectionData.generatedAt).toLocaleString("en-PH")}`
+                : feedStateNote(projectionState)
             }
-            value={projection?.cycleId ?? "Unavailable"}
+            value={projectionData?.cycleId ?? "Unavailable"}
           />
           <MetricCard
             icon={<Activity aria-hidden="true" size={14} strokeWidth={1.8} />}
             label="Pending outbox"
-            note={`${projection?.outbox.deadLetteredCount ?? 0} dead-lettered`}
-            value={String(projection?.outbox.pendingCount ?? 0)}
+            note={
+              projectionData
+                ? `${projectionData.outbox.deadLetteredCount} dead-lettered`
+                : feedStateNote(projectionState)
+            }
+            value={projectionData ? String(projectionData.outbox.pendingCount) : "Unavailable"}
           />
           <MetricCard
             icon={<PackageOpen aria-hidden="true" size={14} strokeWidth={1.8} />}
             label="Open shortages"
-            note={`${projection?.procurement.exceptionalManifests ?? 0} packing exceptions`}
-            value={String(projection?.procurement.openShortages ?? 0)}
+            note={
+              projectionData
+                ? `${projectionData.procurement.exceptionalManifests} packing exceptions`
+                : feedStateNote(projectionState)
+            }
+            value={
+              projectionData ? String(projectionData.procurement.openShortages) : "Unavailable"
+            }
           />
           <MetricCard
             icon={<Truck aria-hidden="true" size={14} strokeWidth={1.8} />}
             label="Deliveries"
-            note={`${projection?.delivery.failed ?? 0} failed`}
-            value={String(
-              projection?.delivery.totalAssignments ?? dashboard.dispatch?.assignments.length ?? 0,
-            )}
+            note={
+              projectionData
+                ? `${projectionData.delivery.failed} failed`
+                : feedStateNote(projectionState)
+            }
+            value={
+              projectionData ? String(projectionData.delivery.totalAssignments) : "Unavailable"
+            }
           />
         </div>
       </section>
@@ -87,12 +125,16 @@ export function AdminOverview({
               <p className="mt-0.5 text-xs text-[#777]">Prioritized server-generated warnings.</p>
             </div>
             <span className="ml-auto rounded bg-[#f0f0f0] px-2 py-0.5 text-[10px] font-semibold text-[#666]">
-              {projection?.alerts.length ?? 0} open
+              {projectionData
+                ? `${projectionData.alerts.length} open`
+                : feedStateLabel(projectionState)}
             </span>
           </div>
-          {projection?.alerts.length ? (
+          {projectionState.status === "unavailable" || projectionState.status === "forbidden" ? (
+            <FeedStateNotice label="Operational alerts" state={projectionState} />
+          ) : projectionData?.alerts.length ? (
             <ul>
-              {projection.alerts.map((alert) => (
+              {projectionData.alerts.map((alert) => (
                 <li
                   className="flex flex-col gap-3 border-b border-[#ececec] px-4 py-3 last:border-0 sm:flex-row sm:items-center"
                   key={alert.id}
@@ -128,11 +170,20 @@ export function AdminOverview({
           <dl>
             <MetricRow
               label="Packing manifests"
-              value={dashboard.procurement?.manifests.length ?? 0}
+              value={feedCount(
+                dashboard.states.procurement,
+                dashboard.procurement?.manifests.length,
+              )}
             />
             <MetricRow label="Open support cases" value={openCases} />
-            <MetricRow label="Order requests" value={dashboard.orderRequests.length} />
-            <MetricRow label="Campaigns" value={dashboard.promotions.length} />
+            <MetricRow
+              label="Order requests"
+              value={feedCount(dashboard.states.orderRequests, dashboard.orderRequests.length)}
+            />
+            <MetricRow
+              label="Campaigns"
+              value={feedCount(dashboard.states.promotions, dashboard.promotions.length)}
+            />
           </dl>
         </div>
       </section>
@@ -178,7 +229,10 @@ export function AdminOverview({
               <p className="mt-0.5 text-xs text-[#777]">Latest visible audit events.</p>
             </div>
           </div>
-          {dashboard.auditEvents.length ? (
+          {dashboard.states.audit.status === "unavailable" ||
+          dashboard.states.audit.status === "forbidden" ? (
+            <FeedStateNotice label="Recent activity" state={dashboard.states.audit} />
+          ) : dashboard.auditEvents.length ? (
             <ul>
               {dashboard.auditEvents.slice(0, 6).map((event) => (
                 <li
@@ -194,9 +248,7 @@ export function AdminOverview({
               ))}
             </ul>
           ) : (
-            <p className="p-4 text-xs leading-5 text-[#777]">
-              Audit activity is available to reporting administrators.
-            </p>
+            <p className="p-4 text-xs leading-5 text-[#777]">No audit events have been recorded.</p>
           )}
         </div>
       </section>
@@ -226,7 +278,7 @@ function MetricCard({
   );
 }
 
-function MetricRow({ label, value }: Readonly<{ label: string; value: number }>) {
+function MetricRow({ label, value }: Readonly<{ label: string; value: number | string }>) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-4 border-b border-[#ececec] px-4 py-2 last:border-0">
       <dt className="text-xs text-[#666]">{label}</dt>
@@ -234,5 +286,40 @@ function MetricRow({ label, value }: Readonly<{ label: string; value: number }>)
         {value}
       </dd>
     </div>
+  );
+}
+
+function feedCount(state: AdminFeedState, count: number | undefined): number | string {
+  return state.status === "ready" || state.status === "empty" ? (count ?? 0) : "Unavailable";
+}
+
+function feedStateNote(state: AdminFeedState): string {
+  if (state.status === "forbidden") return "Permission required";
+  if (state.status === "unavailable") return "Feed unavailable";
+  if (state.status === "empty") return "No records";
+  return "Not requested";
+}
+
+function feedStateLabel(state: AdminFeedState): string {
+  if (state.status === "forbidden") return "Restricted";
+  if (state.status === "unavailable") return "Unavailable";
+  if (state.status === "empty") return "0 open";
+  return "Not requested";
+}
+
+function FeedStateNotice({ label, state }: Readonly<{ label: string; state: AdminFeedState }>) {
+  return (
+    <p
+      className="p-4 text-xs leading-5 text-[#777]"
+      role={state.status === "unavailable" ? "alert" : undefined}
+    >
+      {label}{" "}
+      {state.status === "forbidden"
+        ? "requires additional permission."
+        : state.status === "not_requested"
+          ? "is not included for this role."
+          : "could not be loaded."}
+      {state.correlationId ? ` Reference ${state.correlationId}.` : ""}
+    </p>
   );
 }

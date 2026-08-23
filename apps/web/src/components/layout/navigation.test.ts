@@ -18,7 +18,14 @@ describe("role navigation", () => {
   it("shows only permitted admin destinations", () => {
     expect(getNavigation(adminSession(["packing"])).map((item) => item.label)).toEqual([
       "Overview",
+      "Orders",
       "Packing",
+    ]);
+
+    expect(getNavigation(adminSession(["support"])).map((item) => item.label)).toEqual([
+      "Overview",
+      "Orders",
+      "Support",
     ]);
   });
 
