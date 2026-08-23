@@ -55,15 +55,29 @@ test("marketplace converges across phone and desktop layouts", async ({
   page,
 }, testInfo) => {
   await openAs("customer", "/shop");
-  await expect(page.getByRole("heading", { level: 1, name: "Carbon Groceries" })).toBeVisible();
   await expect(page.getByRole("searchbox").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Best sellers" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Grocery", pressed: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Featured offers" })).toBeVisible();
+  await expect(page.getByText("Crave it? Get it.")).toBeVisible();
   if (testInfo.project.name === "phone") {
     await expect(page.getByRole("navigation", { name: "Customer navigation" })).toBeVisible();
     await expect(page.getByRole("link", { name: "My list" })).toBeVisible();
   } else if (testInfo.project.name === "desktop") {
     await expect(page.getByRole("navigation", { name: "Store aisles" })).toBeVisible();
+    const rail = page.getByTestId("product-rail-best-sellers");
+    const scrollRight = page.getByRole("button", { name: "Scroll Best sellers right" });
+    const scrollLeft = page.getByRole("button", { name: "Scroll Best sellers left" });
+    await expect(scrollLeft).toBeDisabled();
+    await expect(scrollRight).toBeEnabled();
+    await scrollRight.click();
+    await expect.poll(() => rail.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    await expect(scrollLeft).toBeEnabled();
   }
+  const bestSellers = page.getByTestId("product-row-best-sellers");
+  await bestSellers.getByRole("button", { name: "See all" }).click();
+  await expect(bestSellers.getByRole("button", { name: "Show less" })).toBeVisible();
+  await expect(page.getByTestId("product-rail-best-sellers")).toHaveCSS("overflow-x", "visible");
   await expect(
     page
       .getByRole("button", {

@@ -1,16 +1,17 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
+  ActivePromotionBannersResponse,
   CartResponse,
   CatalogCategoryResponse,
   CatalogSkuResponse,
   PlanResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
-import { ChevronRight, Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
 import { Button, Dialog, EmptyState, ErrorState } from "../../components/ui";
 import { PublicAuthControls } from "../auth";
 import {
@@ -31,6 +32,7 @@ import {
 import { ProductCard } from "./product-card";
 
 export function CustomerCatalog({
+  banners,
   catalog,
   cart,
   error,
@@ -40,6 +42,7 @@ export function CustomerCatalog({
   session,
   subscription,
 }: Readonly<{
+  banners: ActivePromotionBannersResponse["data"]["banners"];
   catalog: Readonly<{
     categories: readonly CatalogCategoryResponse[];
     items: readonly CatalogSkuResponse[];
@@ -132,9 +135,6 @@ export function CustomerCatalog({
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     updateUrl({ ...activeFilters, search: searchInput.trim() });
-  }
-  function changeCategory(category: string) {
-    updateUrl({ ...activeFilters, category });
   }
   function applyPriceFilter() {
     const minimum = Number(minimumPrice);
@@ -251,6 +251,12 @@ export function CustomerCatalog({
     }))
     .filter((section) => section.items.length);
   const featured = visibleItems.slice(0, 10);
+  const greenItems = visibleItems.filter((item) =>
+    /broccoli|cabbage|green beans|lettuce|pechay|kangkong|cilantro|spring onions/i.test(item.name),
+  );
+  const leafyItems = visibleItems.filter((item) =>
+    /cabbage|lettuce|pechay|kangkong|cilantro|basil/i.test(item.name),
+  );
   const cartCount = lines.reduce((total, line) => total + line.quantity, 0);
 
   return (
@@ -295,54 +301,17 @@ export function CustomerCatalog({
         </div>
       </Dialog>
 
-      <section className="mb-5 lg:hidden">
-        <h1 className="!m-0 !text-[22px] font-extrabold leading-tight tracking-[-0.025em]">
-          Carbon Groceries
-        </h1>
-        <p className="mt-1 text-xs text-market-muted">4.8 ★ · Weekly delivery · Manila</p>
-      </section>
-
-      <section className="mb-7 overflow-hidden rounded-lg bg-[#e8f5ed] lg:mb-8">
-        <div className="flex min-h-28 items-center justify-between gap-5 px-5 py-5 sm:px-7">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#087443]">
-              <Sparkles size={14} /> This week
-            </div>
-            <h2 className="!m-0 !text-xl font-extrabold tracking-[-0.02em] sm:!text-2xl">
-              Build your box and save
-            </h2>
-            <p className="mt-1 text-xs text-[#52675d] sm:text-sm">
-              Fresh picks delivered in your next available window.
-            </p>
-          </div>
-          <a
-            className="hidden shrink-0 rounded-full bg-black px-4 py-2 text-xs font-bold !text-white sm:inline-flex"
-            href="#best-sellers"
-          >
-            Shop now
-          </a>
-        </div>
-      </section>
-
       <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-[#ededed] bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
-          <button
-            aria-pressed={!activeFilters.category}
-            className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold ${!activeFilters.category ? "bg-black text-white" : "bg-[#f2f2f2]"}`}
-            onClick={() => changeCategory("")}
-            type="button"
-          >
-            Shop
-          </button>
-          {catalog.categories.map((category) => (
+          {categoryShortcuts(catalog.categories).map((category) => (
             <button
-              aria-pressed={activeFilters.category === category.slug}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${activeFilters.category === category.slug ? "bg-black text-white" : "bg-[#f2f2f2]"}`}
-              key={category.id}
-              onClick={() => changeCategory(category.slug)}
+              aria-pressed={category.active(activeFilters)}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${category.active(activeFilters) ? "bg-black text-white" : "bg-[#f2f2f2]"}`}
+              key={category.label}
+              onClick={() => category.onSelect(updateUrl, activeFilters)}
               type="button"
             >
-              {category.name}
+              {category.label}
             </button>
           ))}
           <details className="relative shrink-0">
@@ -433,6 +402,10 @@ export function CustomerCatalog({
         </form>
       ) : null}
 
+      {!hasFilters && visibleItems.length > 1 ? (
+        <MerchandisingRail banners={banners} items={visibleItems} />
+      ) : null}
+
       {error ? (
         <ErrorState
           className="my-8"
@@ -468,19 +441,47 @@ export function CustomerCatalog({
       ) : (
         <div className="grid min-w-0 gap-10 pb-8">
           {!activeFilters.category && !activeFilters.search ? (
-            <ProductRow
-              categories={catalog.categories}
-              id="best-sellers"
-              items={featured}
-              lines={lines}
-              onAdd={requestAdd}
-              onQuantityChange={(skuId, quantity) =>
-                void mutateCart(setCartQuantity(lines, skuId, quantity), skuId)
-              }
-              pendingSku={pendingSku}
-              saving={saving}
-              title="Best sellers"
-            />
+            <>
+              <ProductRow
+                categories={catalog.categories}
+                id="best-sellers"
+                items={featured}
+                lines={lines}
+                onAdd={requestAdd}
+                onQuantityChange={(skuId, quantity) =>
+                  void mutateCart(setCartQuantity(lines, skuId, quantity), skuId)
+                }
+                pendingSku={pendingSku}
+                saving={saving}
+                title="Best sellers"
+              />
+              <ProductRow
+                categories={catalog.categories}
+                id="greens"
+                items={greenItems}
+                lines={lines}
+                onAdd={requestAdd}
+                onQuantityChange={(skuId, quantity) =>
+                  void mutateCart(setCartQuantity(lines, skuId, quantity), skuId)
+                }
+                pendingSku={pendingSku}
+                saving={saving}
+                title="Greens"
+              />
+              <ProductRow
+                categories={catalog.categories}
+                id="leafy-vegetables"
+                items={leafyItems}
+                lines={lines}
+                onAdd={requestAdd}
+                onQuantityChange={(skuId, quantity) =>
+                  void mutateCart(setCartQuantity(lines, skuId, quantity), skuId)
+                }
+                pendingSku={pendingSku}
+                saving={saving}
+                title="Leafy vegetables"
+              />
+            </>
           ) : null}
           {aisleSections.map(({ category, items }) => (
             <ProductRow
@@ -567,15 +568,89 @@ function ProductRow({
   onAdd: (skuId: string) => void;
   onQuantityChange: (skuId: string, quantity: number) => void;
 }>) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [scrollState, setScrollState] = useState({ left: false, right: items.length > 4 });
+  const rowId =
+    id ??
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
+  function updateScrollState() {
+    const rail = railRef.current;
+    if (!rail) return;
+    setScrollState({
+      left: rail.scrollLeft > 1,
+      right: rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 1,
+    });
+  }
+
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+    return () => window.removeEventListener("resize", updateScrollState);
+  }, [items]);
+
   return (
-    <section className="min-w-0" {...(id ? { id } : {})}>
+    <section
+      aria-labelledby={`${rowId}-heading`}
+      className="min-w-0"
+      data-testid={`product-row-${rowId}`}
+      {...(id ? { id } : {})}
+    >
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="!m-0 !text-lg font-extrabold tracking-[-0.02em] sm:!text-xl">{title}</h2>
-        <a className="flex items-center gap-1 text-xs font-semibold" href="#top">
-          See all <ChevronRight size={15} />
-        </a>
+        <h2
+          className="!m-0 !text-lg font-extrabold tracking-[-0.02em] sm:!text-xl"
+          id={`${rowId}-heading`}
+        >
+          {title}
+        </h2>
+        <div className="flex items-center gap-3">
+          <div className={`hidden items-center gap-1 sm:flex ${expanded ? "sm:hidden" : ""}`}>
+            <button
+              aria-label={`Scroll ${title} left`}
+              className="grid size-8 place-items-center rounded-full border border-[#dedede] hover:bg-[#f4f4f4] disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={!scrollState.left}
+              onClick={() => railRef.current?.scrollBy({ left: -420, behavior: "smooth" })}
+              type="button"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              aria-label={`Scroll ${title} right`}
+              className="grid size-8 place-items-center rounded-full border border-[#dedede] hover:bg-[#f4f4f4] disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={!scrollState.right}
+              onClick={() => railRef.current?.scrollBy({ left: 420, behavior: "smooth" })}
+              type="button"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <button
+            aria-controls={`${rowId}-products`}
+            aria-expanded={expanded}
+            className="flex items-center gap-1 text-xs font-semibold"
+            onClick={() => {
+              setExpanded((current) => !current);
+              railRef.current?.scrollTo({ left: 0 });
+            }}
+            type="button"
+          >
+            {expanded ? "Show less" : "See all"} <ChevronRight size={15} />
+          </button>
+        </div>
       </div>
-      <div className="flex max-w-full gap-3 overflow-x-auto pb-3 [scrollbar-width:none] sm:gap-4">
+      <div
+        aria-label={`${title} products`}
+        className={`max-w-full gap-3 pb-3 sm:gap-4 ${expanded ? "flex flex-wrap overflow-visible" : "flex overflow-x-auto [scrollbar-width:none]"}`}
+        data-testid={`product-rail-${rowId}`}
+        id={`${rowId}-products`}
+        onScroll={updateScrollState}
+        ref={railRef}
+        tabIndex={expanded ? -1 : 0}
+      >
         {items.map((item) => (
           <ProductCard
             categories={categories}
@@ -588,6 +663,136 @@ function ProductRow({
           />
         ))}
       </div>
+    </section>
+  );
+}
+
+function categoryShortcuts(categories: readonly CatalogCategoryResponse[]) {
+  return [
+    {
+      label: "Grocery",
+      active: (filters: CatalogQueryOptions) => !filters.category && !filters.search,
+      onSelect: (update: (filters: CatalogQueryOptions) => void, filters: CatalogQueryOptions) =>
+        update({ ...filters, category: "", search: "" }),
+    },
+    ...categories.map((category) => ({
+      label: category.name,
+      active: (filters: CatalogQueryOptions) => filters.category === category.slug,
+      onSelect: (update: (filters: CatalogQueryOptions) => void, filters: CatalogQueryOptions) =>
+        update({ ...filters, category: category.slug, search: "" }),
+    })),
+    {
+      label: "Greens",
+      active: () => false,
+      onSelect: () => selectCollection("greens"),
+    },
+    {
+      label: "Leafy vegetables",
+      active: () => false,
+      onSelect: () => selectCollection("leafy-vegetables"),
+    },
+  ];
+}
+
+function selectCollection(id: string) {
+  const collection = document.getElementById(id);
+  if (collection) {
+    collection.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  window.location.assign(`/shop#${id}`);
+}
+
+function MerchandisingRail({
+  banners,
+  items,
+}: Readonly<{
+  banners: ActivePromotionBannersResponse["data"]["banners"];
+  items: readonly CatalogSkuResponse[];
+}>) {
+  if (banners.length) {
+    return (
+      <section aria-label="Featured offers" className="mb-9 grid gap-3 sm:grid-cols-2">
+        {banners.slice(0, 2).map((banner) => (
+          <a
+            className="group relative min-h-36 overflow-hidden rounded-xl bg-[#e8f5ed] px-5 py-5 sm:min-h-40"
+            href={banner.ctaDestination}
+            key={banner.id}
+          >
+            <div className="relative z-10 max-w-[64%]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#087443]">
+                Featured this week
+              </p>
+              <h2 className="!m-0 mt-2 !text-lg font-extrabold leading-tight sm:!text-xl">
+                {banner.title}
+              </h2>
+              <p className="mt-1 text-xs leading-4 text-[#52675d]">{banner.copy}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold">
+                {banner.ctaLabel} <ChevronRight size={14} />
+              </span>
+            </div>
+            <picture>
+              <source media="(max-width: 639px)" srcSet={banner.mobileUrl} />
+              <img
+                alt={banner.altText}
+                className="absolute inset-y-0 right-0 h-full w-[45%] object-cover transition-transform group-hover:scale-105"
+                src={banner.desktopUrl}
+              />
+            </picture>
+          </a>
+        ))}
+      </section>
+    );
+  }
+
+  const cards = [
+    {
+      eyebrow: "Carbon picks",
+      title: "Crave it? Get it.",
+      copy: "Build a fresher basket from this week's market picks.",
+      item: items[0],
+      href: "/shop",
+    },
+    {
+      eyebrow: "Featured in fresh markets",
+      title: "Bright greens for every table",
+      copy: "Leafy vegetables and herbs selected for your weekly box.",
+      item: items.find((item) => /lettuce|pechay|kangkong|basil/i.test(item.name)) ?? items[1],
+      href: "/shop?search=greens",
+    },
+  ].filter((card) => card.item);
+
+  return (
+    <section aria-label="Featured offers" className="mb-9 grid gap-3 sm:grid-cols-2">
+      {cards.map((card, index) =>
+        card.item ? (
+          <a
+            className={`group relative min-h-36 overflow-hidden rounded-lg px-5 py-5 sm:min-h-40 ${index === 0 ? "bg-[#e8f5ed]" : "bg-[#fff1d6]"}`}
+            href={card.href}
+            key={card.title}
+          >
+            <div className="relative z-10 max-w-[64%]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#087443]">
+                {card.eyebrow}
+              </p>
+              <h2 className="!m-0 mt-2 !text-lg font-extrabold leading-tight sm:!text-xl">
+                {card.title}
+              </h2>
+              <p className="mt-1 text-xs leading-4 text-[#52675d]">{card.copy}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold">
+                Shop now <ChevronRight size={14} />
+              </span>
+            </div>
+            {card.item.imageUrl ? (
+              <img
+                alt=""
+                className="absolute bottom-0 right-2 size-36 object-contain object-bottom transition-transform group-hover:scale-105 sm:right-4 sm:size-40"
+                src={card.item.imageUrl}
+              />
+            ) : null}
+          </a>
+        ) : null,
+      )}
     </section>
   );
 }

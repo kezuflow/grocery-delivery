@@ -119,6 +119,20 @@ Landing-page work is outside the marketplace program and resumes after the core 
 - **Viewport refinement evidence:** the rebuilt `/shop` uses the full 1920x1080 viewport with no
   document-level horizontal overflow. The 390x844 phone view also has no document overflow and
   exposes Shop, Aisles, Deals, and My list in the fixed bottom navigation.
+- **Store-page merchandising increment:** removed the unsupported merchant-summary block; added a
+  sticky grocery category strip with Carbon catalog aisles plus Greens and Leafy vegetables
+  shortcuts; added Carbon-owned "Crave it? Get it." and "Featured in fresh markets" merchandising
+  banners using catalog imagery, with active `storefront-strip` promotion banners rendered when the
+  server provides them; added desktop shelf arrow controls with scroll-aware disabled states and an
+  in-place See all/Show less expansion for complete shelves. Prices, availability, cart mutations,
+  subscription gates, and banner content remain server-owned.
+- **Interaction evidence:** at 1920x1080 the Best sellers rail moved from `scrollLeft=0` to `95`
+  after the right-arrow click and enabled the left arrow; See all changed the rail to wrapped,
+  visible-all mode. At 390x844 the two merchandising cards, category strip, and fixed bottom
+  navigation rendered with `scrollWidth=clientWidth=375`. The merchant-summary copy was absent.
+- **Reference transport note:** the recorded image-backed Mobbin links remain the source of truth for
+  this refinement. A fresh MCP search during this run returned `Auth required` after the login command,
+  so no new reference URLs or assets were added.
 - **Non-goals:** address, delivery-window, coupon, quote, payment, and order completion remain
   VS-MKT-06 and VS-MKT-07.
 

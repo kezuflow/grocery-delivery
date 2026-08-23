@@ -134,17 +134,7 @@ export function MarketplaceShell({
       <div className="grid w-full lg:grid-cols-[232px_minmax(0,1fr)]">
         <aside className="hidden border-r border-[#ededed] bg-white lg:block">
           <div className="sticky top-16 px-5 py-6">
-            <div className="border-b border-[#ededed] pb-5">
-              <div className="mb-3 grid size-12 place-items-center rounded-full bg-[#e6f4ed] text-market-green-dark">
-                <Store size={22} />
-              </div>
-              <h1 className="!m-0 text-base font-extrabold">Carbon Groceries</h1>
-              <p className="mt-1 text-[11px] leading-4 text-market-muted">
-                Weekly delivery · Manila
-              </p>
-              <p className="mt-1 text-[11px] text-market-muted">4.8 ★ · Delivery this week</p>
-            </div>
-            <nav aria-label="Store navigation" className="mt-4 grid gap-0.5 text-[13px]">
+            <nav aria-label="Store navigation" className="grid gap-0.5 text-[13px]">
               <a
                 className="flex items-center gap-3 rounded-md bg-[#ededed] px-3 py-2.5 font-bold"
                 href="/shop"

@@ -27,6 +27,7 @@ export default async function ShopPage({
     >
       <h1 className="sr-only">Shop fresh groceries</h1>
       <CustomerCatalog
+        banners={marketplace.banners}
         cart={marketplace.cart}
         catalog={marketplace.catalog}
         error={marketplace.error}

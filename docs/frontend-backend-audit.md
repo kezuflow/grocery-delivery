@@ -186,21 +186,28 @@ scope. The landing page is intentionally excluded from this benchmark.
   [category rows](https://mobbin.com/screens/b68f5f88-666b-4f45-819d-f76705d10384). Images, not
   metadata alone, were used for the comparison.
 - **UI decision:** `/shop` is a single-store grocery detail page, not a generic marketplace results
-  grid. Desktop uses a compact global utility/search header, merchant facts and aisle navigation in
-  the left rail, a restrained promotion band, and horizontal aisle sections. Mobile uses the green
-  store search header, compact store facts, horizontally scrollable aisle/product rows, circular add
-  controls, and a four-item fixed bottom navigation.
+  grid. Desktop uses a compact global utility/search header, aisle navigation in the left rail,
+  Carbon merchandising banners, and horizontal aisle sections. Mobile uses the green store search
+  header, a sticky grocery category strip, two merchandising banners, horizontally scrollable
+  product rows, circular add controls, and a four-item fixed bottom navigation.
 - **Removed unsupported invention:** circular C logo, Carbon Market/Browse introduction, “Fresh
-  groceries for your weekly box” marketing copy, large result heading, grid/list switcher, result
-  count, and the desktop filter/cart column. Carbon naming remains limited to the simple wordmark
-  and the owned store name `Carbon Groceries`.
+  groceries for your weekly box” marketing copy, merchant-summary facts, large result heading,
+  grid/list switcher, result count, and the desktop filter/cart column. Carbon naming remains in the
+  simple wordmark and Carbon-owned merchandising copy.
+- **Merchandising decision:** the catalog page renders server-provided active `storefront-strip`
+  promotion banners when present and falls back to two Carbon product-derived cards. Category chips
+  cover Grocery, catalog aisles, Greens, and Leafy vegetables. Every product shelf has arrow controls
+  on desktop and an accessible in-place See all/Show less expansion; the rail state is derived from
+  its actual scroll geometry.
 - **Behavior ownership:** existing server-backed search, category, sorting, price bounds,
   pagination, Better Auth, plan gate, cart versioning, server price/availability validation, retry,
   and D1 persistence remain unchanged. The visual convergence does not move commerce rules into the
   browser.
 - **Browser evidence:** 1920x1080 and 390x844 local browser passes show no document-level horizontal
-  overflow. The desktop canvas fills the viewport; the phone page shows three product tiles in the
-  first aisle and Shop/Aisles/Deals/My list bottom navigation.
+  overflow. The desktop canvas fills the viewport; Best sellers arrow and See all interactions were
+  verified; the phone page shows both merchandising cards, category chips, three product tiles in
+  the first shelf, and Shop/Aisles/Deals/My list bottom navigation. Focused Playwright convergence
+  checks pass for phone and desktop.
 
 ## Admin Product Workspace Prototype Checkpoint
 
