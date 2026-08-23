@@ -13,7 +13,7 @@ import type {
 
 import { Button, Dialog, EmptyState, ErrorState, Input } from "../../components/ui";
 import { PublicAuthControls } from "../auth";
-import { ChevronDown, Grid2X2, ImageIcon, List, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Grid2X2, List, Search, SlidersHorizontal } from "lucide-react";
 import {
   ApiClientError,
   createApiClient,
@@ -301,7 +301,55 @@ export function CustomerCatalog({
           ))}
         </div>
       </Dialog>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-8">
+      <section className="mb-5 border-b border-market-line pb-5 lg:mb-6 lg:pb-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-market-green-dark">
+              Carbon Market
+            </p>
+            <h2 className="!m-0 !text-[28px] font-black leading-[1.08] tracking-tight sm:!text-3xl">
+              Fresh groceries, ready for your week
+            </h2>
+            <p className="mt-2 text-sm text-market-muted">
+              Produce, herbs, and pantry staples delivered in one weekly box.
+            </p>
+          </div>
+          <div className="hidden text-right text-xs text-market-muted sm:block">
+            <strong className="block text-market-ink">Manila delivery</strong>Next available weekend
+            window
+          </div>
+        </div>
+        <div
+          className="mt-4 flex gap-2 overflow-x-auto pb-1"
+          aria-label="Product categories"
+          role="tablist"
+        >
+          <button
+            aria-selected={!activeFilters.category}
+            className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-xs font-bold ${!activeFilters.category ? "bg-market-ink text-white" : "bg-[#f3f5f3] text-[#4b5563]"}`}
+            onClick={() => changeCategory("")}
+            role="tab"
+            type="button"
+          >
+            All groceries
+          </button>
+          {catalog.categories.map((category) => (
+            <button
+              aria-selected={activeFilters.category === category.slug}
+              className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-xs font-bold ${activeFilters.category === category.slug ? "bg-market-ink text-white" : "bg-[#f3f5f3] text-[#4b5563]"}`}
+              key={category.id}
+              onClick={() => changeCategory(category.slug)}
+              role="tab"
+              type="button"
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+      </section>
+      <div
+        className={`grid gap-6 lg:items-start lg:gap-7 ${canEditCart ? "lg:grid-cols-[minmax(0,1fr)_18rem]" : "lg:grid-cols-1"}`}
+      >
         <div className="min-w-0">
           <div className="mb-6 flex items-center justify-between border-b border-market-line pb-4 lg:mb-8">
             <p className="text-sm text-market-muted">
@@ -348,85 +396,6 @@ export function CustomerCatalog({
             >
               <SlidersHorizontal size={18} /> Filters
             </button>
-          </div>
-          <div className="grid gap-4 lg:hidden">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Shop By Categories</h2>
-              <button
-                className="rounded-full bg-market-banner px-3 py-1 text-xs font-bold text-market-green-dark"
-                onClick={() => changeCategory("")}
-                type="button"
-              >
-                See All
-              </button>
-            </div>
-            <div
-              className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1"
-              aria-label="Product categories"
-              role="tablist"
-            >
-              <button
-                className={`flex w-16 shrink-0 flex-col items-center gap-1 text-xs font-semibold ${!activeFilters.category ? "text-market-green-dark" : "text-market-ink"}`}
-                onClick={() => changeCategory("")}
-                role="tab"
-                aria-selected={!activeFilters.category}
-                type="button"
-              >
-                <span
-                  className={`grid size-14 place-items-center rounded-md border ${!activeFilters.category ? "border-market-green bg-market-banner" : "border-market-line bg-[#ededed]"}`}
-                >
-                  <Grid2X2 size={20} />
-                </span>
-                All
-              </button>
-              {catalog.categories.map((category) => (
-                <button
-                  className={`flex w-16 shrink-0 flex-col items-center gap-1 text-xs font-semibold ${activeFilters.category === category.slug ? "text-market-green-dark" : "text-market-ink"}`}
-                  key={category.id}
-                  onClick={() => changeCategory(category.slug)}
-                  role="tab"
-                  aria-selected={activeFilters.category === category.slug}
-                  type="button"
-                >
-                  <span
-                    className={`grid size-14 place-items-center rounded-md border ${activeFilters.category === category.slug ? "border-market-green bg-market-banner" : "border-market-line bg-[#ededed]"}`}
-                  >
-                    <ImageIcon size={18} />
-                  </span>
-                  <span className="max-w-16 truncate">{category.name}</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Product sorting">
-              <button
-                className={`shrink-0 rounded px-4 py-1.5 text-sm ${sort === "popular" ? "bg-market-green text-white" : "bg-market-banner text-market-ink"}`}
-                onClick={() => changeSort("popular")}
-                type="button"
-              >
-                All
-              </button>
-              <button
-                className={`shrink-0 rounded px-4 py-1.5 text-sm ${sort === "price-low" ? "bg-market-green text-white" : "bg-market-banner text-market-ink"}`}
-                onClick={() => changeSort("price-low")}
-                type="button"
-              >
-                Lowest Price
-              </button>
-              <button
-                className={`shrink-0 rounded px-4 py-1.5 text-sm ${sort === "price-high" ? "bg-market-green text-white" : "bg-market-banner text-market-ink"}`}
-                onClick={() => changeSort("price-high")}
-                type="button"
-              >
-                Highest Price
-              </button>
-              <button
-                className={`shrink-0 rounded px-4 py-1.5 text-sm ${sort === "name" ? "bg-market-green text-white" : "bg-market-banner text-market-ink"}`}
-                onClick={() => changeSort("name")}
-                type="button"
-              >
-                A-Z
-              </button>
-            </div>
           </div>
           {mobileFiltersOpen ? (
             <div className="mb-5 rounded-xl border border-market-line bg-white p-4 lg:hidden">
@@ -481,7 +450,7 @@ export function CustomerCatalog({
             />
           ) : (
             <div
-              className={`mt-6 grid gap-0 border-l border-t border-market-line ${view === "list" ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4"}`}
+              className={`mt-6 grid gap-3 ${view === "list" ? "grid-cols-1" : `grid-cols-2 sm:grid-cols-3 ${canEditCart ? "xl:grid-cols-4" : "xl:grid-cols-5 2xl:grid-cols-6"}`}`}
             >
               {visibleItems.map((item) => (
                 <ProductCard
@@ -522,8 +491,8 @@ export function CustomerCatalog({
           ) : null}
         </div>
 
-        <div className="grid gap-5">
-          <aside className="hidden rounded-xl border border-market-line bg-white p-5 lg:block">
+        <div className={canEditCart ? "grid gap-5" : "hidden"}>
+          <aside className="hidden border-l border-market-line pl-5 lg:block">
             <form className="relative mb-7 flex" onSubmit={submitSearch} role="search">
               <Input
                 aria-label="Sidebar search"
@@ -546,7 +515,7 @@ export function CustomerCatalog({
               <label className="grid gap-1 text-xs text-market-muted">
                 Minimum (PHP)
                 <input
-                  className="rounded border border-market-line px-3 py-2 text-market-ink"
+                  className="min-w-0 rounded border border-market-line px-3 py-2 text-market-ink"
                   min="0"
                   onChange={(event) => setMinimumPrice(event.target.value)}
                   type="number"
@@ -556,7 +525,7 @@ export function CustomerCatalog({
               <label className="grid gap-1 text-xs text-market-muted">
                 Maximum (PHP)
                 <input
-                  className="rounded border border-market-line px-3 py-2 text-market-ink"
+                  className="min-w-0 rounded border border-market-line px-3 py-2 text-market-ink"
                   min="0"
                   onChange={(event) => setMaximumPrice(event.target.value)}
                   type="number"
@@ -631,6 +600,20 @@ export function CustomerCatalog({
           />
         </div>
       </div>
+      {canEditCart && lines.length ? (
+        <a
+          className="fixed inset-x-4 bottom-[4.6rem] z-20 mx-auto flex min-h-12 max-w-md items-center justify-between rounded-full bg-[#14532d] px-5 py-3 text-sm font-bold !text-white shadow-xl lg:hidden"
+          href="/account/cart"
+        >
+          <span>{lines.reduce((total, line) => total + line.quantity, 0)} items</span>
+          <span>
+            View cart ·{" "}
+            {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
+              savedCart.subtotal.centavos / 100,
+            )}
+          </span>
+        </a>
+      ) : null}
     </>
   );
 }

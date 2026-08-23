@@ -1,19 +1,17 @@
 import type { ReactNode } from "react";
 import {
-  ArrowLeftRight,
-  ChevronDown,
+  ClipboardList,
   Heart,
   Home,
-  ListOrdered,
   Menu,
   Search,
   ShoppingBag,
+  Store,
   UserRound,
 } from "lucide-react";
 
 import type { SessionSummary } from "../../lib/permissions";
 import { AccountMenu } from "./account-menu";
-import { BrandLink } from "./brand-link";
 import { OnlineStatus } from "./online-status";
 
 export function MarketplaceShell({
@@ -22,185 +20,205 @@ export function MarketplaceShell({
   children,
 }: Readonly<{ session: SessionSummary | null; search?: string; children: ReactNode }>) {
   const showCustomerNavigation = session?.role === "customer";
+  const cartHref = showCustomerNavigation ? "/account/cart" : "/shop";
 
   return (
-    <main className="marketplace-shell min-h-screen bg-market-paper text-market-ink pb-24 lg:pb-0">
+    <main className="marketplace-shell min-h-screen bg-white text-market-ink pb-24 lg:pb-0">
       <OnlineStatus />
       <header className="border-b border-market-line bg-white">
-        <div className="marketplace-topbar hidden bg-market-green text-white lg:block">
-          <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
-            <BrandLink tone="inverse" />
-            <form
-              action="/shop"
-              className="hidden h-12 min-w-0 max-w-[810px] flex-1 lg:flex"
-              role="search"
-            >
-              <label className="sr-only" htmlFor="header-category">
-                Select category
-              </label>
-              <select
-                className="w-44 rounded-l-full border-0 bg-white px-5 text-sm text-market-ink outline-none"
-                defaultValue=""
-                id="header-category"
-              >
-                <option value="">Select Category</option>
-                <option value="all">All categories</option>
-              </select>
-              <label className="sr-only" htmlFor="header-search">
-                Search products
-              </label>
+        <div className="hidden h-[68px] items-center gap-7 px-6 lg:flex xl:px-10">
+          <a className="flex items-center gap-2 text-lg font-black" href="/shop">
+            <span className="grid size-9 place-items-center rounded-full bg-market-green-dark text-sm text-white">
+              C
+            </span>
+            Carbon Market
+          </a>
+          <form action="/shop" className="flex h-11 min-w-0 max-w-[640px] flex-1" role="search">
+            <label className="sr-only" htmlFor="header-search">
+              Search Carbon Market
+            </label>
+            <div className="relative flex min-w-0 flex-1 items-center">
+              <Search className="absolute left-4 text-market-muted" size={17} />
               <input
-                className="min-w-0 flex-1 border-l border-market-line bg-white px-5 text-sm text-market-ink outline-none"
+                className="h-full w-full rounded-full bg-[#f5f5f5] pl-11 pr-4 text-sm outline-none ring-1 ring-transparent focus:bg-white focus:ring-market-green"
+                defaultValue={search}
                 id="header-search"
                 name="search"
-                placeholder="Search Products"
+                placeholder="Search Carbon Market"
               />
-              <button
-                aria-label="Search products"
-                className="grid w-16 place-items-center rounded-r-full bg-[#f59e0b] text-white"
-                type="submit"
-              >
-                <Search size={21} />
-              </button>
-            </form>
-            <div className="hidden items-center gap-5 text-sm lg:flex">
-              <span>EN⌄</span>
-              <span className="text-right font-bold leading-tight">
-                ☎ 91 2345 678
-                <small className="block text-xs font-normal">Call out Hotline 24/7</small>
-              </span>
             </div>
-            <div className="flex items-center gap-2 lg:hidden">
-              {showCustomerNavigation ? (
-                <a aria-label="Cart" href="/account/cart">
-                  <ShoppingBag size={21} />
-                </a>
-              ) : null}
-              <Menu aria-hidden="true" size={22} />
-            </div>
-          </div>
+          </form>
+          <button className="ml-auto flex items-center gap-2 text-left text-xs" type="button">
+            <span className="grid size-8 place-items-center rounded-full bg-market-soft text-market-green-dark">
+              <Store size={16} />
+            </span>
+            <span>
+              <strong className="block">Deliver to</strong>
+              <span className="text-market-muted">Manila · This week</span>
+            </span>
+          </button>
+          <a
+            aria-label="Your cart"
+            className="grid size-10 place-items-center rounded-full hover:bg-market-soft"
+            href={cartHref}
+          >
+            <ShoppingBag size={19} />
+          </a>
+          {session ? (
+            <AccountMenu session={session} />
+          ) : (
+            <a className="text-sm font-bold" href="/shop">
+              Sign in
+            </a>
+          )}
         </div>
-        <div className="bg-[#60f5b1] px-4 pb-5 pt-5 lg:hidden">
+        <div className="bg-market-green-dark px-4 pb-4 pt-4 lg:hidden">
           <div className="mx-auto max-w-md">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xl font-semibold text-market-ink">Good Morning</p>
-                <p className="mt-1 text-[11px] text-market-ink">Weekly grocery delivery</p>
+            <div className="mb-3 flex items-center justify-between text-white">
+              <a className="flex items-center gap-2" href="/shop">
+                <span className="grid size-8 place-items-center rounded-full bg-white text-sm font-black text-market-green-dark">
+                  C
+                </span>
+                <span>
+                  <strong className="block text-sm">Carbon Market</strong>
+                  <small className="text-[10px] text-white/75">Weekly grocery delivery</small>
+                </span>
+              </a>
+              <div className="flex items-center gap-3">
+                <a aria-label="Your cart" href={cartHref}>
+                  <ShoppingBag size={20} />
+                </a>
+                <Menu aria-hidden="true" size={21} />
               </div>
-              {showCustomerNavigation ? (
-                <div className="flex items-center gap-3">
-                  <a aria-label="Your cart" href="/account/cart">
-                    <ShoppingBag size={22} />
-                  </a>
-                  <a aria-label="Your account" href="/account">
-                    <UserRound size={22} />
-                  </a>
-                </div>
-              ) : null}
             </div>
             <form action="/shop" className="relative" role="search">
               <label className="sr-only" htmlFor="mobile-market-search">
                 Search products
               </label>
               <input
-                className="h-12 w-full rounded-full border-0 bg-white/70 px-4 pr-12 text-sm outline-none"
+                className="h-11 w-full rounded-full border-0 bg-white px-4 pr-11 text-sm text-market-ink outline-none placeholder:text-market-muted"
                 defaultValue={search}
                 id="mobile-market-search"
                 name="search"
-                placeholder="Search fruits, vegetables, dairy, snacks..."
+                placeholder="Search fruits, vegetables, dairy..."
                 type="search"
               />
               <button
                 aria-label="Search products"
-                className="absolute right-3 top-3 text-market-ink"
+                className="absolute right-2 top-1 grid size-9 place-items-center text-market-green-dark"
                 type="submit"
               >
-                <Search size={25} strokeWidth={1.6} />
+                <Search size={22} />
               </button>
             </form>
           </div>
         </div>
-        <div className="hidden border-b border-market-line bg-white lg:block">
-          <div className="mx-auto flex h-[62px] max-w-[1280px] items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
-            <a
-              className="flex items-center gap-3 border-x border-market-line px-5 py-3 text-sm font-semibold"
-              href="/shop"
-            >
-              <Menu size={19} /> All Categories <ChevronDown size={16} />
-            </a>
-            <nav
-              aria-label="Marketplace navigation"
-              className="flex items-center gap-9 text-sm text-market-ink"
-            >
-              <a href="/">Home⌄</a>
-              <a className="font-bold text-market-green" href="/shop">
-                Shop⌄
-              </a>
-              {showCustomerNavigation ? (
-                <>
-                  <a href="/account">Pages⌄</a>
-                  <a href="/account/orders">Orders⌄</a>
-                  <a href="/account/support">Contact</a>
-                </>
-              ) : null}
-            </nav>
-            <div className="flex items-center gap-5 text-market-ink">
-              <span className="text-sm">PHP⌄</span>
-              <ArrowLeftRight size={19} />
-              <Heart size={20} />
-              {showCustomerNavigation ? <ShoppingBag aria-label="Cart" size={20} /> : null}
-              {session ? <UserRound aria-hidden="true" size={20} /> : null}
-              {session ? <AccountMenu session={session} /> : null}
-            </div>
-          </div>
-        </div>
       </header>
-      <div className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</div>
-      {showCustomerNavigation ? (
-        <nav
-          aria-label="Customer navigation"
-          className="fixed inset-x-0 bottom-0 z-20 border-t border-market-line bg-white/95 px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
-        >
-          <ul className="mx-auto grid max-w-md grid-cols-4 gap-1">
-            <li>
+      <div className="mx-auto grid max-w-[1440px] lg:grid-cols-[184px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-market-line bg-white lg:block">
+          <div className="sticky top-0 px-4 py-6">
+            <div className="mb-6 border-b border-market-line pb-5">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-market-muted">
+                Browse
+              </p>
+              <p className="mt-2 text-base font-bold">Carbon Market</p>
+              <p className="mt-1 text-xs leading-5 text-market-muted">
+                Fresh groceries for your weekly box
+              </p>
+            </div>
+            <nav aria-label="Marketplace categories" className="grid gap-1 text-sm">
               <a
-                className="flex flex-col items-center gap-1 py-1 text-[11px] font-semibold text-market-green"
+                className="flex items-center gap-3 rounded-md bg-market-soft px-3 py-2.5 font-bold text-market-green-dark"
                 href="/shop"
               >
-                <Home aria-hidden="true" size={20} strokeWidth={2.2} />
-                Shop
+                <Home size={17} /> Grocery
               </a>
-            </li>
-            <li>
               <a
-                className="flex flex-col items-center gap-1 py-1 text-[11px] font-semibold text-market-muted"
-                href="/account/orders"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-market-muted hover:bg-market-soft"
+                href="/shop?category=fresh-produce"
               >
-                <ListOrdered aria-hidden="true" size={20} strokeWidth={2} />
-                Orders
+                <Store size={17} /> Fresh produce
               </a>
-            </li>
-            <li>
               <a
-                className="flex flex-col items-center gap-1 py-1 text-[11px] font-semibold text-market-muted"
-                href="/account"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-market-muted hover:bg-market-soft"
+                href="/shop?category=fresh-herbs"
               >
-                <UserRound aria-hidden="true" size={20} strokeWidth={2} />
-                Account
+                <Heart size={17} /> Fresh herbs
               </a>
-            </li>
-            <li>
               <a
-                className="flex flex-col items-center gap-1 py-1 text-[11px] font-semibold text-market-muted"
-                href="/account/cart"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-market-muted hover:bg-market-soft"
+                href="/shop"
               >
-                <ShoppingBag aria-hidden="true" size={20} strokeWidth={2} />
-                Cart
+                <ClipboardList size={17} /> Weekly offers
               </a>
-            </li>
-          </ul>
-        </nav>
-      ) : null}
+            </nav>
+            <div className="mt-8 border-t border-market-line pt-5">
+              <nav aria-label="Account navigation" className="grid gap-1 text-sm">
+                <a
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-market-muted hover:bg-market-soft"
+                  href="/account/orders"
+                >
+                  <ClipboardList size={17} /> Orders
+                </a>
+                <a
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-market-muted hover:bg-market-soft"
+                  href="/account"
+                >
+                  <UserRound size={17} /> Account
+                </a>
+              </nav>
+            </div>
+          </div>
+        </aside>
+        <div className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</div>
+      </div>
+      <nav
+        aria-label="Customer navigation"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-market-line bg-white px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(17,24,39,0.08)] lg:hidden"
+      >
+        <ul className="mx-auto grid max-w-md grid-cols-5 gap-1">
+          <li>
+            <a
+              className="flex flex-col items-center gap-1 py-1 text-[10px] font-bold text-market-green-dark"
+              href="/shop"
+            >
+              <Home size={19} /> Shop
+            </a>
+          </li>
+          <li>
+            <a
+              className="flex flex-col items-center gap-1 py-1 text-[10px] font-semibold text-market-muted"
+              href="/shop"
+            >
+              <Store size={19} /> Aisles
+            </a>
+          </li>
+          <li>
+            <a
+              className="flex flex-col items-center gap-1 py-1 text-[10px] font-semibold text-market-muted"
+              href="/account/orders"
+            >
+              <ClipboardList size={19} /> Orders
+            </a>
+          </li>
+          <li>
+            <a
+              className="flex flex-col items-center gap-1 py-1 text-[10px] font-semibold text-market-muted"
+              href="/account/cart"
+            >
+              <ShoppingBag size={19} /> Cart
+            </a>
+          </li>
+          <li>
+            <a
+              className="flex flex-col items-center gap-1 py-1 text-[10px] font-semibold text-market-muted"
+              href="/account"
+            >
+              <UserRound size={19} /> Account
+            </a>
+          </li>
+        </ul>
+      </nav>
     </main>
   );
 }

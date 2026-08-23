@@ -59,23 +59,23 @@ offline, and success states where applicable.
 
 ## Local Marketplace Queue
 
-| Slice     | Outcome                                                                 | Status      |
-| --------- | ----------------------------------------------------------------------- | ----------- |
-| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete    |
-| VS-MKT-01 | Public grocery discovery on web and phone                               | complete    |
-| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete    |
-| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete    |
-| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete    |
-| VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | planned     |
-| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned     |
-| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned     |
-| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned     |
-| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned     |
-| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned     |
-| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned     |
-| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned     |
-| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned     |
-| VS-MKT-14 | Staging promotion and release evidence                                  | deferred    |
+| Slice     | Outcome                                                                 | Status   |
+| --------- | ----------------------------------------------------------------------- | -------- |
+| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete |
+| VS-MKT-01 | Public grocery discovery on web and phone                               | complete |
+| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete |
+| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete |
+| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete |
+| VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | planned  |
+| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned  |
+| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned  |
+| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned  |
+| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
+| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
+| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
+| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
+| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
+| VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
 
@@ -95,6 +95,11 @@ Landing-page work is outside the marketplace program and resumes after the core 
   substitution preference in cart review; surface server reconciliation as a durable alert; use a
   fixed phone cart action above the existing bottom navigation; retain Carbon tokens, copy, product
   assets, pricing, and weekly checkout rules.
+- **Visual refinement:** the desktop shell follows the retrieved web benchmark with a compact
+  utility/search header, persistent grocery rail, store context, aisle chips, dense light product
+  tiles, and an adjacent cart/filter column. The phone shell uses a compact green store header,
+  search field, horizontal aisle chips, two-column product tiles, persistent cart action, and
+  five-item bottom navigation. These are Carbon-owned adaptations, not copied assets.
 - **Acceptance checks:** success, validation, customer authorization, stale cart version, changed
   price, unavailable item, quantity limit, retry, empty cart, and D1 persistence are covered; phone
   and desktop layouts have no horizontal overflow and pass keyboard/accessibility checks.

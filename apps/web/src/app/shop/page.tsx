@@ -22,40 +22,28 @@ export default async function ShopPage({
 
   return (
     <MarketplaceShell search={filters.search} session={auth.session}>
-      <nav
-        aria-label="Breadcrumb"
-        className="mb-20 hidden text-center text-sm text-market-muted lg:block"
-      >
-        <a href="/">Home</a>
-        <span className="mx-2">–</span>
-        <span>Shop</span>
-      </nav>
       <h1 className="sr-only">Shop fresh groceries</h1>
       {!marketplace.subscription ? (
-        <section className="mb-7 overflow-hidden rounded-xl bg-market-banner px-5 py-5 sm:px-7 sm:py-6 lg:mb-10 lg:flex lg:items-center lg:justify-between lg:gap-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-market-green-dark">
-              New customer offer
+        <section className="mb-5 flex items-center gap-4 border-b border-market-line bg-[#f7fbf7] px-4 py-3 sm:px-5 lg:mb-6">
+          <span className="shrink-0 rounded-full bg-market-green-dark px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+            1 month free
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="!m-0 truncate !text-sm font-bold leading-5 text-market-ink">
+              Your first weekly box is on us
+            </h2>
+            <p className="hidden text-xs text-market-muted sm:block">
+              Choose a plan when you add your first item.
             </p>
-            <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-market-green-dark">
-              One month free
-            </span>
           </div>
-          <h2 className="mt-3 text-xl font-bold text-[#14532d]">
-            Activate your free grocery plan trial
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#166534]">
-            Choose an active plan. Your first calendar month is free, and the server records the
-            trial dates before any future billing.
-          </p>
           {auth.session?.role === "customer" ? (
-            <div className="mt-4 shrink-0 lg:mt-0">
+            <div className="shrink-0">
               <PlanSelector mode="create" plans={marketplace.plans} trialEligible />
             </div>
           ) : (
-            <p className="mt-4 text-sm font-semibold text-market-green-dark">
-              Add your first item to create an account and choose a plan.
-            </p>
+            <span className="hidden shrink-0 text-xs font-semibold text-market-green-dark sm:block">
+              Add an item to get started
+            </span>
           )}
         </section>
       ) : marketplace.subscription.trialEndsAt ? (
