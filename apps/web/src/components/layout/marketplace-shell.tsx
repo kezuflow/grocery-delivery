@@ -66,7 +66,7 @@ export function MarketplaceShell({
       : "Manila delivery area";
 
   useEffect(() => {
-    if (!accountOpen) return;
+    if (!accountOpen && !cartOpen) return;
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       setAccountOpen(false);
@@ -74,7 +74,7 @@ export function MarketplaceShell({
     }
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [accountOpen]);
+  }, [accountOpen, cartOpen]);
 
   return (
     <main className="marketplace-shell min-h-screen bg-white pb-20 text-market-ink lg:pb-0">

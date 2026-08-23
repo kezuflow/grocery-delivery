@@ -72,6 +72,10 @@ test("marketplace converges across phone and desktop layouts", async ({
   await expect(page.getByRole("link", { name: "Review cart" })).toBeVisible();
   await page.getByRole("button", { name: "Close cart popup" }).first().click();
   await expect(page.getByRole("dialog", { name: "Cart orders" })).toHaveCount(0);
+  await cartTrigger.click();
+  await expect(page.getByRole("dialog", { name: "Cart orders" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Cart orders" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Featured offers" })).toBeVisible();
   await expect(page.getByText("Crave it? Get it.")).toBeVisible();
   await expect(
