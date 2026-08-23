@@ -29,6 +29,7 @@ import type {
 import type { SessionSummary } from "../../lib/permissions";
 import { OnlineStatus } from "./online-status";
 import { SignOutButton } from "./sign-out-button";
+import { formatPhp } from "../../lib/format";
 
 export function MarketplaceShell({
   session,
@@ -46,7 +47,7 @@ export function MarketplaceShell({
   children: ReactNode;
 }>) {
   const [accountOpen, setAccountOpen] = useState(false);
-  const cartHref = session?.role === "customer" ? "/account/cart" : "/shop";
+  const [cartOpen, setCartOpen] = useState(false);
   const cartCount = cart?.lines.reduce((total, line) => total + line.quantity, 0) ?? 0;
   const aisles = categories.length
     ? categories
@@ -67,7 +68,9 @@ export function MarketplaceShell({
   useEffect(() => {
     if (!accountOpen) return;
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setAccountOpen(false);
+      if (event.key !== "Escape") return;
+      setAccountOpen(false);
+      setCartOpen(false);
     }
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
@@ -83,7 +86,10 @@ export function MarketplaceShell({
             aria-haspopup="dialog"
             aria-label="Open account menu"
             className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-base-surface"
-            onClick={() => setAccountOpen(true)}
+            onClick={() => {
+              setCartOpen(false);
+              setAccountOpen(true);
+            }}
             title="Open account menu"
             type="button"
           >
@@ -114,15 +120,21 @@ export function MarketplaceShell({
               />
             </div>
           </form>
-          <a
+          <button
+            aria-expanded={cartOpen}
+            aria-haspopup="dialog"
             aria-label={cartCount ? `Your cart, ${cartCount} items` : "Your cart"}
             className="relative grid size-10 shrink-0 place-items-center rounded-full hover:bg-base-surface"
-            href={cartHref}
+            onClick={() => {
+              setAccountOpen(false);
+              setCartOpen(true);
+            }}
             title="Your cart"
+            type="button"
           >
             <ShoppingBag size={19} />
             {cartCount ? <CartBadge count={cartCount} /> : null}
-          </a>
+          </button>
         </div>
         <div className="bg-[#087443] px-4 pb-3 pt-2.5 lg:hidden">
           <div className="mx-auto grid max-w-md gap-2 text-white">
@@ -152,15 +164,21 @@ export function MarketplaceShell({
                   type="search"
                 />
               </form>
-              <a
+              <button
+                aria-expanded={cartOpen}
+                aria-haspopup="dialog"
                 aria-label={cartCount ? `Your cart, ${cartCount} items` : "Your cart"}
                 className="relative grid size-9 shrink-0 place-items-center rounded-full bg-black/20"
-                href={cartHref}
+                onClick={() => {
+                  setAccountOpen(false);
+                  setCartOpen(true);
+                }}
                 title="Your cart"
+                type="button"
               >
                 <ShoppingBag size={18} />
                 {cartCount ? <CartBadge count={cartCount} /> : null}
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -206,6 +224,9 @@ export function MarketplaceShell({
       </nav>
       {accountOpen ? (
         <AccountDrawer onClose={() => setAccountOpen(false)} session={session} />
+      ) : null}
+      {cartOpen ? (
+        <CartPopup cart={cart} onClose={() => setCartOpen(false)} session={session} />
       ) : null}
     </main>
   );
@@ -344,6 +365,104 @@ function AccountDrawer({
             <SignOutButton />
           </div>
         ) : null}
+      </aside>
+    </div>
+  );
+}
+
+function CartPopup({
+  cart,
+  onClose,
+  session,
+}: Readonly<{
+  cart: CartResponse["data"] | undefined;
+  onClose: () => void;
+  session: SessionSummary | null;
+}>) {
+  const lines = cart?.lines ?? [];
+  return (
+    <div className="fixed inset-0 z-[60]" role="presentation">
+      <button
+        aria-label="Close cart popup"
+        className="absolute inset-0 cursor-default bg-black/20"
+        onClick={onClose}
+        type="button"
+      />
+      <aside
+        aria-label="Cart orders"
+        aria-modal="true"
+        className="absolute right-4 top-20 w-[min(380px,calc(100vw-2rem))] max-w-full overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/10 sm:right-6 lg:right-8"
+        role="dialog"
+      >
+        <div className="flex items-center justify-between gap-4 border-b border-base-line px-5 py-4">
+          <div>
+            <p className="text-sm font-extrabold text-market-ink">Your cart</p>
+            <p className="mt-0.5 text-xs text-market-muted">
+              {lines.length ? `${lines.length} order lines` : "Nothing added yet"}
+            </p>
+          </div>
+          <button
+            aria-label="Close cart popup"
+            className="grid size-8 place-items-center rounded-full hover:bg-base-surface"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={17} />
+          </button>
+        </div>
+        {lines.length ? (
+          <ul className="max-h-72 divide-y divide-base-line overflow-y-auto px-5">
+            {lines.map((line) => (
+              <li className="flex items-center gap-3 py-3" key={line.skuId}>
+                {line.imageUrl ? (
+                  <img
+                    alt=""
+                    className="size-12 rounded-md bg-base-surface object-cover"
+                    src={line.imageUrl}
+                  />
+                ) : (
+                  <div aria-hidden="true" className="size-12 rounded-md bg-base-surface" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{line.name ?? "Market item"}</p>
+                  <p className="mt-0.5 text-xs text-market-muted">
+                    Qty {line.quantity} {line.unit ? `· ${line.unit}` : ""}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-semibold">
+                  {formatPhp(line.unitPrice.centavos * line.quantity)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-5 py-8 text-center text-sm text-market-muted">
+            Your cart is empty. Add vegetables or pantry staples to get started.
+          </p>
+        )}
+        <div className="grid gap-3 border-t border-base-line px-5 py-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-market-muted">Subtotal</span>
+            <strong>{formatPhp(cart?.subtotal.centavos ?? 0)}</strong>
+          </div>
+          {session?.role === "customer" ? (
+            <a
+              className="flex min-h-10 items-center justify-center rounded-md bg-base-action px-4 py-2 text-sm font-bold text-white hover:brightness-95"
+              href="/account/cart"
+              onClick={onClose}
+            >
+              Review cart
+            </a>
+          ) : (
+            <a
+              className="flex min-h-10 items-center justify-center rounded-md bg-base-action px-4 py-2 text-sm font-bold text-white hover:brightness-95"
+              href="/shop"
+              onClick={onClose}
+            >
+              Sign in to shop
+            </a>
+          )}
+        </div>
       </aside>
     </div>
   );
