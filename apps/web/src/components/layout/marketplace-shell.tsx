@@ -75,7 +75,7 @@ export function MarketplaceShell({
   return (
     <main className="marketplace-shell min-h-screen bg-white pb-20 text-market-ink lg:pb-0">
       <OnlineStatus />
-      <header className="sticky top-0 z-40 border-b border-base-line bg-white">
+      <header className="sticky top-0 z-40 bg-white">
         <div className="hidden min-h-16 items-center gap-4 px-5 lg:flex xl:px-8">
           <button
             aria-expanded={accountOpen}
