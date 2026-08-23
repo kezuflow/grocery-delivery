@@ -10,6 +10,7 @@ import {
   Gift,
   Home,
   Leaf,
+  Library,
   MapPin,
   Search,
   ShoppingBag,
@@ -86,10 +87,13 @@ export function MarketplaceShell({
             title="Open account menu"
             type="button"
           >
-            <UserRound size={19} />
+            <Library size={19} />
           </button>
-          <a className="shrink-0 text-[17px] font-extrabold tracking-[-0.02em]" href="/shop">
-            Carbon
+          <a
+            className="shrink-0 text-[17px] font-extrabold tracking-normal [font-variant:small-caps]"
+            href="/shop"
+          >
+            freshmarkets
           </a>
           <FulfillmentControl />
           <DeliveryAddressControl addressLabel={addressLabel} compact={true} />
