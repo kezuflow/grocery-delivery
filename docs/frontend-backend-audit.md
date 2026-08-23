@@ -104,8 +104,9 @@ branding, assets, prices, or business rules.
 1. **Marketplace browse:** `partial`. `/shop` is public, API-backed, and locally verified with
    server-owned search, category filtering, sorting, price bounds, cursor pagination, and a flat
    single-store catalog. Store/aisle hierarchy and richer discovery remain future work.
-2. **Cart:** `partial`. Persistence and server totals exist, but the interaction is a saved-cart
-   editor rather than a continuously validated commerce cart.
+2. **Cart:** `complete for VS-MKT-04`. Mutations are immediate and server-confirmed; persisted price
+   snapshots and cart versions drive stale-price, unavailable-item, substitution, retry, and reload
+   reconciliation. Minimum-order and fee presentation remain checkout concerns.
 3. **Checkout/payment:** `partial`. The server path is substantially present; the UI and local
    provider-adapter workflow still need evidence and an explicit delivery model decision.
 4. **Orders/tracking:** `partial`. Timeline and proof are present; live ETA/location and customer
@@ -145,8 +146,34 @@ scope. The landing page is intentionally excluded from this benchmark.
 - **Acceptance:** API returns non-empty valid catalog data; cache ETag/version changes; delivery
   windows are current; replay is idempotent; `/shop` displays populated desktop and phone states;
   resetting and replaying the local fixture is deterministic.
-- **Resume point:** begin VS-MKT-04 with continuous server-validated cart updates and stale-price
-  reconciliation. Staging remains deferred.
+- **Resume point:** begin VS-MKT-05 with subscription onboarding and return-to-shopping behavior.
+  Staging remains deferred.
+
+### VS-MKT-04 validated-cart reference and decision record
+
+- **References:** Mobbin MCP retrieval is working again. Image-backed searches on 2026-08-23
+  returned the recorded Uber Eats web grocery store-detail flow
+  `92e9ae68-8c98-4d02-ac3f-cf8d8707dae6`, exact Uber Eats mobile checkout flow
+  `4997f6c8-d37e-43f0-9d42-5908c636ea90`, and a comparable Instacart mobile cart flow
+  `c9f47ccc-4930-4fd3-a3f8-09ff32c878f7`. The canonical Mobbin links remain the interaction
+  references; no proprietary assets are committed.
+- **Adapted structure:** Carbon keeps a sticky cart beside desktop discovery, a compact product-line
+  review with quantity steppers, and a prominent phone cart/checkout action above bottom navigation.
+  The implementation uses Carbon imagery, semantic tokens, PHP prices, weekly wording, and existing
+  auth/subscription boundaries.
+- **Behavior decision:** cart mutations are continuous and server-confirmed. The server owns catalog
+  price, active state, quantity cap, reconciliation, and cart version. Clients may render optimistic
+  intent but must replace it with the returned cart and expose retry/conflict states.
+- **Persistence decision:** stored cart lines retain the last confirmed unit-price snapshot and
+  substitution preference so later reads can report price changes and remove unavailable lines
+  without trusting client commerce values.
+- **Verification:** focused contract, D1 repository, API, web utility, and phone/desktop Playwright
+  tests pass. Browser evidence covers failed mutation retry, reload and empty-cart persistence,
+  keyboard substitution changes, responsive convergence, and Axe checks. `pnpm check` passes all
+  55 Turbo tasks.
+- **Status:** locally complete, documented, and ready for the VS-MKT-05 resume point.
+- **Deferred:** checkout composition, delivery selection, coupons, payment, and final order locking
+  stay in VS-MKT-06 and VS-MKT-07.
 
 ## Admin Product Workspace Prototype Checkpoint
 

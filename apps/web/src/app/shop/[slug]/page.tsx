@@ -61,9 +61,7 @@ export default async function ProductPage({
               <PackageCheck size={18} /> Available this week
             </p>
             <p className="mt-6">
-              <strong className="text-3xl text-[#ef4444]">
-                {formatPhp(data.item.price.centavos)}
-              </strong>
+              <strong className="text-3xl text-coral">{formatPhp(data.item.price.centavos)}</strong>
               <span className="ml-2 text-market-muted">per {data.item.unit}</span>
             </p>
             <div className="mt-8 grid max-w-sm gap-3">

@@ -81,9 +81,9 @@ describe("cart transformations", () => {
   });
 
   it("keeps the API payload limited to sku ids and quantities", () => {
-    expect(toCartUpdateLines([{ skuId: "sku-tomato", quantity: 3 }])).toEqual([
-      { skuId: "sku-tomato", quantity: 3 },
-    ]);
+    expect(
+      toCartUpdateLines([{ skuId: "sku-tomato", quantity: 3, substitutionPreference: "refund" }]),
+    ).toEqual([{ skuId: "sku-tomato", quantity: 3, substitutionPreference: "refund" }]);
   });
 
   it("compares drafts without depending on line order", () => {

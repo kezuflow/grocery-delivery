@@ -21,10 +21,27 @@ describe("cart repositories", () => {
   it("writes cart header and lines in one D1 batch", async () => {
     const database = new FakeCartDatabase([
       [{ customer_id: "customer-1", updated_at: cart.updatedAt }],
-      [{ sku_id: "sku-a", quantity: 2 }],
+      [
+        {
+          sku_id: "sku-a",
+          quantity: 2,
+          unit_price_centavos: 12_500,
+          substitution_preference: "refund",
+        },
+      ],
     ]);
     const repository = new D1CartRepository(database);
-    await expect(repository.findByCustomerId("customer-1")).resolves.toEqual(cart);
+    await expect(repository.findByCustomerId("customer-1")).resolves.toEqual({
+      ...cart,
+      lines: [
+        {
+          skuId: "sku-a",
+          quantity: 2,
+          unitPriceCentavos: 12_500,
+          substitutionPreference: "refund",
+        },
+      ],
+    });
     await repository.save(cart);
 
     expect(database.batches).toHaveLength(1);

@@ -11,6 +11,7 @@ export function ProductCard({
   item,
   quantity,
   onAdd,
+  pending = false,
   view = "grid",
   onQuantityChange,
 }: Readonly<{
@@ -18,6 +19,7 @@ export function ProductCard({
   item: CatalogSkuResponse;
   quantity: number;
   onAdd: () => void;
+  pending?: boolean;
   view?: "grid" | "list";
   onQuantityChange: (quantity: number) => void;
 }>) {
@@ -63,7 +65,7 @@ export function ProductCard({
         </p>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <strong className="text-base text-[#ef4444] sm:text-lg">
+            <strong className="text-base text-coral sm:text-lg">
               {formatPhp(item.price.centavos)}
             </strong>
             <span className="ml-1 text-[11px] text-market-muted">/ {item.unit}</span>
@@ -73,12 +75,14 @@ export function ProductCard({
               label={`Quantity for ${item.name}`}
               onChange={onQuantityChange}
               quantity={quantity}
+              disabled={pending}
             />
           ) : (
             <Button
               aria-label={`Add ${item.name} to cart`}
               className="size-10 rounded-full bg-market-green p-0 hover:bg-market-green-dark"
               onClick={onAdd}
+              disabled={pending}
               size="sm"
               type="button"
             >

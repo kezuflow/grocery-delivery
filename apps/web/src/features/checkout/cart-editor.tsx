@@ -12,12 +12,12 @@ import {
 } from "../../lib/api/client";
 import {
   cartDraftFromResponse,
-  cartDraftHasChanged,
   setCartQuantity,
   toCartUpdateLines,
   type CartDraftLine,
 } from "../catalog/catalog-utils";
 import { QuantityControl } from "../catalog/quantity-control";
+import { formatPhp } from "../../lib/format";
 
 export function CartEditor({
   catalog,
@@ -36,8 +36,8 @@ export function CartEditor({
   const [lines, setLines] = useState<CartDraftLine[]>(() => cartDraftFromResponse(initialCart));
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const names = useMemo(
-    () => new Map(catalog.items.map((item) => [item.id, item.name])),
+  const catalogById = useMemo(
+    () => new Map(catalog.items.map((item) => [item.id, item])),
     [catalog.items],
   );
 
@@ -46,18 +46,34 @@ export function CartEditor({
     setLines(cartDraftFromResponse(initialCart));
   }, [initialCart]);
 
-  async function save() {
+  async function update(nextLines: readonly CartDraftLine[]) {
+    const previousLines = lines;
     setPending(true);
     setMessage(null);
+    setLines([...nextLines]);
     try {
       const response = await createApiClient(createSameOriginApiTransport()).updateCart({
-        lines: toCartUpdateLines(lines),
+        lines: toCartUpdateLines(nextLines),
+        expectedUpdatedAt: cart.updatedAt,
       });
       setCart(response.data);
       setLines(cartDraftFromResponse(response.data));
-      setMessage("Your cart is saved.");
+      setMessage(
+        response.data.adjustments?.length
+          ? "We refreshed your cart with current prices and availability."
+          : "Cart updated.",
+      );
       router.refresh();
     } catch (saveError) {
+      setLines(previousLines);
+      if (
+        saveError instanceof ApiClientError &&
+        (saveError.code === "CART_STALE" || saveError.code === "SKU_NOT_AVAILABLE")
+      ) {
+        router.refresh();
+        setMessage("Your cart changed elsewhere. We are refreshing the latest version.");
+        return;
+      }
       setMessage(
         saveError instanceof ApiClientError ? saveError.message : "We could not save your cart.",
       );
@@ -84,46 +100,92 @@ export function CartEditor({
     );
   }
 
-  const changed = cartDraftHasChanged(lines, cart);
   return (
-    <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="border border-line bg-white">
+    <section className="grid gap-6 pb-24 lg:grid-cols-[minmax(0,1fr)_22rem] lg:pb-0">
+      <div className="overflow-hidden rounded-lg border border-line bg-white">
+        {cart.adjustments?.length ? (
+          <div
+            className="border-b border-warning/30 bg-warning/10 px-5 py-3 text-sm text-ink"
+            role="alert"
+          >
+            We updated {cart.adjustments.length} cart{" "}
+            {cart.adjustments.length === 1 ? "item" : "items"} to match current prices and
+            availability.
+          </div>
+        ) : null}
         <div className="border-b border-line p-5">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Saved cart</p>
           <h2 className="mt-2 text-2xl font-bold">Items for this week</h2>
         </div>
         <ul className="divide-y divide-line">
           {lines.map((line) => (
-            <li className="flex items-center justify-between gap-4 p-5" key={line.skuId}>
-              <div className="min-w-0">
-                <strong className="block truncate">
-                  {names.get(line.skuId) ?? "Unavailable item"}
-                </strong>
-                {!names.has(line.skuId) ? (
-                  <span className="text-xs text-danger">No longer available</span>
+            <li
+              className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:items-center sm:p-5"
+              key={line.skuId}
+            >
+              <div className="aspect-square overflow-hidden rounded bg-market-soft">
+                {catalogById.get(line.skuId)?.imageUrl ? (
+                  <img
+                    alt=""
+                    className="size-full object-cover"
+                    src={catalogById.get(line.skuId)?.imageUrl ?? ""}
+                  />
                 ) : null}
               </div>
+              <div className="min-w-0">
+                <strong className="block truncate">
+                  {catalogById.get(line.skuId)?.name ?? "Unavailable item"}
+                </strong>
+                {catalogById.has(line.skuId) ? (
+                  <span className="mt-1 block text-sm text-muted">
+                    {formatPhp(
+                      cart.lines.find((item) => item.skuId === line.skuId)?.unitPrice.centavos ?? 0,
+                    )}{" "}
+                    / {catalogById.get(line.skuId)?.unit}
+                  </span>
+                ) : (
+                  <span className="text-xs text-danger">No longer available</span>
+                )}
+                <label className="mt-3 flex items-center gap-2 text-xs text-muted">
+                  <input
+                    checked={(line.substitutionPreference ?? "best_match") === "best_match"}
+                    disabled={pending}
+                    onChange={(event) =>
+                      void update(
+                        lines.map((item) =>
+                          item.skuId === line.skuId
+                            ? {
+                                ...item,
+                                substitutionPreference: event.target.checked
+                                  ? "best_match"
+                                  : "refund",
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                    type="checkbox"
+                  />
+                  Allow the best available substitute
+                </label>
+              </div>
               <QuantityControl
-                label={`Quantity for ${names.get(line.skuId) ?? line.skuId}`}
-                onChange={(quantity) =>
-                  setLines((current) => setCartQuantity(current, line.skuId, quantity))
-                }
+                label={`Quantity for ${catalogById.get(line.skuId)?.name ?? line.skuId}`}
+                onChange={(quantity) => void update(setCartQuantity(lines, line.skuId, quantity))}
                 quantity={line.quantity}
+                disabled={pending}
               />
             </li>
           ))}
         </ul>
       </div>
-      <aside className="border border-line bg-white p-5 lg:sticky lg:top-6">
+      <aside className="fixed inset-x-0 bottom-16 z-30 border-t border-line bg-white p-4 shadow-[0_-8px_24px_rgba(17,24,39,0.08)] lg:sticky lg:inset-auto lg:top-6 lg:rounded-lg lg:border lg:p-5 lg:shadow-none">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Server total</p>
         <p className="mt-2 text-3xl font-bold">{formatPrice(cart.subtotal.centavos)}</p>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Save changes to refresh catalog pricing before checkout.
+          Carbon confirms price and availability after every change.
         </p>
         <div className="mt-5 grid gap-3">
-          <Button disabled={!changed} loading={pending} onClick={() => void save()} type="button">
-            Save cart
-          </Button>
           <Button
             onClick={() => router.push("/account/checkout")}
             size="sm"

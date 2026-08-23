@@ -44,14 +44,26 @@ export function ProductDetailActions({
       const lines = existing
         ? cart.data.lines.map((line) =>
             line.skuId === item.id
-              ? { skuId: line.skuId, quantity: line.quantity + 1 }
-              : { skuId: line.skuId, quantity: line.quantity },
+              ? {
+                  skuId: line.skuId,
+                  quantity: line.quantity + 1,
+                  substitutionPreference: line.substitutionPreference,
+                }
+              : {
+                  skuId: line.skuId,
+                  quantity: line.quantity,
+                  substitutionPreference: line.substitutionPreference,
+                },
           )
         : [
-            ...cart.data.lines.map((line) => ({ skuId: line.skuId, quantity: line.quantity })),
+            ...cart.data.lines.map((line) => ({
+              skuId: line.skuId,
+              quantity: line.quantity,
+              substitutionPreference: line.substitutionPreference,
+            })),
             { skuId: item.id, quantity: 1 },
           ];
-      await client.updateCart({ lines });
+      await client.updateCart({ lines, expectedUpdatedAt: cart.data.updatedAt });
       setMessage(`${item.name} was added to your cart.`);
       router.refresh();
     } catch (error) {

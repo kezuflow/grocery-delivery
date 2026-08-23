@@ -1660,13 +1660,128 @@ describe("API worker", () => {
     expect(putBody.data.lines[0]?.unitPrice.centavos).toBe(12_500);
     expect(putBody.data.subtotal.centavos).toBe(25_000);
     await expect(cartRepository.findByCustomerId("customer-1")).resolves.toMatchObject({
-      lines: [{ skuId: "sku-bananas", quantity: 2 }],
+      lines: [
+        {
+          skuId: "sku-bananas",
+          quantity: 2,
+          unitPriceCentavos: 12_500,
+          substitutionPreference: "best_match",
+        },
+      ],
     });
 
     const get = await cartApp.request("/api/v1/cart");
     const getBody = cartResponseSchema.parse(await get.json());
     expect(get.status).toBe(200);
     expect(getBody.data.lines[0]?.unitPrice.centavos).toBe(12_500);
+  });
+
+  it("rejects stale cart versions without overwriting persisted lines", async () => {
+    const cartRepository = new InMemoryCartRepository();
+    await cartRepository.save({
+      customerId: "customer-1",
+      lines: [{ skuId: "sku-bananas", quantity: 1, unitPriceCentavos: 12_500 }],
+      updatedAt: "2026-08-22T00:00:00.000Z",
+    });
+    const cartApp = createApi({
+      sink: () => undefined,
+      cartRepository,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await cartApp.request("/api/v1/cart", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        lines: [{ skuId: "sku-bananas", quantity: 3 }],
+        expectedUpdatedAt: "2026-08-21T00:00:00.000Z",
+      }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(apiErrorResponseSchema.parse(await response.json()).error.code).toBe("CART_STALE");
+    await expect(cartRepository.findByCustomerId("customer-1")).resolves.toMatchObject({
+      lines: [{ skuId: "sku-bananas", quantity: 1 }],
+    });
+  });
+
+  it("reconciles changed prices and unavailable saved items into persistence", async () => {
+    const cartRepository = new InMemoryCartRepository();
+    await cartRepository.save({
+      customerId: "customer-1",
+      lines: [
+        {
+          skuId: "sku-bananas",
+          quantity: 2,
+          unitPriceCentavos: 10_000,
+          substitutionPreference: "refund",
+        },
+        { skuId: "sku-removed", quantity: 1, unitPriceCentavos: 5_000 },
+      ],
+      updatedAt: "2026-08-22T00:00:00.000Z",
+    });
+    const cartApp = createApi({
+      now: () => new Date("2026-08-23T00:00:00.000Z"),
+      sink: () => undefined,
+      cartRepository,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-1",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await cartApp.request("/api/v1/cart");
+    const body = cartResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data.adjustments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "price_changed", skuId: "sku-bananas" }),
+        { type: "item_removed", skuId: "sku-removed" },
+      ]),
+    );
+    expect(body.data.lines).toMatchObject([
+      {
+        skuId: "sku-bananas",
+        unitPrice: { centavos: 12_500 },
+        substitutionPreference: "refund",
+      },
+    ]);
+    await expect(cartRepository.findByCustomerId("customer-1")).resolves.toMatchObject({
+      updatedAt: "2026-08-23T00:00:00.000Z",
+      lines: [
+        {
+          skuId: "sku-bananas",
+          unitPriceCentavos: 12_500,
+          substitutionPreference: "refund",
+        },
+      ],
+    });
   });
 
   it("rejects duplicate and unavailable cart SKUs", async () => {

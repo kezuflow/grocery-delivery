@@ -2,7 +2,7 @@ import type { CartResponse, CatalogSkuResponse } from "@carbon/contracts";
 
 import { Button, LinkButton } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
-import { cartDraftHasChanged, type CartDraftLine } from "./catalog-utils";
+import type { CartDraftLine } from "./catalog-utils";
 import { QuantityControl } from "./quantity-control";
 
 export function CartSummary({
@@ -11,7 +11,7 @@ export function CartSummary({
   lines,
   message,
   onQuantityChange,
-  onSave,
+  onRetry,
   pending,
   canEdit,
 }: Readonly<{
@@ -20,15 +20,23 @@ export function CartSummary({
   lines: readonly CartDraftLine[];
   message: string | null;
   onQuantityChange: (skuId: string, quantity: number) => void;
-  onSave: () => void;
+  onRetry?: () => void;
   pending: boolean;
   canEdit: boolean;
 }>) {
   const names = new Map(catalog.map((item) => [item.id, item.name]));
-  const hasUnsavedChanges = cartDraftHasChanged(lines, cart);
 
   return (
     <aside className="rounded-2xl border border-market-line bg-white p-5 shadow-[0_2px_12px_rgba(17,24,39,0.04)] lg:sticky lg:top-6">
+      {cart.adjustments?.length ? (
+        <div
+          className="-mx-5 -mt-5 mb-4 rounded-t-2xl border-b border-warning/30 bg-warning/10 px-5 py-3 text-sm"
+          role="alert"
+        >
+          We refreshed {cart.adjustments.length} cart{" "}
+          {cart.adjustments.length === 1 ? "item" : "items"} using current catalog data.
+        </div>
+      ) : null}
       <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-market-green-dark">
@@ -54,6 +62,7 @@ export function CartSummary({
                 label={`Quantity for ${names.get(line.skuId) ?? line.skuId}`}
                 onChange={(quantity) => onQuantityChange(line.skuId, quantity)}
                 quantity={line.quantity}
+                disabled={pending}
               />
             </li>
           ))}
@@ -65,21 +74,23 @@ export function CartSummary({
       )}
       <div className="grid gap-3 border-t border-line pt-4">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-sm text-muted">Saved subtotal</span>
+          <span className="text-sm text-muted">Server subtotal</span>
           <strong>{formatPhp(cart.subtotal.centavos)}</strong>
         </div>
         <p className="text-xs leading-5 text-muted">
-          The subtotal reflects the last server-confirmed cart. Save changes to refresh prices and
-          totals.
+          Carbon confirms prices and availability after every cart change.
         </p>
-        <Button
-          disabled={!canEdit || !hasUnsavedChanges}
-          loading={pending}
-          onClick={onSave}
-          type="button"
+        <p
+          className="rounded-lg bg-market-soft px-3 py-2 text-xs leading-5 text-market-muted"
+          role="status"
         >
-          Save cart changes
-        </Button>
+          {pending ? "Updating your weekly cart..." : "Your cart is up to date."}
+        </p>
+        {onRetry ? (
+          <Button disabled={pending} onClick={onRetry} size="sm" tone="secondary" type="button">
+            Retry cart update
+          </Button>
+        ) : null}
         {canEdit ? (
           <LinkButton href="/account/cart" size="sm" tone="secondary">
             Review cart

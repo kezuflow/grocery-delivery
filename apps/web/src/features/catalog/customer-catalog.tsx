@@ -60,6 +60,8 @@ export function CustomerCatalog({
   const [lines, setLines] = useState<CartDraftLine[]>(() => cartDraftFromResponse(cart));
   const [savedCart, setSavedCart] = useState(cart);
   const [saving, setSaving] = useState(false);
+  const [pendingSku, setPendingSku] = useState<string | null>(null);
+  const [retryLines, setRetryLines] = useState<readonly CartDraftLine[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState(filters.sort);
@@ -88,7 +90,7 @@ export function CustomerCatalog({
       setPlanOpen(true);
       return;
     }
-    setLines((current) => addCartQuantity(current, pendingAddSku));
+    void mutateCart(addCartQuantity(lines, pendingAddSku), pendingAddSku);
     setPendingAddSku(null);
   }, [canEditCart, hasActiveSubscription, pendingAddSku]);
 
@@ -160,26 +162,55 @@ export function CustomerCatalog({
     });
   }
 
-  async function saveCart() {
+  async function mutateCart(nextLines: readonly CartDraftLine[], skuId?: string) {
     if (!canEditCart) {
       setAuthOpen(true);
       return;
     }
+    if (saving) return;
+    const previousLines = lines;
     setSaving(true);
+    setPendingSku(skuId ?? null);
+    setRetryLines(null);
     setMessage(null);
+    setLines([...nextLines]);
     try {
       const response = await createApiClient(createSameOriginApiTransport()).updateCart({
-        lines: toCartUpdateLines(lines),
+        lines: toCartUpdateLines(nextLines),
+        expectedUpdatedAt: savedCart.updatedAt,
       });
       setLines(cartDraftFromResponse(response.data));
       setSavedCart(response.data);
-      setMessage("Your saved cart is up to date.");
+      setMessage(
+        response.data.adjustments?.length
+          ? "We refreshed your cart with current prices and availability."
+          : "Cart updated.",
+      );
     } catch (saveError) {
+      setLines(previousLines);
+      setRetryLines(nextLines);
+      if (
+        saveError instanceof ApiClientError &&
+        (saveError.code === "CART_STALE" || saveError.code === "SKU_NOT_AVAILABLE")
+      ) {
+        try {
+          const refreshed = await createApiClient(createSameOriginApiTransport()).getCart();
+          setLines(cartDraftFromResponse(refreshed.data));
+          setSavedCart(refreshed.data);
+          setMessage(
+            "Your cart changed elsewhere, so we refreshed it. Review the latest cart and retry.",
+          );
+          return;
+        } catch {
+          // Preserve the original mutation error when reconciliation also fails.
+        }
+      }
       setMessage(
         saveError instanceof ApiClientError ? saveError.message : "We could not update your cart.",
       );
     } finally {
       setSaving(false);
+      setPendingSku(null);
     }
   }
 
@@ -193,7 +224,7 @@ export function CustomerCatalog({
       );
       setPlanOpen(false);
       if (pendingAddSku) {
-        setLines((current) => addCartQuantity(current, pendingAddSku));
+        void mutateCart(addCartQuantity(lines, pendingAddSku), pendingAddSku);
         setPendingAddSku(null);
       }
       router.refresh();
@@ -217,7 +248,7 @@ export function CustomerCatalog({
       setPlanOpen(true);
       return;
     }
-    setLines((current) => addCartQuantity(current, skuId));
+    void mutateCart(addCartQuantity(lines, skuId), skuId);
     setPendingAddSku(null);
   }
 
@@ -461,9 +492,10 @@ export function CustomerCatalog({
                   onAdd={() => {
                     requestAdd(item.id);
                   }}
+                  pending={saving && pendingSku === item.id}
                   view={view}
                   onQuantityChange={(quantity) =>
-                    setLines((current) => setCartQuantity(current, item.id, quantity))
+                    void mutateCart(setCartQuantity(lines, item.id, quantity), item.id)
                   }
                 />
               ))}
@@ -591,9 +623,9 @@ export function CustomerCatalog({
             lines={lines}
             message={message}
             onQuantityChange={(skuId, quantity) =>
-              setLines((current) => setCartQuantity(current, skuId, quantity))
+              void mutateCart(setCartQuantity(lines, skuId, quantity), skuId)
             }
-            onSave={() => void saveCart()}
+            {...(retryLines ? { onRetry: () => void mutateCart(retryLines) } : {})}
             pending={saving}
             canEdit={canEditCart}
           />

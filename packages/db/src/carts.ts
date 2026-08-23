@@ -7,6 +7,8 @@ export type CartDatabase = CatalogDatabase;
 export type CartDraftLine = Readonly<{
   skuId: string;
   quantity: number;
+  unitPriceCentavos?: number | null;
+  substitutionPreference?: "best_match" | "refund";
 }>;
 
 export type CartDraft = Readonly<{
@@ -59,7 +61,7 @@ export class D1CartRepository implements CartRepository {
     }
     const lines = await this.database
       .prepare(
-        `SELECT sku_id, quantity
+        `SELECT sku_id, quantity, unit_price_centavos, substitution_preference
          FROM cart_lines
          WHERE customer_id = ?
          ORDER BY line_number ASC`,
@@ -71,6 +73,8 @@ export class D1CartRepository implements CartRepository {
       lines: lines.results.map((line) => ({
         skuId: line.sku_id,
         quantity: line.quantity,
+        unitPriceCentavos: line.unit_price_centavos,
+        substitutionPreference: line.substitution_preference,
       })),
       updatedAt: cart.updated_at,
     });
@@ -92,10 +96,19 @@ export class D1CartRepository implements CartRepository {
       ...normalized.lines.map((line, index) =>
         this.database
           .prepare(
-            `INSERT INTO cart_lines (customer_id, line_number, sku_id, quantity)
-             VALUES (?, ?, ?, ?)`,
+            `INSERT INTO cart_lines (
+               customer_id, line_number, sku_id, quantity,
+               unit_price_centavos, substitution_preference
+             ) VALUES (?, ?, ?, ?, ?, ?)`,
           )
-          .bind(normalized.customerId, index + 1, line.skuId, line.quantity),
+          .bind(
+            normalized.customerId,
+            index + 1,
+            line.skuId,
+            line.quantity,
+            line.unitPriceCentavos ?? null,
+            line.substitutionPreference ?? "best_match",
+          ),
       ),
     ];
     await this.database.batch(statements);
@@ -126,7 +139,33 @@ function normalizeCart(cart: CartDraft): CartDraft {
     if (!Number.isSafeInteger(line.quantity) || line.quantity < 1 || line.quantity > 1_000) {
       throw new DomainValidationError("INVALID_QUANTITY", "cart quantity must be from 1 to 1000");
     }
-    return Object.freeze({ skuId: line.skuId, quantity: line.quantity });
+    const unitPriceCentavos = line.unitPriceCentavos ?? null;
+    if (
+      unitPriceCentavos !== null &&
+      (!Number.isSafeInteger(unitPriceCentavos) || unitPriceCentavos < 0)
+    ) {
+      throw new DomainValidationError(
+        "INVALID_CART_PRICE",
+        "cart unit price snapshot must be non-negative centavos",
+      );
+    }
+    const substitutionPreference = line.substitutionPreference;
+    if (
+      substitutionPreference !== undefined &&
+      substitutionPreference !== "best_match" &&
+      substitutionPreference !== "refund"
+    ) {
+      throw new DomainValidationError(
+        "INVALID_SUBSTITUTION_PREFERENCE",
+        "cart substitution preference is invalid",
+      );
+    }
+    return Object.freeze({
+      skuId: line.skuId,
+      quantity: line.quantity,
+      ...(line.unitPriceCentavos !== undefined ? { unitPriceCentavos } : {}),
+      ...(substitutionPreference ? { substitutionPreference } : {}),
+    });
   });
   if (new Set(lines.map((line) => line.skuId)).size !== lines.length) {
     throw new DomainValidationError("DUPLICATE_CART_SKU", "cart cannot contain duplicate SKUs");
@@ -139,4 +178,9 @@ function normalizeCart(cart: CartDraft): CartDraft {
 }
 
 type CartRow = Record<string, unknown> & { customer_id: string; updated_at: string };
-type CartLineRow = Record<string, unknown> & { sku_id: string; quantity: number };
+type CartLineRow = Record<string, unknown> & {
+  sku_id: string;
+  quantity: number;
+  unit_price_centavos: number | null;
+  substitution_preference: "best_match" | "refund";
+};

@@ -74,21 +74,55 @@ export const orderCreateRequestSchema = z.object({
 
 export const cartLineRequestSchema = orderLineRequestSchema;
 
+export const cartSubstitutionPreferenceSchema = z.enum(["best_match", "refund"]);
+
+export const cartMutationLineSchema = cartLineRequestSchema.extend({
+  substitutionPreference: cartSubstitutionPreferenceSchema.optional(),
+});
+
 export const cartUpdateRequestSchema = z.object({
-  lines: z.array(cartLineRequestSchema).max(100),
+  lines: z.array(cartMutationLineSchema).max(100),
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
 });
 
 export const cartLineSchema = z.object({
   skuId: z.string().min(1),
   quantity: z.number().int().positive(),
   unitPrice: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
+  name: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
+  unit: z.string().min(1).optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  substitutionPreference: cartSubstitutionPreferenceSchema.optional(),
 });
+
+export const cartAdjustmentSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("price_changed"),
+    skuId: z.string().min(1),
+    name: z.string().min(1),
+    previousUnitPrice: z.object({
+      centavos: z.number().int().nonnegative(),
+      currency: z.literal("PHP"),
+    }),
+    currentUnitPrice: z.object({
+      centavos: z.number().int().nonnegative(),
+      currency: z.literal("PHP"),
+    }),
+  }),
+  z.object({
+    type: z.literal("item_removed"),
+    skuId: z.string().min(1),
+  }),
+]);
 
 export const cartResponseSchema = z.object({
   data: z.object({
     lines: z.array(cartLineSchema),
     subtotal: z.object({ centavos: z.number().int().nonnegative(), currency: z.literal("PHP") }),
     updatedAt: z.string().datetime().nullable(),
+    adjustments: z.array(cartAdjustmentSchema).optional(),
+    maxQuantityPerLine: z.number().int().positive().optional(),
   }),
   meta: responseMetaSchema,
 });

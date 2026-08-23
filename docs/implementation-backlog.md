@@ -59,27 +59,53 @@ offline, and success states where applicable.
 
 ## Local Marketplace Queue
 
-| Slice     | Outcome                                                                 | Status   |
-| --------- | ----------------------------------------------------------------------- | -------- |
-| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete |
-| VS-MKT-01 | Public grocery discovery on web and phone                               | complete |
-| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete |
-| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete |
-| VS-MKT-04 | Continuous server-validated weekly cart                                 | planned  |
-| VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | planned  |
-| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned  |
-| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned  |
-| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned  |
-| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
-| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
-| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
-| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
-| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
-| VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
+| Slice     | Outcome                                                                 | Status      |
+| --------- | ----------------------------------------------------------------------- | ----------- |
+| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete    |
+| VS-MKT-01 | Public grocery discovery on web and phone                               | complete    |
+| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete    |
+| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete    |
+| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete    |
+| VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | planned     |
+| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned     |
+| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned     |
+| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned     |
+| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned     |
+| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned     |
+| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned     |
+| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned     |
+| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned     |
+| VS-MKT-14 | Staging promotion and release evidence                                  | deferred    |
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
 
-## Completed Slices: VS-MKT-00 through VS-MKT-03
+### Completed Slice: VS-MKT-04
+
+- **Outcome:** authenticated customers can add, remove, and change weekly-cart lines without a
+  separate save step; each change is confirmed against current server catalog data and persisted in
+  local D1.
+- **Reference check:** Mobbin MCP retrieval is now working. The web grocery store-detail flow
+  (`92e9ae68-8c98-4d02-ac3f-cf8d8707dae6`), exact Uber Eats mobile checkout flow
+  (`4997f6c8-d37e-43f0-9d42-5908c636ea90`), and comparable Instacart mobile cart flow
+  (`c9f47ccc-4930-4fd3-a3f8-09ff32c878f7`) were retrieved with image-backed previews on
+  2026-08-23. The implementation keeps the compact quantity stepper, persistent cart access, dense
+  line review, and phone bottom action.
+- **UI decisions:** keep the catalog visible beside a sticky desktop cart; use immediate quantity
+  mutations with per-line pending/disabled states; show product image, unit price, line total, and
+  substitution preference in cart review; surface server reconciliation as a durable alert; use a
+  fixed phone cart action above the existing bottom navigation; retain Carbon tokens, copy, product
+  assets, pricing, and weekly checkout rules.
+- **Acceptance checks:** success, validation, customer authorization, stale cart version, changed
+  price, unavailable item, quantity limit, retry, empty cart, and D1 persistence are covered; phone
+  and desktop layouts have no horizontal overflow and pass keyboard/accessibility checks.
+- **Local evidence:** focused contract, D1 repository, API, web utility, and Playwright tests pass;
+  phone coverage includes mutation failure/retry, reload persistence, keyboard substitution changes,
+  empty-cart persistence, and accessibility; desktop coverage includes responsive cart convergence
+  and accessibility. Repository verification passes `pnpm check` with 55/55 Turbo tasks.
+- **Non-goals:** address, delivery-window, coupon, quote, payment, and order completion remain
+  VS-MKT-06 and VS-MKT-07.
+
+## Completed Slices: VS-MKT-00 through VS-MKT-04
 
 ### Local Outcome
 
@@ -123,8 +149,8 @@ depending on staging.
 
 ### Resume Point
 
-Continue VS-MKT-04 locally with continuous server-validated cart updates and stale-price handling.
-Staging authentication and promotion remain deferred.
+Begin VS-MKT-05 locally with subscription onboarding and return-to-shopping flow. Staging
+authentication and promotion remain deferred.
 
 ### Local Browser Evidence
 
@@ -141,7 +167,10 @@ Staging authentication and promotion remain deferred.
 - `GET http://localhost:3000/shop/apple` renders the public product detail route; its first-add
   action opens authentication, then plan selection when the customer has no active subscription.
 - The first-add path uses Better Auth, server-owned plan pricing, an idempotent trial activation,
-  and the existing server cart API. Continuous cart reconciliation remains VS-MKT-04.
+  and the server-validated cart API.
+- Authenticated cart mutations are persisted immediately, reject stale versions, reconcile changed
+  prices and unavailable items, retain substitution preferences, and restore server truth after
+  failures or reloads.
 
 ## Known Marketplace Gaps
 
@@ -151,8 +180,8 @@ Staging authentication and promotion remain deferred.
   product detail.
 - Facets, analytics, and richer server merchandising remain future work; the core query, sorting,
   price bounds, and cursor pagination are server-owned.
-- Cart persistence exists, but continuous server reconciliation and stale-price/availability handling
-  need a dedicated slice.
+- Minimum-order, fee, and checkout-specific cart rules remain part of checkout composition rather
+  than the completed continuous-cart slice.
 - Checkout foundations exist, but the responsive composition and local provider-adapter workflow
   need verification.
 - Order tracking lacks ETA/location and some customer-visible cancellation/refund states.

@@ -1503,14 +1503,30 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     }
     const cart = await cartRepository.findByCustomerId(session.customerId);
-    const result = await resolveCartResponse(
+    let result = await resolveCartResponse(
       cart?.lines ?? [],
       cart?.updatedAt ?? null,
       catalogReader,
       context.get("correlationId"),
+      true,
     );
     if ("error" in result) {
       return context.json(result, 409);
+    }
+    if (result.data.adjustments?.length) {
+      const reconciledAt = now().toISOString();
+      await cartRepository.save({
+        customerId: session.customerId,
+        lines: result.data.lines.map((line) => ({
+          skuId: line.skuId,
+          quantity: line.quantity,
+          unitPriceCentavos: line.unitPrice.centavos,
+          substitutionPreference: line.substitutionPreference ?? "best_match",
+        })),
+        updatedAt: reconciledAt,
+      });
+      result = { ...result, data: { ...result.data, updatedAt: reconciledAt } };
+      cartResponseSchema.parse(result);
     }
     context.header("cache-control", "private, no-store");
     return context.json(result, 200);
@@ -1542,6 +1558,20 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         400,
       );
     }
+    const existingCart = await cartRepository.findByCustomerId(session.customerId);
+    if (
+      input.data.expectedUpdatedAt !== undefined &&
+      input.data.expectedUpdatedAt !== (existingCart?.updatedAt ?? null)
+    ) {
+      return context.json(
+        errorResponse(
+          "CART_STALE",
+          "your cart changed in another session; refresh before retrying",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
     const skuIds = input.data.lines.map((line) => line.skuId);
     if (new Set(skuIds).size !== skuIds.length) {
       return context.json(
@@ -1554,8 +1584,21 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       );
     }
     const updatedAt = now().toISOString();
+    const existingLines = new Map(
+      (existingCart?.lines ?? []).map((line) => [line.skuId, line] as const),
+    );
     const result = await resolveCartResponse(
-      input.data.lines,
+      input.data.lines.map((line) => {
+        const existingLine = existingLines.get(line.skuId);
+        return {
+          ...line,
+          ...(existingLine?.unitPriceCentavos !== undefined
+            ? { unitPriceCentavos: existingLine.unitPriceCentavos }
+            : {}),
+          substitutionPreference:
+            line.substitutionPreference ?? existingLine?.substitutionPreference ?? "best_match",
+        };
+      }),
       updatedAt,
       catalogReader,
       context.get("correlationId"),
@@ -1565,7 +1608,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }
     await cartRepository.save({
       customerId: session.customerId,
-      lines: input.data.lines,
+      lines: result.data.lines.map((line) => ({
+        skuId: line.skuId,
+        quantity: line.quantity,
+        unitPriceCentavos: line.unitPrice.centavos,
+        substitutionPreference: line.substitutionPreference ?? "best_match",
+      })),
       updatedAt,
     });
     context.header("cache-control", "private, no-store");
@@ -5916,28 +5964,70 @@ function readSignedMediaRequest(context: ApiContext, includeContentType: boolean
 }
 
 async function resolveCartResponse(
-  lines: readonly { skuId: string; quantity: number }[],
+  lines: readonly {
+    skuId: string;
+    quantity: number;
+    unitPriceCentavos?: number | null;
+    substitutionPreference?: "best_match" | "refund";
+  }[],
   updatedAt: string | null,
   catalogReader: CatalogCheckoutReader,
   correlationId: string,
+  removeUnavailable = false,
 ): Promise<CartResponse | ApiErrorResponse> {
   const skuIds = lines.map((line) => line.skuId);
   const catalogItems = await catalogReader.findActiveByIds(skuIds);
-  if (catalogItems.length !== skuIds.length) {
+  if (!removeUnavailable && catalogItems.length !== skuIds.length) {
     return errorResponse("SKU_NOT_AVAILABLE", "one or more SKUs are unavailable", correlationId);
   }
   const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
   let subtotal = createMoney(0);
-  const resolvedLines = lines.map((line) => {
+  const adjustments = [] as NonNullable<CartResponse["data"]["adjustments"]>;
+  for (const line of lines) {
+    if (!catalogById.has(line.skuId)) {
+      adjustments.push({ type: "item_removed", skuId: line.skuId });
+    }
+  }
+  const resolvedLines = lines.flatMap((line) => {
     const item = catalogById.get(line.skuId);
     if (!item) {
-      throw new Error("SKU_NOT_AVAILABLE");
+      return [];
     }
     subtotal = addMoney(subtotal, multiplyMoney(item.price, line.quantity));
-    return { skuId: item.id, quantity: line.quantity, unitPrice: item.price };
+    if (
+      line.unitPriceCentavos !== undefined &&
+      line.unitPriceCentavos !== null &&
+      line.unitPriceCentavos !== item.price.centavos
+    ) {
+      adjustments.push({
+        type: "price_changed",
+        skuId: item.id,
+        name: item.name,
+        previousUnitPrice: createMoney(line.unitPriceCentavos),
+        currentUnitPrice: item.price,
+      });
+    }
+    return [
+      {
+        skuId: item.id,
+        quantity: line.quantity,
+        unitPrice: item.price,
+        name: item.name,
+        slug: item.slug,
+        unit: item.unit,
+        imageUrl: item.imageUrl,
+        substitutionPreference: line.substitutionPreference ?? "best_match",
+      },
+    ];
   });
   const body: CartResponse = {
-    data: { lines: resolvedLines, subtotal, updatedAt },
+    data: {
+      lines: resolvedLines,
+      subtotal,
+      updatedAt,
+      adjustments,
+      maxQuantityPerLine: 1_000,
+    },
     meta: { correlationId },
   };
   cartResponseSchema.parse(body);

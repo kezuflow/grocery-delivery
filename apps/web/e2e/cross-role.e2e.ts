@@ -50,12 +50,85 @@ test("protected routes enforce session and role guards", async ({ openAs, page }
   await expect(page).toHaveURL(/\/forbidden$/);
 });
 
-test("marketplace converges across phone and desktop layouts", async ({ openAs, page }) => {
+test("marketplace converges across phone and desktop layouts", async ({
+  openAs,
+  page,
+}, testInfo) => {
   await openAs("customer", "/shop");
   await expect(page.getByRole("heading", { level: 1, name: "Shop fresh groceries" })).toBeVisible();
   await expect(page.getByRole("searchbox").first()).toBeVisible();
-  await expect(page.getByRole("tablist", { name: "Product categories" })).toBeVisible();
-  await expect(page.getByRole("complementary")).toBeVisible();
+  if (testInfo.project.name === "phone") {
+    await expect(page.getByRole("tablist", { name: "Product categories" })).toBeVisible();
+  }
+  await expect(page.getByRole("heading", { name: "Ready for the week?" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("weekly cart mutations persist immediately and recover from a failed request", async ({
+  openAs,
+  page,
+}) => {
+  let failNextUpdate = true;
+  await page.route("**/api/v1/cart", async (route) => {
+    if (route.request().method() === "PUT" && failNextUpdate) {
+      failNextUpdate = false;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: { code: "CART_UNAVAILABLE", message: "Cart updates are temporarily unavailable" },
+          meta: { correlationId: "e2e-cart-failure" },
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await openAs("customer", "/shop");
+  const quantity = page.locator('input[aria-label="Quantity for Roma tomatoes"]').first();
+  const initialQuantity = Number(await quantity.inputValue());
+  await page.getByRole("button", { name: "Increase Quantity for Roma tomatoes" }).first().click();
+  await expect(page.getByRole("button", { name: "Retry cart update" })).toBeVisible();
+  await expect(quantity).toHaveValue(String(initialQuantity));
+
+  await page.getByRole("button", { name: "Retry cart update" }).click();
+  await expect(page.getByText("Cart updated.")).toBeVisible();
+  await expect(quantity).toHaveValue(String(initialQuantity + 1));
+
+  await page.reload();
+  await expect(page.locator('input[aria-label="Quantity for Roma tomatoes"]').first()).toHaveValue(
+    String(initialQuantity + 1),
+  );
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("cart review supports keyboard quantity and substitution updates", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("customer", "/account/cart");
+  const substitution = page.getByRole("checkbox", {
+    name: "Allow the best available substitute",
+  });
+  await substitution.focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByText("Cart updated.")).toBeVisible();
+  await expect(substitution).not.toBeChecked();
+  await expect(page.getByRole("button", { name: "Continue to checkout" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("empty weekly cart remains empty after reload", async ({ openAs, page }) => {
+  await openAs("customer", "/account/cart");
+  await page.locator('input[aria-label="Quantity for Roma tomatoes"]').fill("0");
+  await expect(page.getByRole("heading", { name: "Your cart is empty" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Your cart is empty" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Browse catalog" })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
 });

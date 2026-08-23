@@ -75,10 +75,23 @@ const catalog = {
   nextCursor: null,
 };
 
-const cart = {
-  lines: [{ skuId: "sku-tomato", quantity: 2, unitPrice: money(18000) }],
+let cart = {
+  lines: [
+    {
+      skuId: "sku-tomato",
+      quantity: 2,
+      unitPrice: money(18000),
+      name: "Roma tomatoes",
+      slug: "roma-tomatoes",
+      unit: "kilogram",
+      imageUrl: null,
+      substitutionPreference: "best_match",
+    },
+  ],
   subtotal: money(36000),
   updatedAt: timestamp,
+  adjustments: [],
+  maxQuantityPerLine: 1000,
 };
 const address = {
   id: "address-1",
@@ -183,7 +196,41 @@ function routeResponse(method, url, role, body) {
       banners: [],
       cacheVersion: 1,
     });
-  if (url.pathname === "/api/v1/cart") return requireRole(role, "customer", () => ok(cart));
+  if (url.pathname === "/api/v1/cart")
+    return requireRole(role, "customer", () => {
+      if (method === "PUT") {
+        if (body.expectedUpdatedAt !== undefined && body.expectedUpdatedAt !== cart.updatedAt) {
+          return error(409, "CART_STALE", "your cart changed in another session");
+        }
+        const catalogById = new Map(catalog.items.map((item) => [item.id, item]));
+        if (body.lines.some((line) => !catalogById.has(line.skuId))) {
+          return error(409, "SKU_NOT_AVAILABLE", "one or more SKUs are unavailable");
+        }
+        const lines = body.lines.map((line) => {
+          const item = catalogById.get(line.skuId);
+          return {
+            skuId: item.id,
+            quantity: line.quantity,
+            unitPrice: item.price,
+            name: item.name,
+            slug: item.slug,
+            unit: item.unit,
+            imageUrl: item.imageUrl,
+            substitutionPreference: line.substitutionPreference ?? "best_match",
+          };
+        });
+        cart = {
+          lines,
+          subtotal: money(
+            lines.reduce((total, line) => total + line.unitPrice.centavos * line.quantity, 0),
+          ),
+          updatedAt: new Date(Date.parse(cart.updatedAt) + 1000).toISOString(),
+          adjustments: [],
+          maxQuantityPerLine: 1000,
+        };
+      }
+      return ok(cart);
+    });
   if (url.pathname === "/api/v1/subscription")
     return requireRole(role, "customer", () =>
       ok({

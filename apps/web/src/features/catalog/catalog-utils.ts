@@ -9,7 +9,11 @@ export type CatalogQueryOptions = CatalogFilters &
     maxPriceCentavos?: number;
     cursor?: string;
   }>;
-export type CartDraftLine = Readonly<{ skuId: string; quantity: number }>;
+export type CartDraftLine = Readonly<{
+  skuId: string;
+  quantity: number;
+  substitutionPreference?: "best_match" | "refund";
+}>;
 
 export function parseCatalogFilters(params: CatalogSearchParams): CatalogFilters {
   return {
@@ -66,7 +70,11 @@ export function getCategoryName(
 }
 
 export function cartDraftFromResponse(cart: CartResponse["data"]): CartDraftLine[] {
-  return cart.lines.map(({ skuId, quantity }) => ({ skuId, quantity }));
+  return cart.lines.map(({ skuId, quantity, substitutionPreference }) => ({
+    skuId,
+    quantity,
+    ...(substitutionPreference ? { substitutionPreference } : {}),
+  }));
 }
 
 export function setCartQuantity(
@@ -89,7 +97,11 @@ export function addCartQuantity(lines: readonly CartDraftLine[], skuId: string):
 }
 
 export function toCartUpdateLines(lines: readonly CartDraftLine[]) {
-  return lines.map(({ skuId, quantity }) => ({ skuId, quantity }));
+  return lines.map(({ skuId, quantity, substitutionPreference }) => ({
+    skuId,
+    quantity,
+    ...(substitutionPreference ? { substitutionPreference } : {}),
+  }));
 }
 
 export function cartDraftHasChanged(
