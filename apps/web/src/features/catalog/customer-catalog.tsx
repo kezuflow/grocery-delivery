@@ -450,7 +450,7 @@ export function CustomerCatalog({
             />
           ) : (
             <div
-              className={`mt-6 grid gap-3 ${view === "list" ? "grid-cols-1" : `grid-cols-2 sm:grid-cols-3 ${canEditCart ? "xl:grid-cols-4" : "xl:grid-cols-5 2xl:grid-cols-6"}`}`}
+              className={`mt-6 grid gap-3 ${view === "list" ? "grid-cols-1" : `grid-cols-2 sm:grid-cols-3 ${canEditCart ? "xl:grid-cols-4 2xl:grid-cols-5" : "xl:grid-cols-5 2xl:grid-cols-6"}`}`}
             >
               {visibleItems.map((item) => (
                 <ProductCard

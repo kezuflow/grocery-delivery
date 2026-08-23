@@ -114,7 +114,7 @@ export function MarketplaceShell({
           </div>
         </div>
       </header>
-      <div className="mx-auto grid max-w-[1440px] lg:grid-cols-[184px_minmax(0,1fr)]">
+      <div className="grid w-full lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[216px_minmax(0,1fr)]">
         <aside className="hidden border-r border-market-line bg-white lg:block">
           <div className="sticky top-0 px-4 py-6">
             <div className="mb-6 border-b border-market-line pb-5">
