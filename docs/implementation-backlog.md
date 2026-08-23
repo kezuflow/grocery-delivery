@@ -116,6 +116,10 @@ Landing-page work is outside the marketplace program and resumes after the core 
   the existing catalog, plan, subscription, and banner reads. A failed or unavailable address read
   degrades to delivery-area/setup guidance and does not fail catalog rendering; pricing, cart
   totals, availability, roles, and fulfillment rules remain server-owned.
+- **Design language alignment:** the Carbon marketplace uses the bundled Google Outfit family,
+  neutral Base-inspired ink/muted/surface/border/action tokens, and Carbon green only where it
+  carries brand or fulfillment meaning. The Uber Base Color 2.0 reference was inspected at
+  https://base.uber.com/6d2425e9f/p/9906f6-color-20.
 
 ### Completed Slice: VS-MKT-04
 

@@ -1,4 +1,12 @@
 :root {
+  /* Carbon storefront adaptation of Uber Base's neutral, high-contrast language. */
+  --color-base-ink-value: #161616;
+  --color-base-muted-value: #545454;
+  --color-base-surface-value: #f6f6f6;
+  --color-base-line-value: #e2e2e2;
+  --color-base-action-value: #000000;
+  --color-base-action-hover-value: #333333;
+  --font-outfit: "Outfit", Arial, Helvetica, sans-serif;
   --color-ink-value: #17332b;
   --color-muted-value: #63756e;
   --color-paper-value: #f6f7f2;
@@ -14,11 +22,11 @@
   --color-danger-value: #b91c1c;
   --color-market-green-value: #15803d;
   --color-market-green-dark-value: #166534;
-  --color-market-ink-value: #111827;
-  --color-market-muted-value: #6b7280;
-  --color-market-line-value: #e5e7eb;
-  --color-market-paper-value: #f8faf8;
-  --color-market-soft-value: #f0fdf4;
+  --color-market-ink-value: #161616;
+  --color-market-muted-value: #545454;
+  --color-market-line-value: #e2e2e2;
+  --color-market-paper-value: #ffffff;
+  --color-market-soft-value: #f6f6f6;
   --color-market-banner-value: #dcfce7;
 
   /* Legacy aliases remain temporarily while route styles migrate to utilities. */

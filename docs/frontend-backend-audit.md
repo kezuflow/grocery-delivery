@@ -248,6 +248,10 @@ scope. The landing page is intentionally excluded from this benchmark.
   cart quantity/count, prices, availability, roles, and weekly fulfillment policy continue to come
   from the existing API and local D1 boundaries.
 - **Status:** locally complete and ready to commit and push as the final VS-MKT-04 refinement.
+- **Design language alignment:** the Uber Base Color 2.0 reference at
+  https://base.uber.com/6d2425e9f/p/9906f6-color-20 was inspected for neutral surfaces, strong
+  contrast, and subdued borders. The marketplace maps those principles to Carbon-owned tokens and
+  uses `next/font/google` Outfit with local Next font output, avoiding a runtime font request.
 
 ## Admin Product Workspace Prototype Checkpoint
 

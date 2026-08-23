@@ -301,12 +301,12 @@ export function CustomerCatalog({
         </div>
       </Dialog>
 
-      <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-[#ededed] bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
+      <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-base-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           {categoryShortcuts(catalog.categories).map((category) => (
             <button
               aria-pressed={category.active(activeFilters)}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${category.active(activeFilters) ? "bg-black text-white" : "bg-[#f2f2f2]"}`}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${category.active(activeFilters) ? "bg-base-action text-white" : "bg-base-surface"}`}
               key={category.label}
               onClick={() => category.onSelect(updateUrl, activeFilters)}
               type="button"
@@ -315,15 +315,15 @@ export function CustomerCatalog({
             </button>
           ))}
           <details className="relative shrink-0">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full bg-[#f2f2f2] px-4 py-2 text-xs font-semibold">
+            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full bg-base-surface px-4 py-2 text-xs font-semibold">
               <SlidersHorizontal size={14} /> Filters
             </summary>
-            <div className="absolute right-0 top-11 z-30 w-72 rounded-xl border border-[#ddd] bg-white p-4 shadow-xl">
+            <div className="absolute right-0 top-11 z-30 w-72 rounded-xl border border-base-line bg-white p-4 shadow-xl">
               <label className="grid gap-1 text-xs font-semibold">
                 Sort
                 <select
                   aria-label="Sort products"
-                  className="rounded border border-[#ddd] p-2 text-sm"
+                  className="rounded border border-base-line p-2 text-sm"
                   onChange={(event) => {
                     const nextSort = event.target.value as typeof sort;
                     setSort(nextSort);
@@ -341,7 +341,7 @@ export function CustomerCatalog({
                 <label className="grid gap-1 text-xs">
                   Min PHP
                   <input
-                    className="min-w-0 rounded border border-[#ddd] px-2 py-2"
+                    className="min-w-0 rounded border border-base-line px-2 py-2"
                     min="0"
                     onChange={(event) => setMinimumPrice(event.target.value)}
                     type="number"
@@ -351,7 +351,7 @@ export function CustomerCatalog({
                 <label className="grid gap-1 text-xs">
                   Max PHP
                   <input
-                    className="min-w-0 rounded border border-[#ddd] px-2 py-2"
+                    className="min-w-0 rounded border border-base-line px-2 py-2"
                     min="0"
                     onChange={(event) => setMaximumPrice(event.target.value)}
                     type="number"
@@ -391,7 +391,7 @@ export function CustomerCatalog({
             <span className="sr-only">Search products</span>
             <Search className="absolute left-3 top-3 text-market-muted" size={16} />
             <input
-              className="h-10 w-full rounded-full bg-[#f3f3f3] pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-market-green"
+              className="h-10 w-full rounded-full bg-base-surface pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-market-green"
               onChange={(event) => setSearchInput(event.target.value)}
               value={searchInput}
             />
@@ -503,7 +503,7 @@ export function CustomerCatalog({
 
       {nextCursor ? (
         <a
-          className="mb-8 inline-flex rounded-full bg-[#f2f2f2] px-5 py-2.5 text-sm font-bold"
+          className="mb-8 inline-flex rounded-full bg-base-surface px-5 py-2.5 text-sm font-bold"
           href={`/shop?${new URLSearchParams({ ...(activeFilters.search ? { search: activeFilters.search } : {}), ...(activeFilters.category ? { category: activeFilters.category } : {}), ...(activeFilters.sort !== "popular" ? { sort: activeFilters.sort } : {}), cursor: nextCursor }).toString()}`}
         >
           Load more
@@ -511,7 +511,7 @@ export function CustomerCatalog({
       ) : null}
       {message ? (
         <div
-          className="fixed bottom-24 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg bg-[#222] px-4 py-3 text-xs text-white shadow-xl lg:bottom-6"
+          className="fixed bottom-24 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg bg-base-action px-4 py-3 text-xs text-white shadow-xl lg:bottom-6"
           role="status"
         >
           <span>{saving ? "Updating cart..." : message}</span>
@@ -611,7 +611,7 @@ function ProductRow({
           <div className={`hidden items-center gap-1 sm:flex ${expanded ? "sm:hidden" : ""}`}>
             <button
               aria-label={`Scroll ${title} left`}
-              className="grid size-8 place-items-center rounded-full border border-[#dedede] hover:bg-[#f4f4f4] disabled:cursor-not-allowed disabled:opacity-35"
+              className="grid size-8 place-items-center rounded-full border border-base-line hover:bg-base-surface disabled:cursor-not-allowed disabled:opacity-35"
               disabled={!scrollState.left}
               onClick={() => railRef.current?.scrollBy({ left: -420, behavior: "smooth" })}
               type="button"
@@ -620,7 +620,7 @@ function ProductRow({
             </button>
             <button
               aria-label={`Scroll ${title} right`}
-              className="grid size-8 place-items-center rounded-full border border-[#dedede] hover:bg-[#f4f4f4] disabled:cursor-not-allowed disabled:opacity-35"
+              className="grid size-8 place-items-center rounded-full border border-base-line hover:bg-base-surface disabled:cursor-not-allowed disabled:opacity-35"
               disabled={!scrollState.right}
               onClick={() => railRef.current?.scrollBy({ left: 420, behavior: "smooth" })}
               type="button"

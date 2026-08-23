@@ -21,7 +21,7 @@ export function ProductCard({
 }>) {
   return (
     <article className="w-[108px] shrink-0 sm:w-[156px]">
-      <div className="group relative aspect-square overflow-hidden rounded-md bg-[#f7f7f7]">
+      <div className="group relative aspect-square overflow-hidden rounded-md bg-base-surface">
         {item.imageUrl ? (
           <img
             alt={item.name}

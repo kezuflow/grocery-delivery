@@ -2,6 +2,12 @@
 @import "tailwindcss";
 
 @theme inline {
+  --color-base-ink: var(--color-base-ink-value);
+  --color-base-muted: var(--color-base-muted-value);
+  --color-base-surface: var(--color-base-surface-value);
+  --color-base-line: var(--color-base-line-value);
+  --color-base-action: var(--color-base-action-value);
+  --color-base-action-hover: var(--color-base-action-hover-value);
   --color-ink: var(--color-ink-value);
   --color-muted: var(--color-muted-value);
   --color-paper: var(--color-paper-value);
@@ -52,11 +58,13 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-outfit), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .storefront-display {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-outfit), Arial, Helvetica, sans-serif;
 }
 
 .reset-password-page {

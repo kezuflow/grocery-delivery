@@ -59,12 +59,12 @@ export function MarketplaceShell({
   return (
     <main className="marketplace-shell min-h-screen bg-white pb-20 text-market-ink lg:pb-0">
       <OnlineStatus />
-      <header className="sticky top-0 z-40 border-b border-[#e8e8e8] bg-white">
+      <header className="sticky top-0 z-40 border-b border-base-line bg-white">
         <div className="hidden min-h-16 items-center gap-4 px-5 lg:flex xl:px-8">
           <button
             aria-expanded={sidebarOpen}
             aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"}
-            className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-[#f3f3f3]"
+            className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-base-surface"
             onClick={() => setSidebarOpen((open) => !open)}
             title={sidebarOpen ? "Collapse navigation" : "Expand navigation"}
             type="button"
@@ -85,9 +85,9 @@ export function MarketplaceShell({
               Search the store
             </label>
             <div className="relative flex min-w-0 flex-1 items-center">
-              <Search className="absolute left-3.5 text-[#6b6b6b]" size={17} />
+              <Search className="absolute left-3.5 text-base-muted" size={17} />
               <input
-                className="h-full w-full rounded-full bg-[#f4f4f4] pl-10 pr-4 text-sm outline-none ring-1 ring-transparent focus:bg-white focus:ring-market-green"
+                className="h-full w-full rounded-full bg-base-surface pl-10 pr-4 text-sm outline-none ring-1 ring-transparent focus:bg-white focus:ring-market-green"
                 defaultValue={search}
                 id="header-search"
                 name="search"
@@ -98,7 +98,7 @@ export function MarketplaceShell({
           </form>
           <a
             aria-label={cartCount ? `Your cart, ${cartCount} items` : "Your cart"}
-            className="relative grid size-10 shrink-0 place-items-center rounded-full hover:bg-[#f3f3f3]"
+            className="relative grid size-10 shrink-0 place-items-center rounded-full hover:bg-base-surface"
             href={cartHref}
             title="Your cart"
           >
@@ -108,7 +108,7 @@ export function MarketplaceShell({
           {session ? (
             <a
               aria-label="Account"
-              className="grid size-10 shrink-0 place-items-center rounded-full hover:bg-[#f3f3f3]"
+              className="grid size-10 shrink-0 place-items-center rounded-full hover:bg-base-surface"
               href="/account"
               title="Account"
             >
@@ -138,9 +138,9 @@ export function MarketplaceShell({
                 <label className="sr-only" htmlFor="mobile-market-search">
                   Search the store
                 </label>
-                <Search className="absolute left-3.5 top-3 text-[#555]" size={16} />
+                <Search className="absolute left-3.5 top-3 text-base-muted" size={16} />
                 <input
-                  className="h-10 w-full rounded-full border-0 bg-white pl-10 pr-3 text-sm text-market-ink outline-none placeholder:text-[#777]"
+                  className="h-10 w-full rounded-full border-0 bg-white pl-10 pr-3 text-sm text-base-ink outline-none placeholder:text-base-muted"
                   defaultValue={search}
                   id="mobile-market-search"
                   name="search"
@@ -165,7 +165,7 @@ export function MarketplaceShell({
         className={`grid w-full transition-[grid-template-columns] duration-200 ${sidebarOpen ? "lg:grid-cols-[232px_minmax(0,1fr)]" : "lg:grid-cols-[72px_minmax(0,1fr)]"}`}
         data-sidebar={sidebarOpen ? "expanded" : "collapsed"}
       >
-        <aside className="hidden border-r border-[#ededed] bg-white lg:block">
+        <aside className="hidden border-r border-base-line bg-white lg:block">
           <div className="sticky top-16 px-3 py-6">
             <nav aria-label="Store navigation" className="grid gap-0.5 text-[13px]">
               <RailLink
@@ -184,14 +184,14 @@ export function MarketplaceShell({
               />
             </nav>
             {sidebarOpen ? (
-              <div className="mt-5 border-t border-[#ededed] pt-5">
+              <div className="mt-5 border-t border-base-line pt-5">
                 <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-market-muted">
                   Aisles
                 </p>
                 <nav aria-label="Store aisles" className="grid gap-0.5 text-[12px]">
                   {aisles.map((category) => (
                     <a
-                      className="flex min-h-9 items-center rounded-md px-3 py-2 text-[#333] hover:bg-[#f6f6f6]"
+                      className="flex min-h-9 items-center rounded-md px-3 py-2 text-base-ink hover:bg-base-surface"
                       href={`/shop?category=${category.slug}`}
                       key={category.id}
                     >
@@ -201,7 +201,7 @@ export function MarketplaceShell({
                 </nav>
               </div>
             ) : null}
-            <div className="mt-5 border-t border-[#ededed] pt-5">
+            <div className="mt-5 border-t border-base-line pt-5">
               <RailLink
                 href="/account/orders"
                 icon={<ClipboardList size={17} />}
@@ -222,7 +222,7 @@ export function MarketplaceShell({
       </div>
       <nav
         aria-label="Customer navigation"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[#dedede] bg-white px-3 pb-[max(0.55rem,env(safe-area-inset-bottom))] pt-2 lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-base-line bg-white px-3 pb-[max(0.55rem,env(safe-area-inset-bottom))] pt-2 lg:hidden"
       >
         <ul className="mx-auto grid max-w-md grid-cols-4 gap-1">
           <li>
@@ -247,7 +247,7 @@ function FulfillmentControl({ inverse = false }: Readonly<{ inverse?: boolean }>
   return (
     <div
       aria-label="Fulfillment mode"
-      className={`flex shrink-0 items-center gap-1 rounded-full p-1 text-[11px] font-bold ${inverse ? "bg-black/15" : "bg-[#f1f1f1]"}`}
+      className={`flex shrink-0 items-center gap-1 rounded-full p-1 text-[11px] font-bold ${inverse ? "bg-black/15" : "bg-base-surface"}`}
       role="group"
     >
       <button
@@ -258,7 +258,7 @@ function FulfillmentControl({ inverse = false }: Readonly<{ inverse?: boolean }>
         <Truck size={13} /> Delivery
       </button>
       <button
-        className={`rounded-full px-3 py-1.5 ${inverse ? "text-white/60" : "text-[#777]"}`}
+        className={`rounded-full px-3 py-1.5 ${inverse ? "text-white/60" : "text-base-muted"}`}
         disabled={true}
         title="Pickup is not available for weekly orders"
         type="button"
@@ -309,7 +309,7 @@ function RailLink({
   return (
     <a
       aria-label={open ? undefined : label}
-      className={`relative flex min-h-10 items-center rounded-md px-3 py-2.5 font-semibold ${open ? "gap-3" : "justify-center"} ${active ? "bg-[#ededed] font-bold" : "text-[#555] hover:bg-[#f6f6f6]"}`}
+      className={`relative flex min-h-10 items-center rounded-md px-3 py-2.5 font-semibold ${open ? "gap-3" : "justify-center"} ${active ? "bg-base-line font-bold" : "text-base-muted hover:bg-base-surface"}`}
       href={href}
       title={open ? undefined : label}
     >
