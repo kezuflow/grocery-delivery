@@ -212,6 +212,72 @@ test("subscription onboarding preserves shopping context and persists activation
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("checkout review resolves address, delivery time, and server coupon states", async ({
+  openAs,
+  page,
+}, testInfo) => {
+  if (testInfo.project.name === "desktop") {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+  }
+  await openAs("customer", "/account/checkout");
+  await expect(page.getByRole("heading", { level: 1, name: "Checkout" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Delivery address" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Delivery time" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Order summary" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Ada Customer - Office/ })).toBeVisible();
+
+  const office = page.getByRole("button", { name: /Ada Customer - Office/ });
+  await office.focus();
+  await page.keyboard.press("Enter");
+  await expect(office).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("status")).toContainText("Delivery address updated");
+
+  const afternoon = page.getByRole("button", { name: /Saturday 1:00 PM - 4:00 PM/ });
+  await afternoon.click();
+  await expect(afternoon).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("status")).toContainText("Delivery time updated");
+
+  await page.getByRole("textbox", { name: "Coupon code" }).fill("NOPE");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByRole("status")).toContainText("promotion code was not found");
+
+  await page.getByRole("textbox", { name: "Coupon code" }).fill("WELCOME");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByText("WELCOME is applied")).toBeVisible();
+  await expect(page.locator("dt").filter({ hasText: "Discount" }).locator("..")).toContainText(
+    "-₱50.00",
+  );
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("checkout explains missing address and delivery windows", async ({ context, page }) => {
+  await context.clearCookies();
+  await context.addCookies([
+    {
+      name: "e2e-role",
+      value: "customer",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+    {
+      name: "e2e-scenario",
+      value: "checkout-empty-address-empty-windows",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  await page.goto("/account/checkout");
+  await expect(page.getByText("No saved address is available")).toBeVisible();
+  await expect(page.getByText("No delivery windows are available.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Place order/ })).toBeDisabled();
+  await expect(page.getByRole("status")).toContainText("Complete the active subscription");
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("subscription onboarding explains an empty plan catalog", async ({ context, page }) => {
   await context.clearCookies();
   await context.addCookies([

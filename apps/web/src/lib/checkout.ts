@@ -4,6 +4,7 @@ import type {
   CartResponse,
   CheckoutQuoteResponse,
   DeliveryAddressResponse,
+  DeliveryAddressesResponse,
   DeliveryWindowsResponse,
   PaymentMethodListResponse,
   SubscriptionResponse,
@@ -16,6 +17,7 @@ export type CheckoutData = Readonly<{
   subscription: SubscriptionResponse["data"] | null;
   cart: CartResponse["data"];
   deliveryAddress: DeliveryAddressResponse["data"];
+  deliveryAddresses: DeliveryAddressesResponse["data"]["addresses"];
   deliveryWindows: DeliveryWindowsResponse["data"];
   paymentMethods: PaymentMethodListResponse["data"]["methods"];
   quote: CheckoutQuoteResponse["data"] | null;
@@ -33,23 +35,32 @@ export async function resolveCheckoutData(
 ): Promise<CheckoutData> {
   const client = createApiClient(transport);
   const init = { headers: { cookie: cookieHeader } };
-  const [subscription, cart, deliveryAddress, deliveryWindows, paymentMethods, quote] =
-    await Promise.all([
-      client.getCurrentSubscription(init).catch((error: unknown) => {
-        if (error instanceof ApiClientError && error.status === 404) return null;
-        throw error;
-      }),
-      client.getCart(init),
-      client.getDeliveryAddress(init),
-      client.getDeliveryWindows(init),
-      client.getPaymentMethods(init).catch(() => null),
-      client.getCheckoutQuote(init).catch(() => null),
-    ]);
+  const [
+    subscription,
+    cart,
+    deliveryAddress,
+    deliveryAddresses,
+    deliveryWindows,
+    paymentMethods,
+    quote,
+  ] = await Promise.all([
+    client.getCurrentSubscription(init).catch((error: unknown) => {
+      if (error instanceof ApiClientError && error.status === 404) return null;
+      throw error;
+    }),
+    client.getCart(init),
+    client.getDeliveryAddress(init).catch(() => ({ data: null })),
+    client.getDeliveryAddresses(init).catch(() => ({ data: { addresses: [] } })),
+    client.getDeliveryWindows(init),
+    client.getPaymentMethods(init).catch(() => null),
+    client.getCheckoutQuote(init).catch(() => null),
+  ]);
 
   return {
     subscription: subscription?.data ?? null,
     cart: cart.data,
     deliveryAddress: deliveryAddress.data,
+    deliveryAddresses: deliveryAddresses.data.addresses,
     deliveryWindows: deliveryWindows.data,
     paymentMethods: paymentMethods?.data.methods ?? [],
     quote: quote?.data ?? null,

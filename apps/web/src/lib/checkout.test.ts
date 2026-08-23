@@ -26,6 +26,10 @@ const payloads: Record<string, unknown> = {
     meta: { correlationId: "checkout-test" },
   },
   "/api/v1/delivery-address": { data: null, meta: { correlationId: "checkout-test" } },
+  "/api/v1/delivery-addresses": {
+    data: { addresses: [] },
+    meta: { correlationId: "checkout-test" },
+  },
   "/api/v1/delivery-windows": {
     data: {
       cycleId: "cycle-1",
@@ -82,6 +86,7 @@ describe("checkout hydration", () => {
   it("loads only checkout resources in parallel", async () => {
     const result = await resolveCheckoutData(transportFor(), "session=customer");
     expect(result.paymentMethods).toHaveLength(1);
+    expect(result.deliveryAddresses).toEqual([]);
     expect(result.quote?.totalDue.centavos).toBe(0);
     expect(result.error).toBeNull();
   });
@@ -89,12 +94,16 @@ describe("checkout hydration", () => {
   it("keeps checkout review available when optional resources fail", async () => {
     const result = await resolveCheckoutData(
       transportFor({
+        "/api/v1/delivery-address": new Error("offline"),
+        "/api/v1/delivery-addresses": new Error("offline"),
         "/api/v1/payments/methods": new Error("offline"),
         "/api/v1/checkout/quote": new Error("offline"),
       }),
       "session=customer",
     );
     expect(result.paymentMethods).toEqual([]);
+    expect(result.deliveryAddress).toBeNull();
+    expect(result.deliveryAddresses).toEqual([]);
     expect(result.quote).toBeNull();
     expect(result.error).toContain("Payment methods");
   });

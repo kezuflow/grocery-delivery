@@ -11,10 +11,6 @@ export const metadata: Metadata = { title: "Checkout" };
 export default async function CheckoutPage() {
   const session = await requireCustomerSession();
   const data = await loadCheckoutData();
-  const selectedAddress = data.deliveryAddress;
-  const addressLabel = selectedAddress
-    ? `${selectedAddress.recipientName}, ${selectedAddress.line1}, ${selectedAddress.city} ${selectedAddress.postalCode}`
-    : "Missing delivery address";
   const subscriptionActive =
     data.subscription?.status === "active" && data.subscription.billingStatus === "current";
 
@@ -31,12 +27,13 @@ export default async function CheckoutPage() {
       session={session}
       title="Checkout"
     >
-      <div className="grid gap-8">
+      <div className="grid gap-8 pb-24 lg:pb-0">
         <CheckoutReview
-          addressLabel={addressLabel}
+          addresses={data.deliveryAddresses}
           cartLines={data.cart.lines.length}
           cutoffAt={data.deliveryWindows.cutoffAt}
           initialQuote={data.quote}
+          selectedAddress={data.deliveryAddress}
           subscriptionActive={subscriptionActive}
           windows={data.deliveryWindows}
         />

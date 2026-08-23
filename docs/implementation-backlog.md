@@ -59,23 +59,23 @@ offline, and success states where applicable.
 
 ## Local Marketplace Queue
 
-| Slice     | Outcome                                                                 | Status      |
-| --------- | ----------------------------------------------------------------------- | ----------- |
-| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete    |
-| VS-MKT-01 | Public grocery discovery on web and phone                               | complete    |
-| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete    |
-| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete    |
-| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete    |
+| Slice     | Outcome                                                                 | Status   |
+| --------- | ----------------------------------------------------------------------- | -------- |
+| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete |
+| VS-MKT-01 | Public grocery discovery on web and phone                               | complete |
+| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete |
+| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete |
+| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete |
 | VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | complete |
-| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned     |
-| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned     |
-| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned     |
-| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned     |
-| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned     |
-| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned     |
-| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned     |
-| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned     |
-| VS-MKT-14 | Staging promotion and release evidence                                  | deferred    |
+| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | complete |
+| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned  |
+| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned  |
+| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
+| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
+| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
+| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
+| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
+| VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
 
@@ -271,8 +271,51 @@ authentication and promotion remain deferred.
   request. Onboarding loads account reads in the existing parallel composition and adds only the
   existing trial write on activation. Errors retain API correlation IDs through `ApiClientError`;
   no new logging, metrics, remote resources, or deployment surface was added.
-- **Remaining gap and next resume point:** commit and push this independently reviewable slice, then
-  begin VS-MKT-06 with address, delivery-window, coupon, quote, and checkout flow.
+- **Remaining gap and next resume point:** begin VS-MKT-06 with address, delivery-window, coupon,
+  quote, and checkout flow.
+
+## VS-MKT-06 Weekly Checkout Review
+
+- **Status:** locally complete; checkout-focused web tests, phone/desktop browser checks, and the
+  repository check pass. Commit and push evidence is recorded in the slice handoff.
+- **Outcome:** authenticated customers can review saved serviceable addresses, select a delivery
+  address and available weekend delivery window, apply or remove a server-validated coupon, and
+  inspect server-owned subtotal, discount, delivery fee, weekly fee, credit, overage, and total due
+  before the existing idempotent order-lock action. Empty address/window states disable ordering and
+  provide an account recovery path.
+- **Mobbin references:** image-backed inspection used Uber Eats web
+  [Promotions](https://mobbin.com/flows/a11ea1e4-d832-4ef9-b001-e125689f0150), grocery web
+  [Store detail](https://mobbin.com/flows/92e9ae68-8c98-4d02-ac3f-cf8d8707dae6), and iOS
+  [Checkout](https://mobbin.com/flows/4997f6c8-d37e-43f0-9d42-5908c636ea90) plus
+  [View basket grocery](https://mobbin.com/flows/af44648f-8272-49ff-9169-a5d1c4f0f0a1).
+  Visible decisions adapted were explicit address and delivery-time sections, touch-sized selection,
+  a distinct promo row, grouped quote totals, and a prominent mobile bottom action. Carbon branding,
+  prices, weekly rules, and assets remain original.
+- **Frontend decisions:** the desktop review uses a dense two-column detail/summary composition with
+  a sticky summary; phone uses separate stacked sections and a fixed bottom order action. Native
+  buttons expose pressed/disabled state, keyboard selection, focus outlines, pending feedback, retryable
+  coupon errors, and no-overflow/Axe checks.
+- **Backend reuse and server ownership:** existing typed client methods and protected APIs are reused:
+  `GET /api/v1/delivery-address`, `GET /api/v1/delivery-addresses`, `PUT /api/v1/delivery-addresses/:id/select`,
+  `GET/PUT /api/v1/delivery-windows`, `GET /api/v1/checkout/quote`, and coupon preview/removal. No
+  migration or new production endpoint was required. Address serviceability, window capacity,
+  promotion eligibility, all money, quote totals, subscription, cart, and order authorization remain
+  server-owned.
+- **Fixture and persistence behavior:** deterministic E2E fixtures now cover multiple saved addresses,
+  unavailable addresses, multiple/full windows, empty address/window scenarios, `WELCOME` discount
+  application, invalid coupon errors, and quote recalculation. Real local persistence remains in the
+  existing D1 repositories and API boundaries.
+- **Verification evidence:** web Vitest passes 67/67, web lint/typecheck pass, focused Playwright
+  checkout tests pass 2/2 on phone and 2/2 on desktop (desktop explicitly resized to 1920x1080), and
+  `git diff --check` passes. Coverage includes keyboard address selection, window selection and
+  disabled full windows, invalid/valid/remove coupons, server discount rendering, empty-state disabled
+  ordering, Axe serious/critical checks, and horizontal overflow.
+- **Request, latency, and observability impact:** checkout hydration adds one parallel saved-address
+  read; address/window selections and coupon previews are single existing writes/reads. Failed
+  optional address reads degrade to an actionable empty state. Existing correlation-aware API errors
+  are surfaced without new telemetry or remote dependencies.
+- **Remaining gap and next resume point:** local payment-adapter completion, retry, and order
+  confirmation are VS-MKT-07. Staging and deployment remain deferred.
 
 ### Local Browser Evidence
 

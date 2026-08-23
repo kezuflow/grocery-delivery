@@ -192,6 +192,29 @@ const address = {
   createdAt: timestamp,
   updatedAt: timestamp,
 };
+const officeAddress = {
+  ...address,
+  id: "address-2",
+  recipientName: "Ada Customer - Office",
+  line1: "18 Commerce Avenue",
+  barangay: "Bel-Air",
+  postalCode: "1209",
+  instructions: "Leave with reception",
+  selected: false,
+};
+const unavailableAddress = {
+  ...address,
+  id: "address-3",
+  recipientName: "Ada Customer - Provincial",
+  line1: "7 Orchard Road",
+  barangay: "Poblacion",
+  city: "Tagaytay",
+  province: "Cavite",
+  postalCode: "4120",
+  instructions: null,
+  serviceable: false,
+  selected: false,
+};
 const windows = {
   cycleId: "cycle-2026-34",
   cutoffAt: "2026-08-28T04:00:00.000Z",
@@ -207,9 +230,32 @@ const windows = {
       remaining: 12,
       active: true,
     },
+    {
+      id: "window-afternoon",
+      cycleId: "cycle-2026-34",
+      label: "Saturday 1:00 PM - 4:00 PM",
+      startsAt: "2026-08-29T05:00:00.000Z",
+      endsAt: "2026-08-29T08:00:00.000Z",
+      capacity: 20,
+      reserved: 11,
+      remaining: 9,
+      active: true,
+    },
+    {
+      id: "window-full",
+      cycleId: "cycle-2026-34",
+      label: "Sunday 9:00 AM - 12:00 PM",
+      startsAt: "2026-08-30T01:00:00.000Z",
+      endsAt: "2026-08-30T04:00:00.000Z",
+      capacity: 20,
+      reserved: 20,
+      remaining: 0,
+      active: true,
+    },
   ],
   selectedWindowId: "window-morning",
 };
+const checkoutScenarios = new Map();
 const assignment = {
   id: "assignment-1",
   cycleId: "cycle-2026-34",
@@ -335,11 +381,51 @@ function routeResponse(method, url, role, scenario, body) {
       return ok(subscriptionScenarios.get(scenario) ?? activeSubscription());
     });
   if (url.pathname === "/api/v1/delivery-address")
-    return requireRole(role, "customer", () => ok(address));
+    return requireRole(role, "customer", () => {
+      const state = checkoutState(scenario);
+      return ok(state.addresses.find((entry) => entry.id === state.selectedAddressId) ?? null);
+    });
   if (url.pathname === "/api/v1/delivery-addresses")
-    return requireRole(role, "customer", () => ok({ addresses: [address] }));
+    return requireRole(role, "customer", () => {
+      const state = checkoutState(scenario);
+      if (method === "PUT") return error(404, "NOT_FOUND", "fixture route not found");
+      return ok({
+        addresses: state.addresses.map((entry) => ({
+          ...entry,
+          selected: entry.id === state.selectedAddressId,
+        })),
+      });
+    });
+  if (/^\/api\/v1\/delivery-addresses\/[^/]+\/select$/.test(url.pathname) && method === "PUT")
+    return requireRole(role, "customer", () => {
+      const state = checkoutState(scenario);
+      const addressId = decodeURIComponent(url.pathname.split("/")[4] ?? "");
+      const selected = state.addresses.find((entry) => entry.id === addressId);
+      if (!selected) return error(404, "DELIVERY_ADDRESS_NOT_FOUND", "address was not found");
+      if (!selected.serviceable)
+        return error(
+          409,
+          "DELIVERY_ADDRESS_UNSERVICEABLE",
+          "delivery is not currently available for this postal code",
+        );
+      state.selectedAddressId = addressId;
+      return ok({ ...selected, selected: true });
+    });
   if (url.pathname === "/api/v1/delivery-windows")
-    return requireRole(role, "customer", () => ok(windows));
+    return requireRole(role, "customer", () => {
+      const state = checkoutState(scenario);
+      if (method === "PUT") {
+        const selected = state.windows.find((entry) => entry.id === body.windowId);
+        if (!selected || !selected.active || selected.remaining === 0)
+          return error(409, "DELIVERY_WINDOW_UNAVAILABLE", "delivery window is unavailable");
+        state.selectedWindowId = selected.id;
+      }
+      return ok({
+        ...windows,
+        windows: state.windows,
+        selectedWindowId: state.selectedWindowId,
+      });
+    });
   if (url.pathname === "/api/v1/payments/history")
     return requireRole(role, "customer", () => ok({ entries: [] }));
   if (url.pathname === "/api/v1/payments/methods")
@@ -393,19 +479,16 @@ function routeResponse(method, url, role, scenario, body) {
     return requireRole(role, "customer", () =>
       ok({ eligible: false, reasons: ["ACTIVE_SUBSCRIPTION"] }),
     );
+  if (url.pathname === "/api/v1/checkout/quote")
+    return requireRole(role, "customer", () => ok(checkoutQuote()));
   if (url.pathname === "/api/v1/checkout/coupon")
-    return requireRole(role, "customer", () =>
-      ok({
-        originalSubtotal: cart.subtotal,
-        discount: money(0),
-        deliveryFee: money(990),
-        weeklyFee: money(19900),
-        includedCredit: money(150000),
-        overage: money(0),
-        totalDue: money(19900),
-        promotionCode: null,
-      }),
-    );
+    return requireRole(role, "customer", () => {
+      if (method === "DELETE") return ok(checkoutQuote());
+      if (method !== "POST") return error(405, "METHOD_NOT_ALLOWED", "method is not allowed");
+      if (String(body.code ?? "").toUpperCase() !== "WELCOME")
+        return error(409, "PROMOTION_NOT_FOUND", "promotion code was not found");
+      return ok(checkoutQuote("WELCOME"));
+    });
   if (url.pathname === "/api/v1/admin/operations/projection")
     return requireRole(role, "admin", () =>
       ok({
@@ -484,6 +567,45 @@ function requireRole(actual, expected, callback) {
   return actual === expected
     ? callback()
     : error(403, "FORBIDDEN", `${expected} access is required`);
+}
+function checkoutState(scenario) {
+  const key = scenario ?? "default";
+  let state = checkoutScenarios.get(key);
+  if (!state) {
+    const emptyAddresses = scenario?.includes("empty-address");
+    const emptyWindows = scenario?.includes("empty-windows");
+    state = {
+      addresses: emptyAddresses ? [] : [address, officeAddress, unavailableAddress],
+      selectedAddressId: emptyAddresses ? null : address.id,
+      windows: emptyWindows ? [] : windows.windows,
+      selectedWindowId: emptyWindows ? null : windows.selectedWindowId,
+    };
+    checkoutScenarios.set(key, state);
+  }
+  return state;
+}
+function checkoutQuote(promotionCode = null) {
+  const discountCentavos = promotionCode === "WELCOME" ? 5_000 : 0;
+  const deliveryFeeCentavos = 990;
+  const weeklyFeeCentavos = 19_900;
+  const includedCreditCentavos = Math.min(
+    Math.max(0, cart.subtotal.centavos - discountCentavos),
+    150_000,
+  );
+  const overageCentavos = Math.max(
+    0,
+    cart.subtotal.centavos - discountCentavos - includedCreditCentavos,
+  );
+  return {
+    originalSubtotal: cart.subtotal,
+    discount: money(discountCentavos),
+    deliveryFee: money(deliveryFeeCentavos),
+    weeklyFee: money(weeklyFeeCentavos),
+    includedCredit: money(includedCreditCentavos),
+    overage: money(overageCentavos),
+    totalDue: money(weeklyFeeCentavos + deliveryFeeCentavos + overageCentavos),
+    promotionCode,
+  };
 }
 function ok(data) {
   return { status: 200, body: { data, meta } };

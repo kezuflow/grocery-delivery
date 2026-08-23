@@ -299,6 +299,33 @@ scope. The landing page is intentionally excluded from this benchmark.
   its reads parallel; activation uses the existing single idempotent write. Existing correlation
   IDs remain available through the typed error and no new telemetry or remote dependency was added.
 
+### VS-MKT-06 weekly checkout review
+
+- **Routes inspected:** `/account/checkout`, `/account`, `/account/cart`, and the existing address-book
+  surface. The checkout route now composes explicit address, delivery-time, promotion, quote, and
+  payment-readiness sections.
+- **Contracts and APIs reused:** delivery address and window schemas, checkout quote/coupon schemas,
+  and the typed client methods for address list/select, window select, quote, coupon preview/removal,
+  and order creation. Protected customer session and correlation-aware errors remain unchanged.
+- **Backend and persistence audit:** existing D1 address/window repositories, promotion pricing service,
+  cart reconciliation, subscription eligibility, and order idempotency were sufficient; no migration,
+  duplicate endpoint, or parallel model was justified. The server remains authoritative for serviceability,
+  capacity, promotion eligibility, PHP amounts, credits, overage, and total due.
+- **Mobbin evidence:** image-backed MCP inspection used web [Promotions](https://mobbin.com/flows/a11ea1e4-d832-4ef9-b001-e125689f0150),
+  web [Store detail](https://mobbin.com/flows/92e9ae68-8c98-4d02-ac3f-cf8d8707dae6), iOS
+  [Checkout](https://mobbin.com/flows/4997f6c8-d37e-43f0-9d42-5908c636ea90), and iOS
+  [View basket grocery](https://mobbin.com/flows/af44648f-8272-49ff-9169-a5d1c4f0f0a1). Adapted decisions:
+  explicit fulfillment sections, touch-friendly time selection, distinct coupon row, grouped totals,
+  dense desktop two-column review, and a sticky mobile confirmation action.
+- **Responsive/accessibility decisions:** phone and desktop use intentionally different composition;
+  saved address and window controls use native pressed/disabled semantics, keyboard operation, focus
+  outlines, status announcements, and actionable empty states. Browser checks at approximately 390x844
+  and explicitly 1920x1080 show no document overflow and no serious/critical Axe violations.
+- **Verification:** web unit tests 67/67, lint/typecheck, and focused checkout Playwright 2/2 phone plus
+  2/2 desktop pass. Fixture scenarios cover invalid/valid/removable coupon behavior, address/window
+  selection, unavailable options, and empty-state ordering guards. VS-MKT-07 remains the next backend/UI
+  slice for local payment-adapter completion and order confirmation.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,
