@@ -96,10 +96,19 @@ Landing-page work is outside the marketplace program and resumes after the core 
   fixed phone cart action above the existing bottom navigation; retain Carbon tokens, copy, product
   assets, pricing, and weekly checkout rules.
 - **Visual refinement:** the desktop shell follows the retrieved web benchmark with a compact
-  utility/search header, persistent grocery rail, store context, aisle chips, dense light product
-  tiles, and an adjacent cart/filter column. The phone shell uses a compact green store header,
-  search field, horizontal aisle chips, two-column product tiles, persistent cart action, and
-  five-item bottom navigation. These are Carbon-owned adaptations, not copied assets.
+  utility/search header, persistent store-detail rail, neutral selected Shop row, aisle navigation,
+  a compact promotion band, and horizontal image-first product sections. The phone shell uses a
+  compact green store-search header, horizontal aisle chips, three-across dense product rows,
+  persistent cart action, and four-item bottom navigation. Generic ecommerce result counts,
+  grid/list controls, the filter/cart column, the circular C mark, and invented Browse/marketing
+  copy were removed because they were not supported by the reference. These are Carbon-owned
+  adaptations using Carbon products and assets.
+- **Refinement references:** the final comparison used the image-backed Uber Eats web screens
+  [store detail](https://mobbin.com/screens/662abc94-ffdf-494a-b566-3d2970896109) and
+  [aisle/deals layout](https://mobbin.com/screens/a17b6c78-c6c7-4816-9224-fb5044946114), plus the
+  mobile [aisle list](https://mobbin.com/screens/f04b5461-97d2-4b21-afa9-65b4270c0e51),
+  [store product rows](https://mobbin.com/screens/bce73384-d1e4-4f7d-8c8c-9538c8c66899), and
+  [dense category rows](https://mobbin.com/screens/b68f5f88-666b-4f45-819d-f76705d10384).
 - **Acceptance checks:** success, validation, customer authorization, stale cart version, changed
   price, unavailable item, quantity limit, retry, empty cart, and D1 persistence are covered; phone
   and desktop layouts have no horizontal overflow and pass keyboard/accessibility checks.
@@ -107,6 +116,9 @@ Landing-page work is outside the marketplace program and resumes after the core 
   phone coverage includes mutation failure/retry, reload persistence, keyboard substitution changes,
   empty-cart persistence, and accessibility; desktop coverage includes responsive cart convergence
   and accessibility. Repository verification passes `pnpm check` with 55/55 Turbo tasks.
+- **Viewport refinement evidence:** the rebuilt `/shop` uses the full 1920x1080 viewport with no
+  document-level horizontal overflow. The 390x844 phone view also has no document overflow and
+  exposes Shop, Aisles, Deals, and My list in the fixed bottom navigation.
 - **Non-goals:** address, delivery-window, coupon, quote, payment, and order completion remain
   VS-MKT-06 and VS-MKT-07.
 

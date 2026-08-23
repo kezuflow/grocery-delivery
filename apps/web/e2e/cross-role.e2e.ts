@@ -55,12 +55,22 @@ test("marketplace converges across phone and desktop layouts", async ({
   page,
 }, testInfo) => {
   await openAs("customer", "/shop");
-  await expect(page.getByRole("heading", { level: 1, name: "Shop fresh groceries" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Carbon Groceries" })).toBeVisible();
   await expect(page.getByRole("searchbox").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Best sellers" })).toBeVisible();
   if (testInfo.project.name === "phone") {
-    await expect(page.getByRole("tablist", { name: "Product categories" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Customer navigation" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "My list" })).toBeVisible();
+  } else if (testInfo.project.name === "desktop") {
+    await expect(page.getByRole("navigation", { name: "Store aisles" })).toBeVisible();
   }
-  await expect(page.getByRole("heading", { name: "Ready for the week?" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("button", {
+        name: /Add Roma tomatoes to cart|Increase Quantity for Roma tomatoes/,
+      })
+      .first(),
+  ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
 });
@@ -113,10 +123,15 @@ test("cart review supports keyboard quantity and substitution updates", async ({
   const substitution = page.getByRole("checkbox", {
     name: "Allow the best available substitute",
   });
+  const initiallyChecked = await substitution.isChecked();
   await substitution.focus();
   await page.keyboard.press("Space");
   await expect(page.getByText("Cart updated.")).toBeVisible();
-  await expect(substitution).not.toBeChecked();
+  if (initiallyChecked) {
+    await expect(substitution).not.toBeChecked();
+  } else {
+    await expect(substitution).toBeChecked();
+  }
   await expect(page.getByRole("button", { name: "Continue to checkout" })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);

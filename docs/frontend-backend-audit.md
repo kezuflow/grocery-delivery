@@ -175,6 +175,33 @@ scope. The landing page is intentionally excluded from this benchmark.
 - **Deferred:** checkout composition, delivery selection, coupons, payment, and final order locking
   stay in VS-MKT-06 and VS-MKT-07.
 
+### VS-MKT-04 store-page visual convergence
+
+- **References inspected:** Uber Eats web
+  [store detail](https://mobbin.com/screens/662abc94-ffdf-494a-b566-3d2970896109),
+  [store aisle rows](https://mobbin.com/screens/a17b6c78-c6c7-4816-9224-fb5044946114), and
+  [product detail context](https://mobbin.com/screens/30847322-7d68-4711-826f-644bb8be1c48);
+  mobile [aisle list](https://mobbin.com/screens/f04b5461-97d2-4b21-afa9-65b4270c0e51),
+  [store product rows](https://mobbin.com/screens/bce73384-d1e4-4f7d-8c8c-9538c8c66899), and
+  [category rows](https://mobbin.com/screens/b68f5f88-666b-4f45-819d-f76705d10384). Images, not
+  metadata alone, were used for the comparison.
+- **UI decision:** `/shop` is a single-store grocery detail page, not a generic marketplace results
+  grid. Desktop uses a compact global utility/search header, merchant facts and aisle navigation in
+  the left rail, a restrained promotion band, and horizontal aisle sections. Mobile uses the green
+  store search header, compact store facts, horizontally scrollable aisle/product rows, circular add
+  controls, and a four-item fixed bottom navigation.
+- **Removed unsupported invention:** circular C logo, Carbon Market/Browse introduction, “Fresh
+  groceries for your weekly box” marketing copy, large result heading, grid/list switcher, result
+  count, and the desktop filter/cart column. Carbon naming remains limited to the simple wordmark
+  and the owned store name `Carbon Groceries`.
+- **Behavior ownership:** existing server-backed search, category, sorting, price bounds,
+  pagination, Better Auth, plan gate, cart versioning, server price/availability validation, retry,
+  and D1 persistence remain unchanged. The visual convergence does not move commerce rules into the
+  browser.
+- **Browser evidence:** 1920x1080 and 390x844 local browser passes show no document-level horizontal
+  overflow. The desktop canvas fills the viewport; the phone page shows three product tiles in the
+  first aisle and Shop/Aisles/Deals/My list bottom navigation.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,
