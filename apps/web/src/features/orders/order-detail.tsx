@@ -8,6 +8,7 @@ import {
   StatusPill,
 } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
+import { OrderPaymentAction } from "./order-payment-action";
 
 const trackingLabels: Record<string, string> = {
   pending: "Preparing",
@@ -17,7 +18,10 @@ const trackingLabels: Record<string, string> = {
   failed: "Delivery issue",
 };
 
-export function CustomerOrderDetailView({ detail }: Readonly<{ detail: CustomerOrderDetail }>) {
+export function CustomerOrderDetailView({
+  customerId,
+  detail,
+}: Readonly<{ customerId: string; detail: CustomerOrderDetail }>) {
   const { order, tracking, media } = detail;
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -85,6 +89,14 @@ export function CustomerOrderDetailView({ detail }: Readonly<{ detail: CustomerO
         </dl>
         <div className="mt-5">
           <StatusPill status={order.paymentState} />
+        </div>
+        <div className="mt-5 border-t border-line pt-5">
+          <OrderPaymentAction
+            customerId={customerId}
+            methods={detail.paymentMethods}
+            orderId={order.id}
+            paymentState={order.paymentState}
+          />
         </div>
         {media.length ? (
           <div className="mt-5 grid gap-2">

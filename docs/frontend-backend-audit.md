@@ -326,6 +326,22 @@ scope. The landing page is intentionally excluded from this benchmark.
   selection, unavailable options, and empty-state ordering guards. VS-MKT-07 remains the next backend/UI
   slice for local payment-adapter completion and order confirmation.
 
+### VS-MKT-07 local payment completion
+
+- **Existing behavior reused:** `POST /api/v1/orders` locks the reviewed cart and server quote with
+  idempotency; `POST /api/v1/payments/charge` resolves the order total server-side, invokes the local
+  `FakePaymentProvider`, persists the payment attempt/ledger, and updates order payment state.
+- **New frontend contract use:** the typed client now exposes `chargePayment`; checkout separates order
+  and payment idempotency keys, keeps the locked order across failure, and order detail loads saved
+  payment methods for retry. Payment credentials remain provider-owned; only references cross the API.
+- **Failure and persistence decisions:** declined attempts expose a retry without recreating the order;
+  pending and paid states render as explicit status messages. The server remains authoritative for
+  charged amount, method status, payment state, and ledger history.
+- **Verification:** focused local Playwright payment retry passes 1/1 phone and 1/1 desktop, with
+  keyboard-selectable payment method, confirmation routing, no overflow, and serious/critical Axe checks.
+  Mobbin payment/confirmation search was attempted after OAuth refresh but the connector again returned
+  `Auth required`; previously inspected checkout references remain the only source used.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

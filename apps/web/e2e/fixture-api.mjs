@@ -256,6 +256,7 @@ const windows = {
   selectedWindowId: "window-morning",
 };
 const checkoutScenarios = new Map();
+const orderScenarios = new Map();
 const assignment = {
   id: "assignment-1",
   cycleId: "cycle-2026-34",
@@ -443,8 +444,70 @@ function routeResponse(method, url, role, scenario, body) {
         ],
       }),
     );
-  if (url.pathname === "/api/v1/orders")
-    return requireRole(role, "customer", () => ok({ orders: [] }));
+  if (url.pathname === "/api/v1/orders" && method === "POST")
+    return requireRole(role, "customer", () => {
+      const key = scenario ?? "default";
+      const existing = orderScenarios.get(key);
+      if (existing) return ok(existing);
+      const order = {
+        id: "order-fixture-1",
+        subscriptionId: "subscription-1",
+        planId: "plan-family",
+        cycleId: "cycle-2026-34",
+        lines: cart.lines.map((line) => ({
+          skuId: line.skuId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+        weeklyCredit: money(150000),
+        totals: orderTotals(body.promotionCode ?? null),
+        appliedPromotion: body.promotionCode
+          ? {
+              id: "promotion-welcome",
+              code: body.promotionCode,
+              version: 1,
+              discount: money(5000),
+              deliveryFee: money(990),
+            }
+          : null,
+        deliveryAddress: address,
+        deliveryWindow: {
+          id: "window-morning",
+          cycleId: "cycle-2026-34",
+          label: "Saturday 9:00 AM - 12:00 PM",
+          startsAt: "2026-08-29T01:00:00.000Z",
+          endsAt: "2026-08-29T04:00:00.000Z",
+        },
+        paymentState: "unpaid",
+        status: "locked",
+        lockedAt: timestamp,
+      };
+      orderScenarios.set(key, order);
+      return ok(order);
+    });
+  if (url.pathname === "/api/v1/orders" && method === "GET")
+    return requireRole(role, "customer", () => ok({ orders: [...orderScenarios.values()] }));
+  if (url.pathname === "/api/v1/payments/charge" && method === "POST")
+    return requireRole(role, "customer", () => {
+      const order = [...orderScenarios.values()].find((candidate) => candidate.id === body.orderId);
+      if (!order) return error(404, "ORDER_NOT_FOUND", "the order was not found");
+      if (scenario?.includes("payment-failure") && !checkoutScenarios.get(`${scenario}:retried`)) {
+        checkoutScenarios.set(`${scenario}:retried`, true);
+        order.paymentState = "failed";
+        return error(409, "PAYMENT_DECLINED", "payment was declined by the local provider");
+      }
+      order.paymentState = scenario?.includes("payment-pending") ? "pending" : "paid";
+      return ok({
+        id: "attempt-fixture-1",
+        orderId: order.id,
+        amount: order.totals.totalDue,
+        status: order.paymentState === "paid" ? "succeeded" : "pending",
+        providerReference: "fake-charge-order-fixture-1",
+        failureCode: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    });
   if (url.pathname === "/api/v1/order-requests")
     return requireRole(role, "customer", () => ok({ requests: [] }));
   if (url.pathname === "/api/v1/order-substitutions")
@@ -605,6 +668,18 @@ function checkoutQuote(promotionCode = null) {
     overage: money(overageCentavos),
     totalDue: money(weeklyFeeCentavos + deliveryFeeCentavos + overageCentavos),
     promotionCode,
+  };
+}
+function orderTotals(promotionCode = null) {
+  const quote = checkoutQuote(promotionCode);
+  return {
+    subtotal: quote.originalSubtotal,
+    discount: quote.discount,
+    weeklyFee: quote.weeklyFee,
+    includedCredit: quote.includedCredit,
+    overage: quote.overage,
+    deliveryFee: quote.deliveryFee,
+    totalDue: quote.totalDue,
   };
 }
 function ok(data) {

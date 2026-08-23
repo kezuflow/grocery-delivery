@@ -29,7 +29,7 @@ export default async function OrderDetailPage({
       session={session}
       title={orderId}
     >
-      <CustomerOrderDetailView detail={detail} />
+      <CustomerOrderDetailView customerId={session.customerId!} detail={detail} />
     </AppShell>
   );
 }

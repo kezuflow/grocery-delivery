@@ -66,6 +66,8 @@ import {
   paymentMethodListResponseSchema,
   plansListResponseSchema,
   paymentHistoryResponseSchema,
+  paymentAttemptResponseSchema,
+  paymentChargeRequestSchema,
   subscriptionActionRequestSchema,
   subscriptionCreateRequestSchema,
   subscriptionTrialRequestSchema,
@@ -100,6 +102,7 @@ import {
   type PromotionAdminListResponse,
   type PlansListResponse,
   type PaymentHistoryResponse,
+  type PaymentAttemptResponse,
   type SubscriptionActionRequest,
   type SubscriptionCreateRequest,
   type SubscriptionResponse,
@@ -248,6 +251,22 @@ export function createApiClient(baseTransport: ApiTransport) {
     },
     getPaymentMethods(init?: RequestInit): Promise<PaymentMethodListResponse> {
       return getJson(transport, "/api/v1/payments/methods", paymentMethodListResponseSchema, init);
+    },
+    chargePayment(
+      input: { orderId: string; customerReference: string; paymentMethodReference: string },
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<PaymentAttemptResponse> {
+      const payload = paymentChargeRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      headers.set("idempotency-key", idempotencyKey);
+      return getJson(transport, "/api/v1/payments/charge", paymentAttemptResponseSchema, {
+        ...init,
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
     },
     getOrderHistory(init?: RequestInit): Promise<OrderListResponse> {
       return getJson(transport, "/api/v1/orders", orderListResponseSchema, init);

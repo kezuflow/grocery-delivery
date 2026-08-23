@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AppShell } from "../../../components/layout";
-import { CheckoutReview, PaymentMethodsPanel } from "../../../features/checkout";
+import { CheckoutReview } from "../../../features/checkout";
 import { requireCustomerSession } from "../../../lib/auth";
 import { loadCheckoutData } from "../../../lib/checkout";
 
@@ -32,20 +32,14 @@ export default async function CheckoutPage() {
           addresses={data.deliveryAddresses}
           cartLines={data.cart.lines.length}
           cutoffAt={data.deliveryWindows.cutoffAt}
+          customerId={session.customerId!}
           initialQuote={data.quote}
+          paymentMethods={data.paymentMethods}
+          paymentUnavailableMessage={data.error}
           selectedAddress={data.deliveryAddress}
           subscriptionActive={subscriptionActive}
           windows={data.deliveryWindows}
         />
-        <section aria-labelledby="payment-methods-heading" className="grid gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Payment</p>
-            <h2 className="mt-2 text-2xl font-bold" id="payment-methods-heading">
-              Payment methods
-            </h2>
-          </div>
-          <PaymentMethodsPanel methods={data.paymentMethods} unavailableMessage={data.error} />
-        </section>
       </div>
     </AppShell>
   );

@@ -7,6 +7,8 @@ import type {
   DeliveryAddressResponse,
   DeliveryAddressesResponse,
   DeliveryWindowsResponse,
+  OrderResponse,
+  PaymentMethodListResponse,
 } from "@carbon/contracts";
 
 import { Button, Card, CardDescription, CardHeader, CardTitle, Input } from "../../components/ui";
@@ -24,6 +26,9 @@ export function CheckoutReview({
   windows,
   addresses,
   selectedAddress,
+  customerId,
+  paymentMethods,
+  paymentUnavailableMessage,
 }: Readonly<{
   initialQuote: CheckoutQuote | null;
   cartLines: number;
@@ -32,9 +37,14 @@ export function CheckoutReview({
   windows: DeliveryWindowsResponse["data"];
   addresses: DeliveryAddressesResponse["data"]["addresses"];
   selectedAddress: DeliveryAddressResponse["data"];
+  customerId: string;
+  paymentMethods: PaymentMethodListResponse["data"]["methods"];
+  paymentUnavailableMessage: string | null;
 }>) {
   const router = useRouter();
   const orderKey = useRef<string | null>(null);
+  const paymentKey = useRef<string | null>(null);
+  const lockedOrder = useRef<OrderResponse["data"] | null>(null);
   const [coupon, setCoupon] = useState("");
   const [quote, setQuote] = useState(initialQuote);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -44,6 +54,9 @@ export function CheckoutReview({
     () => addresses.find((address) => address.selected) ?? null,
   );
   const [selectedWindowId, setSelectedWindowId] = useState(windows.selectedWindowId);
+  const [selectedPaymentReference, setSelectedPaymentReference] = useState(
+    () => paymentMethods.find((method) => method.status === "active")?.providerReference ?? null,
+  );
 
   async function applyCoupon(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -111,21 +124,56 @@ export function CheckoutReview({
   }
 
   async function placeOrder() {
-    if (!window.confirm("Lock this week's order using the reviewed cart and delivery details?")) {
+    if (
+      !lockedOrder.current &&
+      !window.confirm("Lock this week's order and charge the selected payment method?")
+    ) {
       return;
     }
-    orderKey.current ??= crypto.randomUUID();
     setPending("order");
     setMessage(null);
     try {
-      const order = await createApiClient(createSameOriginApiTransport()).createOrder(
-        appliedCoupon ? { promotionCode: appliedCoupon } : {},
-        orderKey.current,
+      const client = createApiClient(createSameOriginApiTransport());
+      if (!lockedOrder.current) {
+        orderKey.current ??= crypto.randomUUID();
+        const order = await client.createOrder(
+          appliedCoupon ? { promotionCode: appliedCoupon } : {},
+          orderKey.current,
+        );
+        lockedOrder.current = order.data;
+        orderKey.current = null;
+      }
+      const order = lockedOrder.current;
+      if (order.totals.totalDue.centavos === 0) {
+        router.push(`/account/orders/${encodeURIComponent(order.id)}?payment=success`);
+        router.refresh();
+        return;
+      }
+      if (!selectedPaymentReference) {
+        setMessage("Select an active payment method to complete this order.");
+        return;
+      }
+      paymentKey.current ??= crypto.randomUUID();
+      const attempt = await client.chargePayment(
+        {
+          orderId: order.id,
+          customerReference: `carbon-customer-${customerId}`,
+          paymentMethodReference: selectedPaymentReference,
+        },
+        paymentKey.current,
       );
-      orderKey.current = null;
-      router.push(`/account/orders/${encodeURIComponent(order.data.id)}`);
+      if (attempt.data.status === "failed") {
+        paymentKey.current = null;
+        setMessage("Payment was declined. Choose a payment method and retry.");
+        return;
+      }
+      paymentKey.current = null;
+      router.push(
+        `/account/orders/${encodeURIComponent(order.id)}?payment=${attempt.data.status === "pending" ? "pending" : "success"}`,
+      );
       router.refresh();
     } catch (error) {
+      if (error instanceof ApiClientError && error.status === 409) paymentKey.current = null;
       setMessage(apiMessage(error, "We could not place your order."));
     } finally {
       setPending(null);
@@ -136,7 +184,8 @@ export function CheckoutReview({
     subscriptionActive &&
     cartLines > 0 &&
     Boolean(selectedWindowId) &&
-    Boolean((currentAddress ?? selectedAddress)?.serviceable);
+    Boolean((currentAddress ?? selectedAddress)?.serviceable) &&
+    (quote?.totalDue.centavos === 0 || Boolean(selectedPaymentReference));
   const effectiveAddress = currentAddress ?? selectedAddress;
 
   return (
@@ -257,6 +306,41 @@ export function CheckoutReview({
             <p className="mt-3 text-sm font-bold text-deep">{appliedCoupon} is applied</p>
           ) : null}
         </Card>
+        <Card aria-label="Payment method">
+          <CardHeader>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">Payment</p>
+            <CardTitle>Payment method</CardTitle>
+            <CardDescription>
+              The local provider receives only the saved provider reference after the order is
+              locked.
+            </CardDescription>
+          </CardHeader>
+          {paymentMethods.length ? (
+            <div className="grid gap-2" role="radiogroup" aria-label="Payment method">
+              {paymentMethods.map((method) => (
+                <button
+                  aria-checked={selectedPaymentReference === method.providerReference}
+                  className="flex min-h-14 items-center justify-between gap-4 rounded-xl border border-line p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep aria-checked:border-deep aria-checked:bg-accent/20"
+                  disabled={pending !== null || method.status !== "active"}
+                  key={method.id}
+                  onClick={() => setSelectedPaymentReference(method.providerReference)}
+                  role="radio"
+                  type="button"
+                >
+                  <span className="font-bold capitalize">{method.type.replace("_", " ")}</span>
+                  <span className="text-xs font-bold text-muted">
+                    {method.status === "active" ? "Ready" : "Unavailable"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              {paymentUnavailableMessage ??
+                "No saved payment method is ready. Add one from your account before ordering."}
+            </p>
+          )}
+        </Card>
       </div>
       <Card aria-label="Order summary" className="h-fit lg:sticky lg:top-6">
         <CardHeader>
@@ -289,7 +373,11 @@ export function CheckoutReview({
             onClick={() => void placeOrder()}
             type="button"
           >
-            {quote ? `Place order - ${formatPrice(quote.totalDue.centavos)}` : "Place order"}
+            {lockedOrder.current
+              ? "Retry payment"
+              : quote
+                ? `Place order - ${formatPrice(quote.totalDue.centavos)}`
+                : "Place order"}
           </Button>
           <Button
             className="hidden lg:inline-flex"

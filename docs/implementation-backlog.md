@@ -68,7 +68,7 @@ offline, and success states where applicable.
 | VS-MKT-04 | Continuous server-validated weekly cart                                 | complete |
 | VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | complete |
 | VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | complete |
-| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned  |
+| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | complete |
 | VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned  |
 | VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
 | VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
@@ -316,6 +316,25 @@ authentication and promotion remain deferred.
   are surfaced without new telemetry or remote dependencies.
 - **Remaining gap and next resume point:** local payment-adapter completion, retry, and order
   confirmation are VS-MKT-07. Staging and deployment remain deferred.
+
+## VS-MKT-07 Local Payment Completion
+
+- **Status:** locally complete; the deterministic local provider, checkout charge orchestration,
+  retryable order payment action, and confirmation state are implemented and browser-verified.
+- **Outcome:** checkout locks the order once with a stable idempotency key, charges the selected saved
+  provider reference with a separate stable payment key, preserves the locked order on decline, and
+  exposes a retry action. Successful and pending attempts route to the server-backed order detail;
+  paid and processing states are durable on reload.
+- **Backend reuse:** existing `POST /api/v1/orders`, `POST /api/v1/payments/charge`, payment method
+  reads, `DefaultPaymentService`, `FakePaymentProvider`, payment repository ledger, and order payment
+  state update path. No migration or duplicate provider contract was added.
+- **Frontend decisions:** payment method selection is explicit in checkout; phone retains the sticky
+  primary action while desktop keeps a dense review summary. Order detail contains a payment status,
+  provider retry controls, and a clear paid/processing confirmation.
+- **Verification:** web 67/67, lint/typecheck, focused payment retry Playwright 1/1 phone and 1/1
+  desktop, plus the existing order/detail tests. Coverage proves decline recovery, payment retry,
+  server-owned amount, idempotent order lock, confirmation routing, no overflow, and Axe checks.
+- **Remaining gap and next resume point:** permission-scoped admin catalog operations are VS-MKT-08.
 
 ### Local Browser Evidence
 

@@ -278,6 +278,40 @@ test("checkout explains missing address and delivery windows", async ({ context,
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("checkout completes local payment and retries a declined charge", async ({
+  context,
+  page,
+}) => {
+  await context.clearCookies();
+  await context.addCookies([
+    {
+      name: "e2e-role",
+      value: "customer",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+    {
+      name: "e2e-scenario",
+      value: "payment-failure",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.goto("/account/checkout");
+  await page.getByRole("button", { name: /Place order -/ }).click();
+  await expect(page.getByRole("status")).toContainText("payment was declined");
+  await expect(page.getByRole("button", { name: "Retry payment" })).toBeEnabled();
+  await page.getByRole("button", { name: "Retry payment" }).click();
+  await expect(page).toHaveURL(/\/account\/orders\/order-fixture-1\?payment=success$/);
+  await expect(page.getByRole("heading", { name: "Order order-fixture-1" })).toBeVisible();
+  await expect(page.getByText("paid").first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("subscription onboarding explains an empty plan catalog", async ({ context, page }) => {
   await context.clearCookies();
   await context.addCookies([

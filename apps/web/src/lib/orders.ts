@@ -4,6 +4,7 @@ import type {
   DeliveryMediaListResponse,
   DeliveryTrackingResponse,
   OrderListResponse,
+  PaymentMethodListResponse,
 } from "@carbon/contracts";
 
 import { createApiClient, type ApiTransport } from "./api/client";
@@ -13,6 +14,7 @@ export type CustomerOrderDetail = Readonly<{
   order: OrderListResponse["data"]["orders"][number];
   tracking: DeliveryTrackingResponse["data"] | null;
   media: DeliveryMediaListResponse["data"]["media"];
+  paymentMethods: PaymentMethodListResponse["data"]["methods"];
 }>;
 
 export async function loadCustomerOrders() {
@@ -44,9 +46,15 @@ export async function resolveCustomerOrderDetail(
   const orders = await client.getOrderHistory(init);
   const order = orders.data.orders.find((candidate) => candidate.id === orderId);
   if (!order) return null;
-  const [tracking, media] = await Promise.all([
+  const [tracking, media, paymentMethods] = await Promise.all([
     client.getOrderTracking(orderId, init).catch(() => null),
     client.getOrderMedia(orderId, init).catch(() => ({ data: { media: [] } })),
+    client.getPaymentMethods(init).catch(() => ({ data: { methods: [] } })),
   ]);
-  return { order, tracking: tracking?.data ?? null, media: media.data.media };
+  return {
+    order,
+    tracking: tracking?.data ?? null,
+    media: media.data.media,
+    paymentMethods: paymentMethods.data.methods,
+  };
 }
