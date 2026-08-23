@@ -209,6 +209,46 @@ scope. The landing page is intentionally excluded from this benchmark.
   the first shelf, and Shop/Aisles/Deals/My list bottom navigation. Focused Playwright convergence
   checks pass for phone and desktop.
 
+### VS-MKT-04 storefront chrome refinement
+
+- **Reference attempt:** fresh Mobbin MCP searches for Uber Eats web and mobile
+  delivery/pickup, address, search, cart, and navigation chrome returned "Auth required" on
+  2026-08-23. A new Mobbin login flow reached Mobbin sign-in but cannot be completed without the
+  user's Mobbin session. The implementation therefore stays bounded to the previously
+  image-inspected store-detail, aisle, and mobile product-row screens linked above.
+- **UI decision:** desktop gets a compact wordmark, selected-address control, wide store search,
+  cart badge, account access, and a left rail that defaults expanded and collapses to icon-only
+  navigation. Mobile gets a separate fulfillment/address row above search and cart while preserving
+  the fixed four-item bottom navigation.
+- **Contract decision:** the selected delivery address is loaded through the existing typed
+  delivery-address endpoint; cart chrome is derived from the existing cart response. Weekly
+  Delivery is active and Pickup is exposed only as a disabled future mode, so the frontend does not
+  invent a fulfillment contract.
+- **Failure and empty behavior:** signed-out or address-empty sessions show delivery-area/setup
+  guidance without fabricating an address; empty carts show an unbadged cart control; existing
+  catalog and cart error/retry states remain authoritative.
+- **Accessibility decision:** the mobile delivery label uses high-contrast text on the Carbon green
+  surface after the phone Axe run identified the lower-opacity label as a serious WCAG contrast
+  violation. Delivery and Pickup expose pressed/disabled semantics, the rail toggle exposes its
+  expanded state, and collapsed icon links retain accessible names and keyboard operation.
+- **Test harness decision:** Playwright uses an isolated `.next-e2e` output directory so its local
+  fixture server can run on port 3100 while the user's manual Next development server remains live
+  on port 3000. Generated E2E output is excluded from Git and formatting checks.
+- **Verification:** focused marketplace Playwright runs pass 2/2 for desktop and 2/2 for phone,
+  covering responsive convergence, collapsed and expanded navigation, address/cart visibility,
+  disabled Pickup, server-backed search, document overflow, and Axe. The web unit suite passes
+  65/65 tests, including graceful delivery-address failure, and repository `pnpm check` passes all
+  55 Turbo tasks.
+- **Local browser evidence:** the 1920x1080 desktop view fills the available viewport and preserves
+  the dense store layout in both rail states. The 390x844 phone view keeps the compact fulfillment,
+  address, search, cart, merchandising, shelf, and bottom-navigation composition with no horizontal
+  document overflow.
+- **Request and persistence impact:** the selected address read is issued in parallel through the
+  existing typed client. It adds no write path or client-owned commerce state; address persistence,
+  cart quantity/count, prices, availability, roles, and weekly fulfillment policy continue to come
+  from the existing API and local D1 boundaries.
+- **Status:** locally complete and ready to commit and push as the final VS-MKT-04 refinement.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

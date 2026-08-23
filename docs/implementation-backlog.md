@@ -79,6 +79,44 @@ offline, and success states where applicable.
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
 
+### Completed Storefront Chrome Refinement
+
+- **Status:** locally complete as a user-requested VS-MKT-04 visual and interaction refinement.
+  VS-MKT-05 remains the next marketplace slice after this increment is committed and pushed.
+- **Outcome:** the shop route uses a Carbon-owned Uber Eats-style utility header with weekly
+  Delivery selected, Pickup visibly unavailable, selected-address context, prominent store search,
+  server-backed cart count/access, and a desktop navigation rail that defaults expanded and can
+  collapse to accessible icon-only controls.
+- **References:** use the previously image-inspected Uber Eats web
+  [store detail](https://mobbin.com/screens/662abc94-ffdf-494a-b566-3d2970896109),
+  [aisle layout](https://mobbin.com/screens/a17b6c78-c6c7-4816-9224-fb5044946114), and mobile
+  [store product rows](https://mobbin.com/screens/bce73384-d1e4-4f7d-8c8c-9538c8c66899).
+  Fresh Mobbin MCP searches for delivery/address/search/cart chrome returned "Auth required" on
+  2026-08-23. The Mobbin login command opened the sign-in page, so connector authorization remains
+  pending user sign-in and no uninspected results are being used.
+- **Business-rule adaptation:** weekly delivery remains the only active fulfillment mode. Pickup is
+  disabled rather than implemented as an unsupported client-only state. Address text comes from
+  the selected server address when authenticated; cart count, lines, and subtotal remain
+  server-owned.
+- **Acceptance checks:** expanded and collapsed desktop rails are keyboard operable and keep named
+  icon links; phone retains delivery/address/search/cart chrome and fixed bottom navigation; search
+  preserves the server query route; cart access uses the existing persisted cart; public and empty
+  address/cart states remain usable; no desktop or phone horizontal overflow or serious
+  accessibility violations.
+- **Verification evidence:** focused marketplace Playwright runs pass 2/2 on desktop and 2/2 on
+  phone, including fulfillment/address/cart chrome, expanded/collapsed navigation, server-backed
+  search submission, responsive overflow assertions, and Axe checks. The focused web suite passes
+  65/65 tests, including the delivery-address failure fallback, and `pnpm check` passes all 55 Turbo
+  tasks.
+- **Browser evidence:** local manual comparison at 1920x1080 confirms the desktop canvas fills the
+  viewport, the navigation defaults expanded and collapses to icon-only controls, and no horizontal
+  document overflow is introduced. The 390x844 view preserves delivery/address/search/cart chrome,
+  merchandising, product shelves, and the fixed bottom navigation without horizontal overflow.
+- **Request and resilience impact:** `/shop` adds one typed delivery-address request in parallel with
+  the existing catalog, plan, subscription, and banner reads. A failed or unavailable address read
+  degrades to delivery-area/setup guidance and does not fail catalog rendering; pricing, cart
+  totals, availability, roles, and fulfillment rules remain server-owned.
+
 ### Completed Slice: VS-MKT-04
 
 - **Outcome:** authenticated customers can add, remove, and change weekly-cart lines without a

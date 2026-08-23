@@ -58,6 +58,13 @@ test("marketplace converges across phone and desktop layouts", async ({
   await expect(page.getByRole("searchbox").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Best sellers" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Grocery", pressed: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Fulfillment mode" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delivery", pressed: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pickup" })).toBeDisabled();
+  await expect(
+    page.getByRole("link", { name: /Deliver to 10 Market Street, Makati/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Your cart, 2 items" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Featured offers" })).toBeVisible();
   await expect(page.getByText("Crave it? Get it.")).toBeVisible();
   if (testInfo.project.name === "phone") {
@@ -65,6 +72,19 @@ test("marketplace converges across phone and desktop layouts", async ({
     await expect(page.getByRole("link", { name: "My list" })).toBeVisible();
   } else if (testInfo.project.name === "desktop") {
     await expect(page.getByRole("navigation", { name: "Store aisles" })).toBeVisible();
+    const collapseNavigation = page.getByRole("button", { name: "Collapse navigation" });
+    await expect(collapseNavigation).toHaveAttribute("aria-expanded", "true");
+    await collapseNavigation.click();
+    await expect(page.getByRole("button", { name: "Expand navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await expect(page.getByRole("link", { name: "Shop", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Expand navigation" }).click();
+    await expect(page.getByRole("button", { name: "Collapse navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     const rail = page.getByTestId("product-rail-best-sellers");
     const scrollRight = page.getByRole("button", { name: "Scroll Best sellers right" });
     const scrollLeft = page.getByRole("button", { name: "Scroll Best sellers left" });
@@ -85,6 +105,18 @@ test("marketplace converges across phone and desktop layouts", async ({
       })
       .first(),
   ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("marketplace header search submits the server-backed query", async ({ openAs, page }) => {
+  await openAs("customer", "/shop");
+  const search = page.locator('input[type="search"]:visible').first();
+  await expect(search).toHaveAttribute("placeholder", "Search Carbon Market");
+  await search.fill("broccoli");
+  await search.press("Enter");
+  await expect(page).toHaveURL(/\/shop\?search=broccoli$/);
+  await expect(page.locator('input[type="search"]:visible').first()).toHaveValue("broccoli");
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
 });

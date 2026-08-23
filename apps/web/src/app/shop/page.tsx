@@ -22,6 +22,8 @@ export default async function ShopPage({
   return (
     <MarketplaceShell
       categories={marketplace.catalog.categories}
+      cart={marketplace.cart}
+      deliveryAddress={marketplace.deliveryAddress}
       search={filters.search}
       session={auth.session}
     >
