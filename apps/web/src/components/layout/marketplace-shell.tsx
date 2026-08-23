@@ -1,15 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Bookmark,
   ChevronRight,
   ClipboardList,
+  Gift,
+  Home,
+  Leaf,
   MapPin,
-  PanelLeftClose,
-  PanelLeftOpen,
   Search,
   ShoppingBag,
   SlidersHorizontal,
@@ -17,6 +18,7 @@ import {
   Tag,
   Truck,
   UserRound,
+  X,
 } from "lucide-react";
 import type {
   CartResponse,
@@ -25,6 +27,7 @@ import type {
 } from "@carbon/contracts";
 import type { SessionSummary } from "../../lib/permissions";
 import { OnlineStatus } from "./online-status";
+import { SignOutButton } from "./sign-out-button";
 
 export function MarketplaceShell({
   session,
@@ -41,7 +44,7 @@ export function MarketplaceShell({
   deliveryAddress?: DeliveryAddressResponse["data"];
   children: ReactNode;
 }>) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [accountOpen, setAccountOpen] = useState(false);
   const cartHref = session?.role === "customer" ? "/account/cart" : "/shop";
   const cartCount = cart?.lines.reduce((total, line) => total + line.quantity, 0) ?? 0;
   const aisles = categories.length
@@ -50,11 +53,24 @@ export function MarketplaceShell({
         { id: "produce", slug: "fresh-produce", name: "Fresh produce" },
         { id: "herbs", slug: "fresh-herbs", name: "Fresh herbs" },
       ];
+  const categoryItems = aisles.map((category) => ({
+    ...category,
+    label: category.slug === "fresh-produce" ? "Vegetables" : category.name,
+  }));
   const addressLabel = deliveryAddress
     ? `${deliveryAddress.line1}, ${deliveryAddress.city}`
     : session?.role === "customer"
       ? "Choose a delivery address"
       : "Manila delivery area";
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountOpen(false);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [accountOpen]);
 
   return (
     <main className="marketplace-shell min-h-screen bg-white pb-20 text-market-ink lg:pb-0">
@@ -62,14 +78,15 @@ export function MarketplaceShell({
       <header className="sticky top-0 z-40 border-b border-base-line bg-white">
         <div className="hidden min-h-16 items-center gap-4 px-5 lg:flex xl:px-8">
           <button
-            aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"}
+            aria-expanded={accountOpen}
+            aria-haspopup="dialog"
+            aria-label="Open account menu"
             className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-base-surface"
-            onClick={() => setSidebarOpen((open) => !open)}
-            title={sidebarOpen ? "Collapse navigation" : "Expand navigation"}
+            onClick={() => setAccountOpen(true)}
+            title="Open account menu"
             type="button"
           >
-            {sidebarOpen ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
+            <UserRound size={19} />
           </button>
           <a className="shrink-0 text-[17px] font-extrabold tracking-[-0.02em]" href="/shop">
             Carbon
@@ -105,20 +122,6 @@ export function MarketplaceShell({
             <ShoppingBag size={19} />
             {cartCount ? <CartBadge count={cartCount} /> : null}
           </a>
-          {session ? (
-            <a
-              aria-label="Account"
-              className="grid size-10 shrink-0 place-items-center rounded-full hover:bg-base-surface"
-              href="/account"
-              title="Account"
-            >
-              <UserRound size={19} />
-            </a>
-          ) : (
-            <a className="shrink-0 text-xs font-semibold" href="/shop">
-              Sign in
-            </a>
-          )}
         </div>
         <div className="bg-[#087443] px-4 pb-3 pt-2.5 lg:hidden">
           <div className="mx-auto grid max-w-md gap-2 text-white">
@@ -161,61 +164,22 @@ export function MarketplaceShell({
           </div>
         </div>
       </header>
-      <div
-        className={`grid w-full transition-[grid-template-columns] duration-200 ${sidebarOpen ? "lg:grid-cols-[232px_minmax(0,1fr)]" : "lg:grid-cols-[72px_minmax(0,1fr)]"}`}
-        data-sidebar={sidebarOpen ? "expanded" : "collapsed"}
-      >
+      <div className="grid w-full lg:grid-cols-[232px_minmax(0,1fr)]">
         <aside className="hidden border-r border-base-line bg-white lg:block">
           <div className="sticky top-16 px-3 py-6">
-            <nav aria-label="Store navigation" className="grid gap-0.5 text-[13px]">
-              <RailLink
-                active={true}
-                href="/shop"
-                icon={<Store size={17} />}
-                label="Shop"
-                open={sidebarOpen}
-              />
-              <RailLink href="/shop" icon={<Tag size={17} />} label="Deals" open={sidebarOpen} />
-              <RailLink
-                href="/shop"
-                icon={<ClipboardList size={17} />}
-                label="Shop your list"
-                open={sidebarOpen}
-              />
+            <nav aria-label="Store categories" className="grid gap-0.5 text-[13px]">
+              <CategoryLink active href="/shop" icon={<Home size={17} />} label="Home" />
+              <CategoryLink href="/shop" icon={<Store size={17} />} label="Grocery" />
+              {categoryItems.map((category) => (
+                <CategoryLink
+                  href={`/shop?category=${category.slug}`}
+                  icon={<Leaf size={17} />}
+                  key={category.id}
+                  label={category.label}
+                />
+              ))}
+              <CategoryLink href="/shop#featured-offers" icon={<Gift size={17} />} label="Promo" />
             </nav>
-            {sidebarOpen ? (
-              <div className="mt-5 border-t border-base-line pt-5">
-                <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-market-muted">
-                  Aisles
-                </p>
-                <nav aria-label="Store aisles" className="grid gap-0.5 text-[12px]">
-                  {aisles.map((category) => (
-                    <a
-                      className="flex min-h-9 items-center rounded-md px-3 py-2 text-base-ink hover:bg-base-surface"
-                      href={`/shop?category=${category.slug}`}
-                      key={category.id}
-                    >
-                      {category.name}
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            ) : null}
-            <div className="mt-5 border-t border-base-line pt-5">
-              <RailLink
-                href="/account/orders"
-                icon={<ClipboardList size={17} />}
-                label="Orders"
-                open={sidebarOpen}
-              />
-              <RailLink
-                badge={cartCount}
-                href={cartHref}
-                icon={<ShoppingBag size={17} />}
-                label="Cart"
-                open={sidebarOpen}
-              />
-            </div>
           </div>
         </aside>
         <div className="min-w-0 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">{children}</div>
@@ -239,6 +203,9 @@ export function MarketplaceShell({
           </li>
         </ul>
       </nav>
+      {accountOpen ? (
+        <AccountDrawer onClose={() => setAccountOpen(false)} session={session} />
+      ) : null}
     </main>
   );
 }
@@ -291,31 +258,109 @@ function DeliveryAddressControl({
   );
 }
 
-function RailLink({
+function CategoryLink({
   href,
   icon,
   label,
-  open,
   active = false,
-  badge = 0,
 }: Readonly<{
   href: string;
   icon: ReactNode;
   label: string;
-  open: boolean;
   active?: boolean;
-  badge?: number;
 }>) {
   return (
     <a
-      aria-label={open ? undefined : label}
-      className={`relative flex min-h-10 items-center rounded-md px-3 py-2.5 font-semibold ${open ? "gap-3" : "justify-center"} ${active ? "bg-base-line font-bold" : "text-base-muted hover:bg-base-surface"}`}
+      className={`flex min-h-10 items-center gap-3 rounded-md px-3 py-2.5 font-semibold ${active ? "bg-base-line font-bold" : "text-base-muted hover:bg-base-surface"}`}
       href={href}
-      title={open ? undefined : label}
+      title={label}
     >
       {icon}
-      {open ? <span>{label}</span> : null}
-      {!open && badge ? <CartBadge count={badge} /> : null}
+      <span>{label}</span>
+    </a>
+  );
+}
+
+function AccountDrawer({
+  onClose,
+  session,
+}: Readonly<{
+  onClose: () => void;
+  session: SessionSummary | null;
+}>) {
+  return (
+    <div className="fixed inset-0 z-[60]" role="presentation">
+      <button
+        aria-label="Close account menu"
+        className="absolute inset-0 cursor-default bg-black/30"
+        onClick={onClose}
+        type="button"
+      />
+      <aside
+        aria-label="Account menu"
+        aria-modal="true"
+        className="relative h-full w-[min(360px,calc(100vw-2rem))] max-w-full overflow-y-auto bg-white px-5 py-6 shadow-2xl"
+        role="dialog"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-base-line pb-5">
+          <div>
+            <p className="text-lg font-extrabold text-market-ink">Your account</p>
+            <p className="mt-1 text-xs text-market-muted">
+              {session
+                ? "Manage your Carbon account and orders."
+                : "Sign in to manage your account."}
+            </p>
+          </div>
+          <button
+            aria-label="Close account menu"
+            className="grid size-9 place-items-center rounded-full hover:bg-base-surface"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <nav className="mt-5 grid gap-1" aria-label="Account navigation">
+          {session ? (
+            <>
+              <DrawerLink href="/account" icon={<UserRound size={17} />} label="Manage account" />
+              <DrawerLink
+                href="/account/orders"
+                icon={<ClipboardList size={17} />}
+                label="Orders"
+              />
+              <DrawerLink href="/account/cart" icon={<ShoppingBag size={17} />} label="Cart" />
+              <DrawerLink href="/account/saved" icon={<Bookmark size={17} />} label="Saved items" />
+            </>
+          ) : (
+            <DrawerLink href="/shop" icon={<UserRound size={17} />} label="Sign in" />
+          )}
+          <DrawerLink href="/shop#featured-offers" icon={<Tag size={17} />} label="Promotions" />
+          <DrawerLink href="/account/support" icon={<ClipboardList size={17} />} label="Help" />
+        </nav>
+        {session ? (
+          <div className="mt-6 border-t border-base-line pt-5">
+            <SignOutButton />
+          </div>
+        ) : null}
+      </aside>
+    </div>
+  );
+}
+
+function DrawerLink({
+  href,
+  icon,
+  label,
+}: Readonly<{ href: string; icon: ReactNode; label: string }>) {
+  return (
+    <a
+      className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold text-base-ink hover:bg-base-surface"
+      href={href}
+    >
+      {icon}
+      <span>{label}</span>
+      <ChevronRight className="ml-auto text-base-muted" size={15} />
     </a>
   );
 }

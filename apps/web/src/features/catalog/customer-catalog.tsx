@@ -651,7 +651,11 @@ function MerchandisingRail({
 }>) {
   if (banners.length) {
     return (
-      <section aria-label="Featured offers" className="mb-9 grid gap-3 sm:grid-cols-2">
+      <section
+        aria-label="Featured offers"
+        className="mb-9 grid scroll-mt-24 gap-3 sm:grid-cols-2"
+        id="featured-offers"
+      >
         {banners.slice(0, 2).map((banner) => (
           <a
             className="group relative min-h-36 overflow-hidden rounded-xl bg-[#e8f5ed] px-5 py-5 sm:min-h-40"
@@ -702,7 +706,11 @@ function MerchandisingRail({
   ].filter((card) => card.item);
 
   return (
-    <section aria-label="Featured offers" className="mb-9 grid gap-3 sm:grid-cols-2">
+    <section
+      aria-label="Featured offers"
+      className="mb-9 grid scroll-mt-24 gap-3 sm:grid-cols-2"
+      id="featured-offers"
+    >
       {cards.map((card, index) =>
         card.item ? (
           <a

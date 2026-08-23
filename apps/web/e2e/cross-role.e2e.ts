@@ -72,20 +72,15 @@ test("marketplace converges across phone and desktop layouts", async ({
     await expect(page.getByRole("navigation", { name: "Customer navigation" })).toBeVisible();
     await expect(page.getByRole("link", { name: "My list" })).toBeVisible();
   } else if (testInfo.project.name === "desktop") {
-    await expect(page.getByRole("navigation", { name: "Store aisles" })).toBeVisible();
-    const collapseNavigation = page.getByRole("button", { name: "Collapse navigation" });
-    await expect(collapseNavigation).toHaveAttribute("aria-expanded", "true");
-    await collapseNavigation.click();
-    await expect(page.getByRole("button", { name: "Expand navigation" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-    await expect(page.getByRole("link", { name: "Shop", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Expand navigation" }).click();
-    await expect(page.getByRole("button", { name: "Collapse navigation" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    await expect(page.getByRole("navigation", { name: "Store categories" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Grocery", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Vegetables", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Open account menu" }).click();
+    await expect(page.getByRole("dialog", { name: "Account menu" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Manage account" })).toBeVisible();
+    await page.getByRole("button", { name: "Close account menu" }).first().click();
+    await expect(page.getByRole("dialog", { name: "Account menu" })).toHaveCount(0);
     const rail = page.getByTestId("product-rail-best-sellers");
     const scrollRight = page.getByRole("button", { name: "Scroll Best sellers right" });
     const scrollLeft = page.getByRole("button", { name: "Scroll Best sellers left" });
