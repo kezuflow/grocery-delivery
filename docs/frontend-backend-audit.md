@@ -353,6 +353,15 @@ scope. The landing page is intentionally excluded from this benchmark.
   controls, result counts, Axe, and overflow. A client-generated retry key is now initialized after
   hydration so server/client markup remains deterministic.
 
+### VS-MKT-09 weekly operations
+
+- Reused the existing procurement demand/purchase/shortage/substitution, packing manifest, and
+  dispatch assignment contracts, use cases, D1 repositories, audit events, and permission guards.
+- The UI keeps server cycle/order/window/payment/packing prerequisites authoritative and exposes
+  labeled mobile/desktop forms with pending, success, and correlation-aware failure feedback.
+- Focused browser evidence passes on phone and desktop for purchase, shortage, packing, and dispatch,
+  including Axe and document-overflow checks. No backend gap or schema change was required.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

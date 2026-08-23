@@ -586,10 +586,118 @@ function routeResponse(method, url, role, scenario, body) {
     );
   if (url.pathname === "/api/v1/admin/procurement")
     return requireRole(role, "admin", () =>
-      ok({ cycleId: "cycle-2026-34", demand: [], shortages: [], substitutions: [], manifests: [] }),
+      ok({
+        cycleId: "cycle-2026-34",
+        demand: [
+          {
+            cycleId: "cycle-2026-34",
+            skuId: "sku-tomato",
+            orderedQuantity: 12,
+            purchasedQuantity: 0,
+            status: "open",
+          },
+        ],
+        shortages: [],
+        substitutions: [],
+        manifests: [],
+      }),
+    );
+  if (url.pathname === "/api/v1/admin/procurement/purchases" && method === "PUT")
+    return requireRole(role, "admin", () =>
+      ok({
+        cycleId: "cycle-2026-34",
+        demand: [
+          {
+            cycleId: "cycle-2026-34",
+            skuId: body.skuId,
+            orderedQuantity: 12,
+            purchasedQuantity: body.purchasedQuantity,
+            status: "purchased",
+          },
+        ],
+        shortages: [],
+        substitutions: [],
+        manifests: [],
+      }),
+    );
+  if (url.pathname === "/api/v1/admin/procurement/shortages" && method === "POST")
+    return requireRole(role, "admin", () =>
+      ok({
+        cycleId: "cycle-2026-34",
+        demand: [],
+        shortages: [
+          {
+            id: "shortage-1",
+            cycleId: "cycle-2026-34",
+            skuId: body.skuId,
+            requestedQuantity: body.requestedQuantity,
+            availableQuantity: body.availableQuantity,
+            status: "open",
+            createdAt: timestamp,
+          },
+        ],
+        substitutions: [],
+        manifests: [],
+      }),
+    );
+  if (url.pathname === "/api/v1/admin/procurement/substitutions" && method === "POST")
+    return requireRole(role, "admin", () =>
+      ok({
+        cycleId: "cycle-2026-34",
+        demand: [],
+        shortages: [],
+        substitutions: [
+          {
+            id: "substitution-1",
+            shortageId: body.shortageId,
+            originalSkuId: "sku-tomato",
+            substituteSkuId: body.substituteSkuId,
+            quantity: body.quantity,
+            status: body.status,
+            approvedAt: body.status === "approved" ? timestamp : null,
+          },
+        ],
+        manifests: [],
+      }),
+    );
+  if (url.pathname === "/api/v1/admin/packing/manifests" && method === "POST")
+    return requireRole(role, "admin", () =>
+      ok({
+        cycleId: "cycle-2026-34",
+        demand: [],
+        shortages: [],
+        substitutions: [],
+        manifests: [
+          {
+            id: "manifest-1",
+            cycleId: "cycle-2026-34",
+            orderId: body.orderId,
+            status: body.status,
+            createdAt: timestamp,
+          },
+        ],
+      }),
     );
   if (url.pathname === "/api/v1/admin/dispatch")
-    return requireRole(role, "admin", () => ok({ cycleId: "cycle-2026-34", assignments: [] }));
+    return requireRole(role, "admin", () =>
+      ok({
+        cycleId: "cycle-2026-34",
+        assignments:
+          method === "POST"
+            ? [
+                {
+                  id: "dispatch-1",
+                  cycleId: "cycle-2026-34",
+                  orderId: body.orderId,
+                  windowId: body.windowId,
+                  deliverymanUserId: body.deliverymanUserId,
+                  status: "assigned",
+                  assignedAt: timestamp,
+                },
+              ]
+            : [],
+      }),
+    );
   if (url.pathname === "/api/v1/admin/promotions")
     return requireRole(role, "admin", () => ok({ promotions: [] }));
   if (url.pathname === "/api/v1/admin/audit")

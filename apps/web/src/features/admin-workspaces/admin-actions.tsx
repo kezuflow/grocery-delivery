@@ -133,8 +133,15 @@ export function AdminActions({
             }}
           >
             <h3>Record purchase</h3>
-            <input name="skuId" placeholder="SKU" required />
-            <input name="purchasedQuantity" type="number" min="0" placeholder="Quantity" required />
+            <input aria-label="Purchase SKU" name="skuId" placeholder="SKU" required />
+            <input
+              aria-label="Purchased quantity"
+              name="purchasedQuantity"
+              type="number"
+              min="0"
+              placeholder="Quantity"
+              required
+            />
             <button type="submit" disabled={busy}>
               Save purchase
             </button>
@@ -153,9 +160,10 @@ export function AdminActions({
             }}
           >
             <h3>Record shortage</h3>
-            <input name="skuId" placeholder="SKU" required />
+            <input aria-label="Shortage SKU" name="skuId" placeholder="SKU" required />
             <input
               name="requestedQuantity"
+              aria-label="Requested quantity"
               type="number"
               min="1"
               placeholder="Requested"
@@ -163,6 +171,7 @@ export function AdminActions({
             />
             <input
               name="availableQuantity"
+              aria-label="Available quantity"
               type="number"
               min="0"
               placeholder="Available"
@@ -188,11 +197,27 @@ export function AdminActions({
             }}
           >
             <h3>Substitution</h3>
-            <input name="shortageId" placeholder="Shortage ID" required />
-            <input name="substituteSkuId" placeholder="Substitute SKU" required />
-            <input name="orderId" placeholder="Affected order ID (optional)" />
-            <input name="quantity" type="number" min="1" placeholder="Quantity" required />
-            <select name="status" defaultValue="proposed">
+            <input aria-label="Shortage ID" name="shortageId" placeholder="Shortage ID" required />
+            <input
+              aria-label="Substitute SKU"
+              name="substituteSkuId"
+              placeholder="Substitute SKU"
+              required
+            />
+            <input
+              aria-label="Affected order ID"
+              name="orderId"
+              placeholder="Affected order ID (optional)"
+            />
+            <input
+              aria-label="Substitution quantity"
+              name="quantity"
+              type="number"
+              min="1"
+              placeholder="Quantity"
+              required
+            />
+            <select aria-label="Substitution status" name="status" defaultValue="proposed">
               <option value="proposed">Propose</option>
               <option value="approved">Approve</option>
               <option value="rejected">Reject</option>
@@ -218,8 +243,8 @@ export function AdminActions({
             }}
           >
             <h3>Update packing</h3>
-            <input name="orderId" placeholder="Order ID" required />
-            <select name="status" defaultValue="packed">
+            <input aria-label="Packing order ID" name="orderId" placeholder="Order ID" required />
+            <select aria-label="Packing status" name="status" defaultValue="packed">
               <option value="pending">Pending</option>
               <option value="packed">Packed</option>
               <option value="exception">Exception</option>
@@ -246,9 +271,14 @@ export function AdminActions({
           }}
         >
           <h3>Assign dispatch</h3>
-          <input name="orderId" placeholder="Order ID" required />
-          <input name="windowId" placeholder="Window ID" required />
-          <input name="deliverymanUserId" placeholder="Deliveryman user ID" required />
+          <input aria-label="Dispatch order ID" name="orderId" placeholder="Order ID" required />
+          <input aria-label="Dispatch window ID" name="windowId" placeholder="Window ID" required />
+          <input
+            aria-label="Delivery staff user ID"
+            name="deliverymanUserId"
+            placeholder="Deliveryman user ID"
+            required
+          />
           <button type="submit" disabled={busy}>
             Save assignment
           </button>

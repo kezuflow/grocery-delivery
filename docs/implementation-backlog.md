@@ -70,7 +70,7 @@ offline, and success states where applicable.
 | VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | complete |
 | VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | complete |
 | VS-MKT-08 | Permission-scoped local admin catalog operations                        | complete |
-| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
+| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | complete |
 | VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
 | VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
 | VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
@@ -348,6 +348,18 @@ authentication and promotion remain deferred.
   pending state, retry-key replay, and successful counts without hydration mismatch.
 - **Verification:** focused superadmin manifest Playwright passes on phone and desktop with Axe and
   no-overflow checks; web lint/typecheck and repository checks pass. VS-MKT-09 is next.
+
+## VS-MKT-09 Weekly Operations
+
+- **Status:** locally complete using the existing permission-protected procurement, packing, and
+  dispatch APIs and repositories.
+- **Outcome:** administrators can record purchases and shortages, propose substitutions, update
+  packing manifests, and assign paid packed orders to delivery staff/windows. Forms now have explicit
+  accessible labels and pending/server-error feedback.
+- **Backend reuse:** current-cycle assignment, order/payment/packing prerequisites, repository
+  persistence, audit events, and permission guards remain server-owned. No new migration or endpoint.
+- **Verification:** focused phone and desktop Playwright covers purchase, shortage, packed manifest,
+  dispatch assignment, Axe, and overflow; full checks pass. VS-MKT-10 is next.
 
 ### Local Browser Evidence
 

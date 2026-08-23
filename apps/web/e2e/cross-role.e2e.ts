@@ -468,6 +468,46 @@ test("superadmin applies the approved catalog manifest", async ({ openAs, page }
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("weekly operations record procurement, shortage, packing, and dispatch", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("admin", "/admin/procurement");
+  await page.getByLabel("Purchase SKU").fill("sku-tomato");
+  await page.getByLabel("Purchased quantity").fill("12");
+  await page.getByRole("button", { name: "Save purchase" }).click();
+  await expect(
+    page.getByText("Saved. The server-owned dashboard has been refreshed."),
+  ).toBeVisible();
+
+  await page.getByLabel("Shortage SKU").fill("sku-tomato");
+  await page.getByLabel("Requested quantity").fill("12");
+  await page.getByLabel("Available quantity").fill("8");
+  await page.getByRole("button", { name: "Save shortage" }).click();
+  await expect(
+    page.getByText("Saved. The server-owned dashboard has been refreshed."),
+  ).toBeVisible();
+
+  await openAs("admin", "/admin/packing");
+  await page.getByLabel("Packing order ID").fill("order-fixture-1");
+  await page.getByLabel("Packing status").selectOption("packed");
+  await page.getByRole("button", { name: "Save manifest" }).click();
+  await expect(
+    page.getByText("Saved. The server-owned dashboard has been refreshed."),
+  ).toBeVisible();
+
+  await openAs("admin", "/admin/dispatch");
+  await page.getByLabel("Dispatch order ID").fill("order-fixture-1");
+  await page.getByLabel("Dispatch window ID").fill("window-morning");
+  await page.getByLabel("Delivery staff user ID").fill("user-deliveryman");
+  await page.getByRole("button", { name: "Save assignment" }).click();
+  await expect(
+    page.getByText("Saved. The server-owned dashboard has been refreshed."),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("keyboard focus and reduced motion remain usable", async ({ openAs, page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openAs(null, "/");
