@@ -253,6 +253,52 @@ scope. The landing page is intentionally excluded from this benchmark.
   contrast, and subdued borders. The marketplace maps those principles to Carbon-owned tokens and
   uses `next/font/google` Outfit with local Next font output, avoiding a runtime font request.
 
+### VS-MKT-05 subscription onboarding and return-to-shopping
+
+- **Routes inspected and changed:** `/shop`, `/shop/[slug]`, `/account`, and the new protected
+  `/account/subscribe`. Catalog and product-detail first-add actions now preserve the local path and
+  query and converge on the protected onboarding route; the account no-subscription state links to
+  the same route.
+- **Contracts, APIs, and use cases inspected:** `packages/contracts/src/plans.ts`, the application
+  subscription service, `GET /api/v1/plans`, `GET /api/v1/subscription`, and
+  `POST /api/v1/subscription/trial`. The existing request accepts only `planId`; fee, credit, trial
+  eligibility, trial dates, billing state, and conflict responses remain server-resolved.
+- **Repositories and persistence inspected:** the subscription repository boundary, D1
+  implementation, and forward-only `packages/db/migrations/0038_subscription_trials.sql` already
+  persist trial start/end and idempotent subscription state. No new table, migration, repository,
+  endpoint, or parallel model was justified.
+- **Authorization:** the page resolves `requireCustomerSession`; the APIs retain the Better Auth
+  customer session guard and correlation-aware error envelope. Non-customer auth continuation
+  reports that a customer account is required instead of attempting a commerce write.
+- **Mobbin MCP evidence:** OAuth login is complete and direct MCP retrieval returned image-backed
+  Uber Eats web [Subscribing to a plan](https://mobbin.com/flows/b2c278e9-6d7d-4be1-b48b-152905a71d01)
+  and iOS [Subscribing to Uber One](https://mobbin.com/flows/e61a0647-babb-4ada-816e-ffddf6657961)
+  flows. The web flow showed a dedicated benefits/activation page and an explicit success return;
+  the iOS flow showed stacked benefits, compact plan cards, trial emphasis, and a full-width bottom
+  action. Only these visible structural decisions were adapted.
+- **Responsive UI decision:** desktop uses a broad two-column benefits/plan layout and explicit
+  account-shell navigation; phone uses a separate single-column composition with touch-sized radio
+  and action controls. Neither viewport reuses the removed inline dialog. Carbon tokens, Outfit,
+  PHP prices, copy, and weekly catalog rules replace all external branding and content.
+- **Error and retry decision:** malformed or external return targets normalize to `/shop`; a failed
+  trial activation retains the same idempotency key for retry and exposes the server message;
+  empty plans and already-active subscriptions get dedicated states. The key is discarded only on
+  success.
+- **Accessibility decision:** plan choices expose `radiogroup`/`radio`, checked and disabled state,
+  keyboard Space operation, focus-visible outlines, alert/status semantics, and corrected high
+  contrast on the active-state return action. Axe serious/critical checks and horizontal-overflow
+  checks pass on phone and desktop.
+- **Verification evidence:** web unit tests pass 67/67; web typecheck and lint pass; focused
+  Playwright passes 2/2 phone and 2/2 desktop, with desktop explicitly set to 1920x1080. Coverage
+  proves return-query preservation, server-owned fee/credit display, pending/disabled activation,
+  backend failure and retry key reuse, persisted reload, active state, invalid return fallback,
+  and empty plans. Repository `pnpm check` passes all 55 Turbo tasks and `git diff --check` passes;
+  the slice is locally complete.
+- **Request/latency/observability:** removing plan loads from catalog and product-detail server
+  compositions eliminates one public request on those routes. The onboarding account loader keeps
+  its reads parallel; activation uses the existing single idempotent write. Existing correlation
+  IDs remain available through the typed error and no new telemetry or remote dependency was added.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

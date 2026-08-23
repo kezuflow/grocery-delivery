@@ -34,7 +34,6 @@ export default async function ShopPage({
         catalog={marketplace.catalog}
         error={marketplace.error}
         filters={filters}
-        plans={marketplace.plans}
         nextCursor={marketplace.catalog.nextCursor}
         session={auth.session}
         subscription={marketplace.subscription}

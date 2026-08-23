@@ -67,7 +67,6 @@ export default async function ProductPage({
             <div className="mt-8 grid max-w-sm gap-3">
               <ProductDetailActions
                 item={data.item}
-                plans={data.plans}
                 session={auth.session}
                 subscription={data.subscription}
               />

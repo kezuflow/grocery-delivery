@@ -59,23 +59,23 @@ offline, and success states where applicable.
 
 ## Local Marketplace Queue
 
-| Slice     | Outcome                                                                 | Status   |
-| --------- | ----------------------------------------------------------------------- | -------- |
-| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete |
-| VS-MKT-01 | Public grocery discovery on web and phone                               | complete |
-| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete |
-| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete |
-| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete |
-| VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | planned  |
-| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned  |
-| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned  |
-| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned  |
-| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
-| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
-| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
-| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
-| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
-| VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
+| Slice     | Outcome                                                                 | Status      |
+| --------- | ----------------------------------------------------------------------- | ----------- |
+| VS-MKT-00 | Realistic local Carbon Market data and weekly operating configuration   | complete    |
+| VS-MKT-01 | Public grocery discovery on web and phone                               | complete    |
+| VS-MKT-02 | Server-backed search, categories, sorting, filtering, and pagination    | complete    |
+| VS-MKT-03 | Product detail and first-add authentication/subscription flow           | complete    |
+| VS-MKT-04 | Continuous server-validated weekly cart                                 | complete    |
+| VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | complete |
+| VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | planned     |
+| VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | planned     |
+| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned     |
+| VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned     |
+| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned     |
+| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned     |
+| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned     |
+| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned     |
+| VS-MKT-14 | Staging promotion and release evidence                                  | deferred    |
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
 
@@ -224,6 +224,55 @@ depending on staging.
 
 Begin VS-MKT-05 locally with subscription onboarding and return-to-shopping flow. Staging
 authentication and promotion remain deferred.
+
+## VS-MKT-05 Subscription Onboarding and Return-to-Shopping
+
+- **Status:** locally complete; focused checks and the repository-wide 55-task check pass. Commit
+  and push evidence is recorded in the slice handoff.
+- **Outcome:** authenticated customers without an active subscription now leave the catalog or
+  product detail for a dedicated `/account/subscribe` journey. The local `returnTo` path and query
+  are normalized, encoded, and restored after activation; external and protocol-relative targets
+  fall back to `/shop`. Account empty state uses the same route instead of a duplicate inline plan
+  selector.
+- **Mobbin references:** image-backed MCP inspection used Uber Eats web
+  [Subscribing to a plan](https://mobbin.com/flows/b2c278e9-6d7d-4be1-b48b-152905a71d01)
+  (`679967cd-d71b-4944-ba29-19314c9078ea`, `77c1c831-e7e7-48bf-98bf-23302e5e068c`,
+  `30d0b9d1-0ca7-47f5-8061-5961d1254a04`, `877b586a-9772-49cb-b6d4-15ed076cbffb`) and iOS
+  [Subscribing to Uber One](https://mobbin.com/flows/e61a0647-babb-4ada-816e-ffddf6657961)
+  (`8751dae1-c036-4f22-b25c-fcd81d904798`, `1446a9a8-e320-48ae-8c3b-17a8ed542148`,
+  `a5c9e395-4c9e-4600-b7bd-739baefeebab`, `6158a804-b8dc-441f-8604-63760d7ed6b9`,
+  `445bf9a9-0708-4128-b6be-56f3336ebf49`). Visible decisions adapted were a dedicated
+  membership surface, prominent benefit/plan/price hierarchy, one decisive activation action,
+  compact phone plan selection, and an explicit return into shopping. Carbon branding, copy,
+  PHP prices, plans, and weekly rules remain original and server-owned.
+- **Frontend decisions:** desktop uses a wide two-column benefit and plan composition; phone stacks
+  a full-width membership narrative, benefits, plan radio, and primary action rather than shrinking
+  the desktop grid. The route includes pending/disabled activation, recoverable error, retry,
+  no-plan, already-active, back, and safe-return states. The plan choice exposes radio semantics and
+  keyboard operation, and heading hierarchy stays below the `AppShell` page heading.
+- **Backend reuse:** no new backend capability or persistence schema was required. The flow reuses
+  Better Auth customer guards, `GET /api/v1/plans`, `GET /api/v1/subscription`, and idempotent
+  `POST /api/v1/subscription/trial`, plus the existing application subscription service, D1
+  repository, migration `0038_subscription_trials.sql`, correlation-aware errors, and typed client.
+  The server continues to own plan availability, PHP centavo fee/credit, trial eligibility and
+  dates, subscription conflicts, and persisted state.
+- **Retry and persistence:** a caller-stable idempotency key is retained across a failed activation
+  retry and cleared only after success. Successful activation replaces the route with the saved
+  shopping URL; a reload and a later onboarding visit observe the persisted active subscription.
+- **Focused evidence:** web Vitest passes 67/67, typecheck and lint pass. Focused Playwright passes
+  2/2 on phone and 2/2 on desktop; desktop onboarding is explicitly exercised at 1920x1080. Tests
+  cover search-query return preservation, plan fee/credit rendering, keyboard radio selection,
+  recoverable 503 retry with the identical idempotency key, successful return, persisted reload,
+  already-active fallback, invalid external `returnTo`, empty plan catalog, Axe serious/critical
+  violations, and document-level horizontal overflow.
+- **Repository gate:** `pnpm check` passes 55/55 Turbo tasks and `git diff --check` passes.
+- **Request, latency, and observability impact:** catalog and product-detail pages no longer fetch
+  public plans solely to render a duplicate dialog, reducing those server-render reads by one
+  request. Onboarding loads account reads in the existing parallel composition and adds only the
+  existing trial write on activation. Errors retain API correlation IDs through `ApiClientError`;
+  no new logging, metrics, remote resources, or deployment surface was added.
+- **Remaining gap and next resume point:** commit and push this independently reviewable slice, then
+  begin VS-MKT-06 with address, delivery-window, coupon, quote, and checkout flow.
 
 ### Local Browser Evidence
 

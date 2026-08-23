@@ -121,6 +121,126 @@ test("marketplace header search submits the server-backed query", async ({ openA
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("subscription onboarding preserves shopping context and persists activation", async ({
+  context,
+  page,
+}, testInfo) => {
+  if (testInfo.project.name === "desktop") {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+  }
+  const scenario = `subscription-onboarding-${testInfo.project.name}`;
+  await context.clearCookies();
+  await context.addCookies([
+    {
+      name: "e2e-role",
+      value: "customer",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+    {
+      name: "e2e-scenario",
+      value: scenario,
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+
+  await page.goto("/shop?search=oats");
+  await page.getByRole("button", { name: "Add Rolled oats to cart" }).first().click();
+  await expect(page).toHaveURL(/\/account\/subscribe\?returnTo=%2Fshop%3Fsearch%3Doats$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Choose a weekly plan" })).toBeVisible();
+  await expect(page.getByText("Family weekly")).toBeVisible();
+  await expect(page.getByText("₱199.00 / week")).toBeVisible();
+  await expect(page.getByText(/₱1,500.00 in weekly grocery credit/)).toBeVisible();
+
+  const plan = page.getByRole("radio", { name: /Family weekly/ });
+  await plan.focus();
+  await page.keyboard.press("Space");
+  await expect(plan).toHaveAttribute("aria-checked", "true");
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+
+  let failNextActivation = true;
+  const idempotencyKeys: (string | undefined)[] = [];
+  await page.route("**/api/v1/subscription/trial", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    idempotencyKeys.push(route.request().headers()["idempotency-key"]);
+    if (failNextActivation) {
+      failNextActivation = false;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "SUBSCRIPTION_UNAVAILABLE",
+            message: "Trial activation is temporarily unavailable",
+          },
+          meta: { correlationId: "e2e-subscription-failure" },
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  const activate = page.getByRole("button", { name: "Activate plan and continue" });
+  await activate.click();
+  await expect(
+    page.getByText("Trial activation is temporarily unavailable", { exact: true }),
+  ).toBeVisible();
+  await activate.click();
+  await expect(page).toHaveURL(/\/shop\?search=oats$/);
+  expect(idempotencyKeys).toHaveLength(2);
+  expect(idempotencyKeys[0]).toBeTruthy();
+  expect(idempotencyKeys[1]).toBe(idempotencyKeys[0]);
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/shop\?search=oats$/);
+  await expect(page.locator('input[type="search"]:visible').first()).toHaveValue("oats");
+  await page.goto("/account/subscribe?returnTo=https%3A%2F%2Fexample.com");
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Return to shopping" })).toHaveAttribute(
+    "href",
+    "/shop",
+  );
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("subscription onboarding explains an empty plan catalog", async ({ context, page }) => {
+  await context.clearCookies();
+  await context.addCookies([
+    {
+      name: "e2e-role",
+      value: "customer",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+    {
+      name: "e2e-scenario",
+      value: "subscription-empty",
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  await page.goto("/account/subscribe?returnTo=%2Fshop");
+  await expect(page.getByRole("heading", { name: "Choose a weekly plan" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Weekly plans are temporarily unavailable");
+  await expect(page.getByRole("link", { name: "Back to shopping" })).toHaveAttribute(
+    "href",
+    "/shop",
+  );
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("weekly cart mutations persist immediately and recover from a failed request", async ({
   openAs,
   page,

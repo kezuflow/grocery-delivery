@@ -159,6 +159,23 @@ let cart = {
   adjustments: [],
   maxQuantityPerLine: 1000,
 };
+const subscriptionScenarios = new Map();
+function activeSubscription() {
+  return {
+    id: "subscription-1",
+    customerId: "customer-1",
+    planId: "plan-family",
+    status: "active",
+    billingStatus: "current",
+    effectiveCycleId: "cycle-2026-34",
+    skippedCycleId: null,
+    lastAction: null,
+    trialStartedAt: timestamp,
+    trialEndsAt: "2026-09-30T15:59:59.999Z",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
 const address = {
   id: "address-1",
   recipientName: "Ada Customer",
@@ -219,8 +236,9 @@ const assignment = {
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://127.0.0.1:8790");
   const role = readRole(request.headers.cookie);
+  const scenario = readScenario(request.headers.cookie);
   const body = await readBody(request);
-  const payload = routeResponse(request.method ?? "GET", url, role, body);
+  const payload = routeResponse(request.method ?? "GET", url, role, scenario, body);
   response.statusCode = payload.status;
   response.setHeader("content-type", "application/json");
   response.end(JSON.stringify(payload.body));
@@ -228,23 +246,26 @@ const server = createServer(async (request, response) => {
 
 server.listen(8790, "127.0.0.1");
 
-function routeResponse(method, url, role, body) {
+function routeResponse(method, url, role, scenario, body) {
   if (url.pathname === "/api/v1/me") {
     return role ? ok(sessions[role]) : error(401, "UNAUTHORIZED", "an active session is required");
   }
   if (url.pathname === "/api/v1/plans")
     return ok({
-      plans: [
-        {
-          id: "plan-family",
-          code: "family",
-          name: "Family weekly",
-          weeklyFee: money(19900),
-          weeklyCredit: money(150000),
-          displayOrder: 1,
-          active: true,
-        },
-      ],
+      plans:
+        scenario === "subscription-empty"
+          ? []
+          : [
+              {
+                id: "plan-family",
+                code: "family",
+                name: "Family weekly",
+                weeklyFee: money(19900),
+                weeklyCredit: money(150000),
+                displayOrder: 1,
+                active: true,
+              },
+            ],
     });
   if (url.pathname === "/api/v1/catalog") return ok(catalog);
   if (url.pathname === "/api/v1/admin/identity/roles" && method === "POST")
@@ -297,21 +318,22 @@ function routeResponse(method, url, role, body) {
       }
       return ok(cart);
     });
+  if (url.pathname === "/api/v1/subscription/trial" && method === "POST")
+    return requireRole(role, "customer", () => {
+      const subscription = activeSubscription();
+      if (scenario) subscriptionScenarios.set(scenario, subscription);
+      return ok(subscription);
+    });
   if (url.pathname === "/api/v1/subscription")
-    return requireRole(role, "customer", () =>
-      ok({
-        id: "subscription-1",
-        customerId: "customer-1",
-        planId: "plan-family",
-        status: "active",
-        billingStatus: "current",
-        effectiveCycleId: "cycle-2026-34",
-        skippedCycleId: null,
-        lastAction: null,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }),
-    );
+    return requireRole(role, "customer", () => {
+      if (
+        (scenario?.startsWith("subscription-onboarding") || scenario === "subscription-empty") &&
+        !subscriptionScenarios.has(scenario)
+      ) {
+        return error(404, "SUBSCRIPTION_NOT_FOUND", "no active subscription was found");
+      }
+      return ok(subscriptionScenarios.get(scenario) ?? activeSubscription());
+    });
   if (url.pathname === "/api/v1/delivery-address")
     return requireRole(role, "customer", () => ok(address));
   if (url.pathname === "/api/v1/delivery-addresses")
@@ -471,6 +493,10 @@ function error(status, code, message) {
 }
 function readRole(cookie = "") {
   const match = /(?:^|;\s*)e2e-role=(customer|admin|deliveryman)(?:;|$)/.exec(cookie);
+  return match?.[1] ?? null;
+}
+function readScenario(cookie = "") {
+  const match = /(?:^|;\s*)e2e-scenario=([^;]+)(?:;|$)/.exec(cookie);
   return match?.[1] ?? null;
 }
 async function readBody(request) {

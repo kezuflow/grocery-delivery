@@ -115,10 +115,9 @@ export default async function AccountPage() {
               <div className="account-empty">
                 <h2>No subscription yet</h2>
                 <p>Choose a weekly plan when you are ready to begin.</p>
-                <a className="button button-small" href="/#plans">
-                  View plans
+                <a className="button button-small" href="/account/subscribe?returnTo=%2Faccount">
+                  Choose a weekly plan
                 </a>
-                <PlanSelector mode="create" plans={account.plans} trialEligible />
               </div>
             )}
           </article>

@@ -8,11 +8,10 @@ import type {
   CartResponse,
   CatalogCategoryResponse,
   CatalogSkuResponse,
-  PlanResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
-import { Button, Dialog, EmptyState, ErrorState } from "../../components/ui";
+import { Button, EmptyState, ErrorState } from "../../components/ui";
 import { PublicAuthControls } from "../auth";
 import {
   ApiClientError,
@@ -20,6 +19,7 @@ import {
   createSameOriginApiTransport,
 } from "../../lib/api/client";
 import type { SessionSummary } from "../../lib/permissions";
+import { subscriptionReturnHref } from "../../lib/subscription-onboarding";
 import {
   addCartQuantity,
   cartDraftFromResponse,
@@ -37,7 +37,6 @@ export function CustomerCatalog({
   cart,
   error,
   filters,
-  plans,
   nextCursor,
   session,
   subscription,
@@ -51,7 +50,6 @@ export function CustomerCatalog({
   cart: CartResponse["data"];
   error: string | null;
   filters: CatalogQueryOptions;
-  plans: readonly PlanResponse["data"][];
   session: SessionSummary | null;
   subscription: SubscriptionResponse["data"] | null;
 }>) {
@@ -72,9 +70,6 @@ export function CustomerCatalog({
     filters.maxPriceCentavos ? String(filters.maxPriceCentavos / 100) : "",
   );
   const [authOpen, setAuthOpen] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
-  const [pendingAddSku, setPendingAddSku] = useState<string | null>(null);
-  const [planPending, setPlanPending] = useState<string | null>(null);
   const canEditCart = session?.role === "customer";
   const hasActiveSubscription = subscription?.status === "active";
 
@@ -82,15 +77,6 @@ export function CustomerCatalog({
     setLines(cartDraftFromResponse(cart));
     setSavedCart(cart);
   }, [cart]);
-  useEffect(() => {
-    if (!pendingAddSku || !canEditCart) return;
-    if (!hasActiveSubscription) {
-      setPlanOpen(true);
-      return;
-    }
-    void mutateCart(addCartQuantity(lines, pendingAddSku), pendingAddSku);
-    setPendingAddSku(null);
-  }, [canEditCart, hasActiveSubscription, pendingAddSku]);
   useEffect(() => {
     function restoreFilters() {
       const restored = parseCatalogQuery(
@@ -198,43 +184,17 @@ export function CustomerCatalog({
       setPendingSku(null);
     }
   }
-  async function activatePlan(planId: string) {
-    setPlanPending(planId);
-    setMessage(null);
-    try {
-      await createApiClient(createSameOriginApiTransport()).activateFreeTrial(
-        { planId },
-        crypto.randomUUID(),
-      );
-      setPlanOpen(false);
-      if (pendingAddSku) {
-        void mutateCart(addCartQuantity(lines, pendingAddSku), pendingAddSku);
-        setPendingAddSku(null);
-      }
-      router.refresh();
-    } catch (activationError) {
-      setMessage(
-        activationError instanceof ApiClientError
-          ? activationError.message
-          : "We could not activate your plan.",
-      );
-    } finally {
-      setPlanPending(null);
-    }
-  }
   function requestAdd(skuId: string) {
-    setPendingAddSku(skuId);
     if (!canEditCart) {
       setMessage("Sign in to add items to your cart.");
       setAuthOpen(true);
       return;
     }
     if (!hasActiveSubscription) {
-      setPlanOpen(true);
+      router.push(subscriptionReturnHref(window.location.pathname + window.location.search));
       return;
     }
     void mutateCart(addCartQuantity(lines, skuId), skuId);
-    setPendingAddSku(null);
   }
 
   const visibleItems = catalog.items;
@@ -263,7 +223,16 @@ export function CustomerCatalog({
     <>
       {!canEditCart ? (
         <PublicAuthControls
-          onAuthenticated={() => router.refresh()}
+          onAuthenticated={(role) => {
+            if (role === "customer") {
+              setAuthOpen(false);
+              router.push(
+                subscriptionReturnHref(window.location.pathname + window.location.search),
+              );
+            } else {
+              setMessage("A customer account is required to shop.");
+            }
+          }}
           onOpenChange={setAuthOpen}
           open={authOpen}
           redirectAfterAuth={false}
@@ -271,36 +240,6 @@ export function CustomerCatalog({
           showTriggers={false}
         />
       ) : null}
-      <Dialog
-        description="Choose an active plan before adding your first item. Your first calendar month is free."
-        onClose={() => setPlanOpen(false)}
-        open={planOpen}
-        title="Choose your weekly plan"
-      >
-        <div className="grid gap-3">
-          {plans.map((plan) => (
-            <button
-              className="rounded border border-market-line px-4 py-3 text-left hover:border-market-green"
-              disabled={planPending !== null}
-              key={plan.id}
-              onClick={() => void activatePlan(plan.id)}
-              type="button"
-            >
-              <strong className="block">{plan.name}</strong>
-              <span className="text-sm text-market-muted">
-                {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
-                  plan.weeklyFee.centavos / 100,
-                )}{" "}
-                per week
-              </span>
-              {planPending === plan.id ? (
-                <span className="block text-sm">Activating...</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      </Dialog>
-
       <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-base-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           {categoryShortcuts(catalog.categories).map((category) => (

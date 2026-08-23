@@ -92,7 +92,7 @@ export async function resolveCustomerAccount(
       client.getDeliveryAddress(init),
       client.getDeliveryAddresses(init).catch(() => ({ data: { addresses: [] } })),
       client.getDeliveryWindows(init),
-      client.listPlans(),
+      client.listPlans(init),
       client.getPaymentHistory(init).catch(() => ({ data: { entries: [] } })),
       loadOrderData(client, init),
       client.getSupportCases(init).catch(() => ({ data: { cases: [] } })),

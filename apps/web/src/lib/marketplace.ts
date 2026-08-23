@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import type {
   ActivePromotionBannersResponse,
   DeliveryAddressResponse,
-  PlansListResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
 
@@ -16,7 +15,6 @@ export type MarketplaceData = CustomerCatalogData &
   Readonly<{
     deliveryAddress: DeliveryAddressResponse["data"];
     subscription: SubscriptionResponse["data"] | null;
-    plans: PlansListResponse["data"]["plans"];
     banners: ActivePromotionBannersResponse["data"]["banners"];
   }>;
 
@@ -34,7 +32,7 @@ export async function resolveMarketplace(
 ): Promise<MarketplaceData> {
   const client = createApiClient(transport);
   const init = { headers: { cookie: cookieHeader } };
-  const [catalog, subscription, plans, banners, deliveryAddress] = await Promise.all([
+  const [catalog, subscription, banners, deliveryAddress] = await Promise.all([
     resolveCustomerCatalog(transport, cookieHeader, options),
     client.getCurrentSubscription(init).catch((error: unknown) => {
       if (error instanceof ApiClientError && (error.status === 401 || error.status === 404)) {
@@ -42,7 +40,6 @@ export async function resolveMarketplace(
       }
       throw error;
     }),
-    client.listPlans(),
     client.getActivePromotionBanners("storefront-strip"),
     client.getDeliveryAddress(init).catch(() => ({ data: null }) as DeliveryAddressResponse),
   ]);
@@ -50,7 +47,6 @@ export async function resolveMarketplace(
     ...catalog,
     deliveryAddress: deliveryAddress.data,
     subscription: subscription?.data ?? null,
-    plans: plans.data.plans,
     banners: banners.data.banners,
   };
 }

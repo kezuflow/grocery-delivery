@@ -3,35 +3,32 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { CatalogSkuResponse, PlanResponse, SubscriptionResponse } from "@carbon/contracts";
+import type { CatalogSkuResponse, SubscriptionResponse } from "@carbon/contracts";
 
-import { Button, Dialog } from "../../components/ui";
+import { Button } from "../../components/ui";
 import {
   ApiClientError,
   createApiClient,
   createSameOriginApiTransport,
 } from "../../lib/api/client";
 import type { SessionSummary } from "../../lib/permissions";
+import { subscriptionReturnHref } from "../../lib/subscription-onboarding";
 import { PublicAuthControls } from "../auth";
 
 export function ProductDetailActions({
   item,
-  plans,
   session,
   subscription,
 }: Readonly<{
   item: CatalogSkuResponse;
-  plans: readonly PlanResponse["data"][];
   session: SessionSummary | null;
   subscription: SubscriptionResponse["data"] | null;
 }>) {
   const router = useRouter();
   const [customerReady, setCustomerReady] = useState(session?.role === "customer");
-  const [subscriptionReady, setSubscriptionReady] = useState(subscription?.status === "active");
+  const subscriptionReady = subscription?.status === "active";
   const [authOpen, setAuthOpen] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
   const [pending, setPending] = useState(false);
-  const [planPending, setPlanPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   async function addItem() {
@@ -81,30 +78,10 @@ export function ProductDetailActions({
       return;
     }
     if (!subscriptionReady) {
-      setPlanOpen(true);
+      router.push(subscriptionReturnHref(window.location.pathname));
       return;
     }
     void addItem();
-  }
-
-  async function activatePlan(planId: string) {
-    setPlanPending(planId);
-    setMessage(null);
-    try {
-      await createApiClient(createSameOriginApiTransport()).activateFreeTrial(
-        { planId },
-        crypto.randomUUID(),
-      );
-      setSubscriptionReady(true);
-      setPlanOpen(false);
-      await addItem();
-    } catch (error) {
-      setMessage(
-        error instanceof ApiClientError ? error.message : "We could not activate your plan.",
-      );
-    } finally {
-      setPlanPending(null);
-    }
   }
 
   return (
@@ -115,7 +92,7 @@ export function ProductDetailActions({
             if (role === "customer") {
               setCustomerReady(true);
               setAuthOpen(false);
-              setPlanOpen(true);
+              router.push(subscriptionReturnHref(window.location.pathname));
             } else {
               setMessage("A customer account is required to shop.");
             }
@@ -135,35 +112,6 @@ export function ProductDetailActions({
           {message}
         </p>
       ) : null}
-      <Dialog
-        description="Choose an active plan before adding your first item. Your first calendar month is free."
-        onClose={() => setPlanOpen(false)}
-        open={planOpen}
-        title="Choose your weekly plan"
-      >
-        <div className="grid gap-3">
-          {plans.map((plan) => (
-            <button
-              className="rounded border border-market-line px-4 py-3 text-left hover:border-market-green"
-              disabled={planPending !== null}
-              key={plan.id}
-              onClick={() => void activatePlan(plan.id)}
-              type="button"
-            >
-              <strong className="block">{plan.name}</strong>
-              <span className="text-sm text-market-muted">
-                {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
-                  plan.weeklyFee.centavos / 100,
-                )}{" "}
-                per week
-              </span>
-              {planPending === plan.id ? (
-                <span className="block text-sm">Activating...</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      </Dialog>
     </>
   );
 }

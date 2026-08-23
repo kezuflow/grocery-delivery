@@ -153,8 +153,8 @@ export class ApiClientError extends Error {
 export function createApiClient(baseTransport: ApiTransport) {
   const transport = baseTransport;
   return {
-    listPlans(): Promise<PlansListResponse> {
-      return getJson(transport, "/api/v1/plans", plansListResponseSchema);
+    listPlans(init?: RequestInit): Promise<PlansListResponse> {
+      return getJson(transport, "/api/v1/plans", plansListResponseSchema, init);
     },
     listCatalog(
       options:
