@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -12,9 +12,11 @@ import {
 export function LaunchConfigurationForm() {
   const router = useRouter();
   const client = createApiClient(createSameOriginApiTransport());
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey, setIdempotencyKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => setIdempotencyKey(crypto.randomUUID()), []);
 
   return (
     <section
@@ -58,10 +60,10 @@ export function LaunchConfigurationForm() {
           <textarea name="manifest" spellCheck={false} placeholder={manifestPlaceholder} required />
         </label>
         <div className="launch-configuration-actions">
-          <button className="button button-small" type="submit" disabled={busy}>
+          <button className="button button-small" type="submit" disabled={busy || !idempotencyKey}>
             Apply approved manifest
           </button>
-          <small>Retry key: {idempotencyKey}</small>
+          <small>Retry key: {idempotencyKey || "Preparing..."}</small>
         </div>
         {message ? (
           <p className="order-message" role="status">

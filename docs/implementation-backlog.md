@@ -69,7 +69,7 @@ offline, and success states where applicable.
 | VS-MKT-05 | Subscription onboarding and return-to-shopping flow                     | complete |
 | VS-MKT-06 | Weekly address, delivery-window, coupon, quote, and checkout flow       | complete |
 | VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | complete |
-| VS-MKT-08 | Permission-scoped local admin catalog operations                        | planned  |
+| VS-MKT-08 | Permission-scoped local admin catalog operations                        | complete |
 | VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | planned  |
 | VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
 | VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
@@ -335,6 +335,19 @@ authentication and promotion remain deferred.
   desktop, plus the existing order/detail tests. Coverage proves decline recovery, payment retry,
   server-owned amount, idempotent order lock, confirmation routing, no overflow, and Axe checks.
 - **Remaining gap and next resume point:** permission-scoped admin catalog operations are VS-MKT-08.
+
+## VS-MKT-08 Permission-Scoped Catalog Operations
+
+- **Status:** locally complete. Catalog/pricing administrators get a server-backed read workspace;
+  only superadmins receive the launch-configuration action, matching the API guard.
+- **Backend reuse:** the existing atomic `PUT /api/v1/admin/launch-configuration`, shared strict
+  contract, launch service, D1 transaction, audit event, server price calculation, idempotency, and
+  superadmin authorization remain the sole catalog write boundary. No new endpoint or migration.
+- **Frontend and states:** catalog counts, category, unit, price, and active state remain server reads;
+  capability copy distinguishes read-only users. The manifest form handles JSON/contract errors,
+  pending state, retry-key replay, and successful counts without hydration mismatch.
+- **Verification:** focused superadmin manifest Playwright passes on phone and desktop with Axe and
+  no-overflow checks; web lint/typecheck and repository checks pass. VS-MKT-09 is next.
 
 ### Local Browser Evidence
 

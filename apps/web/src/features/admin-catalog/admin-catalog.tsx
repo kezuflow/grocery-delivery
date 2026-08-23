@@ -15,11 +15,18 @@ import {
   TableHeaderCell,
 } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
+import type { AdminPermission } from "../../lib/permissions";
 
 export function AdminCatalog({
   catalog,
   error,
-}: Readonly<{ catalog: CatalogListResponse["data"] | null; error: string | null }>) {
+  permissions,
+}: Readonly<{
+  catalog: CatalogListResponse["data"] | null;
+  error: string | null;
+  permissions: readonly AdminPermission[];
+}>) {
+  const canConfigure = permissions.includes("superadmin");
   const categoryNames = new Map(
     catalog?.categories.map((category) => [category.id, category.name]),
   );
@@ -34,9 +41,13 @@ export function AdminCatalog({
           </CardDescription>
         </CardHeader>
         <div className="flex flex-wrap gap-3">
-          <LinkButton href="/admin/configuration" size="sm">
-            Open launch configuration
-          </LinkButton>
+          {canConfigure ? (
+            <LinkButton href="/admin/configuration" size="sm">
+              Open launch configuration
+            </LinkButton>
+          ) : (
+            <StatusPill status="read only" />
+          )}
           <span className="text-sm text-muted">
             {catalog
               ? `${catalog.items.length} items · ${catalog.categories.length} categories`
@@ -44,6 +55,12 @@ export function AdminCatalog({
           </span>
         </div>
       </Card>
+      {!canConfigure ? (
+        <p className="border border-line bg-white p-4 text-sm text-muted" role="status">
+          You can review catalog and pricing state. Applying a launch manifest requires superadmin
+          permission and is enforced by the API.
+        </p>
+      ) : null}
       {error ? (
         <p className="border border-danger/40 bg-danger/10 p-4 text-sm text-danger" role="alert">
           {error}

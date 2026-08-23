@@ -426,6 +426,48 @@ test("admin product surfaces render server-backed states", async ({ openAs, page
   await expect(page.getByRole("heading", { name: "Assign server-owned role" })).toBeVisible();
 });
 
+test("superadmin applies the approved catalog manifest", async ({ openAs, page }) => {
+  await openAs("admin", "/admin/catalog");
+  await expect(page.getByRole("link", { name: "Open launch configuration" })).toBeVisible();
+  await page.getByRole("link", { name: "Open launch configuration" }).click();
+  await page.getByLabel("Approval reason").fill("Approved local catalog verification");
+  await page.getByLabel("Manifest JSON").fill(
+    JSON.stringify({
+      categories: [{ id: "fresh", name: "Fresh produce", slug: "fresh-produce", active: true }],
+      skus: [
+        {
+          id: "sku-tomato",
+          categoryId: "fresh",
+          name: "Roma tomatoes",
+          slug: "roma-tomatoes",
+          description: "Ripe tomatoes for salads and sauces.",
+          unit: "kilogram",
+          imageUrl: null,
+          procurementCostCentavos: 15000,
+          markupBasisPoints: 2000,
+          priceEffectiveAt: "2026-08-22T01:00:00.000Z",
+          active: true,
+        },
+      ],
+      deliveryWindows: [
+        {
+          id: "window-morning",
+          cycleId: "cycle-2026-34",
+          label: "Saturday morning",
+          startsAt: "2026-08-29T01:00:00.000Z",
+          endsAt: "2026-08-29T04:00:00.000Z",
+          capacity: 20,
+          active: true,
+        },
+      ],
+    }),
+  );
+  await page.getByRole("button", { name: "Apply approved manifest" }).click();
+  await expect(page.getByRole("status")).toContainText("Applied 1 categories, 1 SKUs");
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("keyboard focus and reduced motion remain usable", async ({ openAs, page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openAs(null, "/");

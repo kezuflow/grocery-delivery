@@ -324,6 +324,17 @@ function routeResponse(method, url, role, scenario, body) {
         mfaRequired: body.role === "admin",
       }),
     );
+  if (url.pathname === "/api/v1/admin/launch-configuration" && method === "PUT")
+    return requireRole(role, "admin", () =>
+      ok({
+        idempotencyKey: "fixture-launch",
+        categoryCount: body.categories?.length ?? 0,
+        skuCount: body.skus?.length ?? 0,
+        deliveryWindowCount: body.deliveryWindows?.length ?? 0,
+        appliedAt: timestamp,
+        replayed: false,
+      }),
+    );
   if (url.pathname === "/api/v1/promotions/banners")
     return ok({
       placement: url.searchParams.get("placement") ?? "home-hero",

@@ -4,6 +4,7 @@ import { AppShell } from "../../../components/layout";
 import { AdminCatalog } from "../../../features/admin-catalog";
 import { loadAdminCatalog } from "../../../lib/admin-product";
 import { requireAnyPermission } from "../../../lib/auth";
+import { getEffectiveAdminPermissions } from "../../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Catalog administration" };
@@ -23,7 +24,11 @@ export default async function AdminCatalogPage() {
       session={session}
       title="Catalog"
     >
-      <AdminCatalog catalog={data.catalog} error={data.error} />
+      <AdminCatalog
+        catalog={data.catalog}
+        error={data.error}
+        permissions={getEffectiveAdminPermissions(session)}
+      />
     </AppShell>
   );
 }

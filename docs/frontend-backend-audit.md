@@ -342,6 +342,17 @@ scope. The landing page is intentionally excluded from this benchmark.
   Mobbin payment/confirmation search was attempted after OAuth refresh but the connector again returned
   `Auth required`; previously inspected checkout references remain the only source used.
 
+### VS-MKT-08 permission-scoped catalog operations
+
+- `/admin/catalog` now reflects effective permissions: catalog/pricing users have read-only catalog
+  evidence while superadmins can enter `/admin/configuration`.
+- The existing launch manifest remains the smallest safe write boundary because it atomically owns
+  categories, SKUs, procurement cost, markup-derived price, windows, cache version, audit history,
+  and idempotency. The API independently enforces superadmin scope.
+- Browser evidence covers successful contract-valid application at phone and desktop sizes, pending
+  controls, result counts, Axe, and overflow. A client-generated retry key is now initialized after
+  hydration so server/client markup remains deterministic.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,
