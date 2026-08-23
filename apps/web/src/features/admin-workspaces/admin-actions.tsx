@@ -18,6 +18,7 @@ import type {
 import type { AdminPermission } from "../../lib/permissions";
 
 type Props = Readonly<{
+  scope: AdminPermission;
   permissions: readonly AdminPermission[];
   procurement: ProcurementResponse["data"] | null;
   promotions: PromotionAdminSummary[];
@@ -26,6 +27,7 @@ type Props = Readonly<{
 }>;
 
 export function AdminActions({
+  scope,
   permissions,
   procurement,
   promotions,
@@ -69,7 +71,7 @@ export function AdminActions({
         <p className="eyebrow">Actions</p>
         <span>{busy ? "Saving..." : (message ?? "Server-controlled workflows")}</span>
       </div>
-      {orderRequests.length ? (
+      {(scope === "support" || scope === "finance") && orderRequests.length ? (
         <div className="admin-action-grid">
           {orderRequests.map((request) => {
             const permitted = request.kind === "refund" ? can("finance") : can("support");
@@ -118,7 +120,7 @@ export function AdminActions({
           })}
         </div>
       ) : null}
-      {can("procurement") && procurement ? (
+      {scope === "procurement" && can("procurement") && procurement ? (
         <div className="admin-action-grid">
           <form
             onSubmit={(event) => {
@@ -228,7 +230,7 @@ export function AdminActions({
           </form>
         </div>
       ) : null}
-      {can("packing") && procurement ? (
+      {scope === "packing" && can("packing") && procurement ? (
         <div className="admin-action-grid">
           <form
             onSubmit={(event) => {
@@ -255,7 +257,7 @@ export function AdminActions({
           </form>
         </div>
       ) : null}
-      {can("dispatch") ? (
+      {scope === "dispatch" && can("dispatch") ? (
         <form
           className="admin-action-grid"
           onSubmit={(event) => {
@@ -284,7 +286,7 @@ export function AdminActions({
           </button>
         </form>
       ) : null}
-      {can("marketing") && promotions.length ? (
+      {scope === "marketing" && can("marketing") && promotions.length ? (
         <div className="admin-action-grid">
           {promotions.map((promotion) => (
             <div key={promotion.id}>
@@ -337,7 +339,7 @@ export function AdminActions({
           ))}
         </div>
       ) : null}
-      {can("marketing") ? (
+      {scope === "marketing" && can("marketing") ? (
         <form
           className="admin-action-grid"
           onSubmit={(event) => {
@@ -391,7 +393,7 @@ export function AdminActions({
           </button>
         </form>
       ) : null}
-      {can("finance") ? (
+      {scope === "finance" && can("finance") ? (
         <form
           className="admin-action-grid"
           onSubmit={(event) => {
@@ -429,7 +431,7 @@ export function AdminActions({
           </button>
         </form>
       ) : null}
-      {can("support") ? (
+      {scope === "support" && can("support") ? (
         <div className="admin-action-grid" id="support">
           {supportCases.length ? (
             supportCases.map((supportCase) => (

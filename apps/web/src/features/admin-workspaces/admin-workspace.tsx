@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { AdminPermission } from "../../lib/permissions";
 import type { AdminDashboardData } from "../../lib/admin";
 import {
@@ -7,6 +9,11 @@ import {
   CardTitle,
   EmptyState,
   StatusPill,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
 } from "../../components/ui";
 import { AdminActions } from "./admin-actions";
 import { LaunchConfigurationForm } from "./launch-configuration-form";
@@ -84,9 +91,15 @@ export function AdminWorkspace({
         </div>
       </Card>
       {permission === "reporting" ? <ReportingPanel dashboard={dashboard} /> : null}
+      {permission === "procurement" ? <ProcurementPanel dashboard={dashboard} /> : null}
+      {permission === "packing" ? <PackingPanel dashboard={dashboard} /> : null}
+      {permission === "dispatch" ? <DispatchPanel dashboard={dashboard} /> : null}
+      {permission === "support" ? <SupportPanel dashboard={dashboard} /> : null}
+      {permission === "marketing" ? <PromotionsPanel dashboard={dashboard} /> : null}
       {permission === "superadmin" ? <LaunchConfigurationForm /> : null}
       {showActions ? (
         <AdminActions
+          scope={permission}
           permissions={permissions}
           procurement={dashboard.procurement}
           promotions={dashboard.promotions}
@@ -148,5 +161,219 @@ function ReportingPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData 
         )}
       </Card>
     </div>
+  );
+}
+
+function ProcurementPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>) {
+  const procurement = dashboard.procurement;
+  if (!procurement) return <UnavailableState label="Procurement feed" />;
+  return (
+    <div className="grid gap-5">
+      <WorkspaceTable
+        title="Demand queue"
+        description="Order demand and purchase progress for the active cycle."
+      >
+        <TableHeader>
+          <tr>
+            <TableHeaderCell>SKU</TableHeaderCell>
+            <TableHeaderCell>Ordered</TableHeaderCell>
+            <TableHeaderCell>Purchased</TableHeaderCell>
+            <TableHeaderCell>Status</TableHeaderCell>
+          </tr>
+        </TableHeader>
+        <TableBody>
+          {procurement.demand.map((item) => (
+            <tr key={item.skuId}>
+              <TableCell className="font-medium">{item.skuId}</TableCell>
+              <TableCell>{item.orderedQuantity}</TableCell>
+              <TableCell>{item.purchasedQuantity}</TableCell>
+              <TableCell>
+                <StatusPill status={item.status} />
+              </TableCell>
+            </tr>
+          ))}
+        </TableBody>
+      </WorkspaceTable>
+      <WorkspaceTable
+        title="Shortages"
+        description="Exceptions requiring a purchase or approved substitution."
+      >
+        <TableHeader>
+          <tr>
+            <TableHeaderCell>Shortage</TableHeaderCell>
+            <TableHeaderCell>SKU</TableHeaderCell>
+            <TableHeaderCell>Requested</TableHeaderCell>
+            <TableHeaderCell>Available</TableHeaderCell>
+            <TableHeaderCell>Status</TableHeaderCell>
+          </tr>
+        </TableHeader>
+        <TableBody>
+          {procurement.shortages.map((item) => (
+            <tr key={item.id}>
+              <TableCell className="font-medium">{item.id}</TableCell>
+              <TableCell>{item.skuId}</TableCell>
+              <TableCell>{item.requestedQuantity}</TableCell>
+              <TableCell>{item.availableQuantity}</TableCell>
+              <TableCell>
+                <StatusPill status={item.status} />
+              </TableCell>
+            </tr>
+          ))}
+        </TableBody>
+      </WorkspaceTable>
+    </div>
+  );
+}
+
+function PackingPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>) {
+  const manifests = dashboard.procurement?.manifests ?? [];
+  return (
+    <WorkspaceTable
+      title="Packing manifests"
+      description="Track every order manifest through packing and exceptions."
+    >
+      <TableHeader>
+        <tr>
+          <TableHeaderCell>Manifest</TableHeaderCell>
+          <TableHeaderCell>Order</TableHeaderCell>
+          <TableHeaderCell>Created</TableHeaderCell>
+          <TableHeaderCell>Status</TableHeaderCell>
+        </tr>
+      </TableHeader>
+      <TableBody>
+        {manifests.map((item) => (
+          <tr key={item.id}>
+            <TableCell className="font-medium">{item.id}</TableCell>
+            <TableCell>{item.orderId}</TableCell>
+            <TableCell>{new Date(item.createdAt).toLocaleDateString("en-PH")}</TableCell>
+            <TableCell>
+              <StatusPill status={item.status} />
+            </TableCell>
+          </tr>
+        ))}
+      </TableBody>
+    </WorkspaceTable>
+  );
+}
+
+function DispatchPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>) {
+  const assignments = dashboard.dispatch?.assignments ?? [];
+  return (
+    <WorkspaceTable
+      title="Dispatch board"
+      description="Delivery windows, drivers, and fulfillment state for this cycle."
+    >
+      <TableHeader>
+        <tr>
+          <TableHeaderCell>Order</TableHeaderCell>
+          <TableHeaderCell>Window</TableHeaderCell>
+          <TableHeaderCell>Driver</TableHeaderCell>
+          <TableHeaderCell>Status</TableHeaderCell>
+        </tr>
+      </TableHeader>
+      <TableBody>
+        {assignments.map((item) => (
+          <tr key={item.id}>
+            <TableCell className="font-medium">{item.orderId}</TableCell>
+            <TableCell>{item.windowId}</TableCell>
+            <TableCell>{item.deliverymanUserId}</TableCell>
+            <TableCell>
+              <StatusPill status={item.status} />
+            </TableCell>
+          </tr>
+        ))}
+      </TableBody>
+    </WorkspaceTable>
+  );
+}
+
+function SupportPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>) {
+  const cases = dashboard.supportCases;
+  return (
+    <WorkspaceTable
+      title="Support queue"
+      description="Customer cases awaiting triage or resolution."
+    >
+      <TableHeader>
+        <tr>
+          <TableHeaderCell>Case</TableHeaderCell>
+          <TableHeaderCell>Subject</TableHeaderCell>
+          <TableHeaderCell>Customer</TableHeaderCell>
+          <TableHeaderCell>Updated</TableHeaderCell>
+          <TableHeaderCell>Status</TableHeaderCell>
+        </tr>
+      </TableHeader>
+      <TableBody>
+        {cases.map((item) => (
+          <tr key={item.id}>
+            <TableCell className="font-medium">{item.id}</TableCell>
+            <TableCell>{item.subject}</TableCell>
+            <TableCell>{item.customerId}</TableCell>
+            <TableCell>{new Date(item.updatedAt).toLocaleDateString("en-PH")}</TableCell>
+            <TableCell>
+              <StatusPill status={item.status} />
+            </TableCell>
+          </tr>
+        ))}
+      </TableBody>
+    </WorkspaceTable>
+  );
+}
+
+function PromotionsPanel({ dashboard }: Readonly<{ dashboard: AdminDashboardData }>) {
+  return (
+    <WorkspaceTable
+      title="Campaigns"
+      description="Review status, redemption volume, and budget before taking action."
+    >
+      <TableHeader>
+        <tr>
+          <TableHeaderCell>Code</TableHeaderCell>
+          <TableHeaderCell>Status</TableHeaderCell>
+          <TableHeaderCell>Redemptions</TableHeaderCell>
+          <TableHeaderCell>Window</TableHeaderCell>
+        </tr>
+      </TableHeader>
+      <TableBody>
+        {dashboard.promotions.map((item) => (
+          <tr key={item.id}>
+            <TableCell className="font-medium">{item.code ?? item.id}</TableCell>
+            <TableCell>
+              <StatusPill status={item.status} />
+            </TableCell>
+            <TableCell>{item.redemptionCount}</TableCell>
+            <TableCell>
+              {new Date(item.startsAt).toLocaleDateString("en-PH")} -{" "}
+              {new Date(item.endsAt).toLocaleDateString("en-PH")}
+            </TableCell>
+          </tr>
+        ))}
+      </TableBody>
+    </WorkspaceTable>
+  );
+}
+
+function WorkspaceTable({
+  title,
+  description,
+  children,
+}: Readonly<{ title: string; description: string; children: ReactNode }>) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <Table>{children}</Table>
+    </Card>
+  );
+}
+
+function UnavailableState({ label }: Readonly<{ label: string }>) {
+  return (
+    <EmptyState
+      description="The server feed is unavailable or returned no rows for this cycle."
+      title={`${label} unavailable`}
+    />
   );
 }

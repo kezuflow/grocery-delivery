@@ -98,6 +98,25 @@ Landing-page work is outside the marketplace program and resumes after the core 
   is limited to current-route highlighting and local filtering of the already-authorized navigation
   list.
 
+### Admin Workspace Table And Catalog Flow Refinement
+
+- **Status:** locally complete as a follow-up UI/UX slice; direct catalog persistence remains behind
+  the existing approved launch-configuration boundary.
+- **Outcome:** admin workspaces now render scoped operational tables for procurement, packing,
+  dispatch, support, and promotions instead of showing unrelated actions on every route. Shared
+  tables use compact headers, horizontal overflow, row density, status pills, and route-specific
+  controls consistent with the Supabase table-editor reference.
+- **Catalog flow:** `/admin/catalog` is now a searchable and category-filterable list with product
+  thumbnails, row inspection, server-owned price/category/status details, local image upload preview,
+  and a reusable local image library. Persisted catalog changes still go through the superadmin-only
+  launch manifest API so client code cannot bypass server pricing or authorization rules.
+- **Local evidence:** browser checks covered catalog search, row inspection, image-library selection,
+  Procurement empty/feed state, and Promotions scoping. `pnpm check` passed with 55 successful tasks,
+  including 68 web tests.
+- **Next backend slice:** add a dedicated admin catalog command contract and media-object binding if
+  product-level create/update/archive and durable image upload are required beyond the current launch
+  manifest workflow.
+
 ### Completed Storefront Chrome Refinement
 
 - **Status:** locally complete as a user-requested VS-MKT-04 visual and interaction refinement.
