@@ -363,6 +363,10 @@ a {
   border-color: var(--accent-dark);
 }
 
+.delivery-window-option.selected span {
+  color: var(--ink);
+}
+
 .delivery-window-option:disabled {
   cursor: not-allowed;
   opacity: 0.55;

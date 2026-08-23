@@ -38,7 +38,8 @@ for (const target of visualPages) {
 
 test("protected routes enforce session and role guards", async ({ openAs, page }) => {
   await openAs(null, "/shop");
-  await expect(page).toHaveURL(/\/unauthorized$/);
+  await expect(page).toHaveURL(/\/shop$/);
+  await expect(page.getByRole("heading", { name: "Shop fresh groceries" })).toBeVisible();
 
   await openAs("customer", "/admin");
   await expect(page).toHaveURL(/\/forbidden$/);

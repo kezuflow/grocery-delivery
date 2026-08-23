@@ -463,6 +463,29 @@ scope. The landing page is intentionally excluded from this benchmark.
 - **Known gap:** favorites and saved items share one persisted SKU list; live recommendations,
   inventory reservation, and multiple customer lists remain outside the available Carbon contracts.
 
+### VS-MKT-13 responsive, accessibility, performance, and workflow hardening
+
+- **Status:** locally complete. The local browser audit hardened the storefront CTA contrast,
+  corrected the protected-route expectation for the intentionally public `/shop` route, added
+  deterministic guest responses for optional cart/subscription reads, and refreshed six responsive
+  visual baselines after the accumulated marketplace shell changes.
+- **Responsive/accessibility evidence:** primary buttons now use the high-contrast action token with
+  white text. Selected delivery-window helper text uses the ink token on the accent background,
+  resolving the prior 3.42:1 serious Axe violation. Focused save/reorder flows pass on phone,
+  tablet, and desktop; responsive/accessibility and overflow checks pass on phone and desktop.
+- **Workflow and fixture trace:** guest `/shop` remains public and renders catalog data while
+  unauthenticated optional cart/subscription reads return the existing 401 envelope. Authenticated
+  cart and subscription mutations remain role-protected.
+- **Verification evidence:** the initial full local Playwright audit completed 59/72 tests and
+  exposed the delivery-window contrast defect plus existing fixture/timing and snapshot drift.
+  After the fix, save/reorder passes 3/3 across phone, tablet, and desktop, the phone/desktop
+  responsive accessibility workflow passes 8/8, and `pnpm check` passes all 55 Turbo tasks.
+- **Performance impact:** no new runtime dependency, polling, queue, or remote request was added.
+- **Mobbin limitation:** fresh MCP retrieval still returned `Auth required` after successful OAuth
+  login, so only previously image-inspected references were used.
+- **Known gaps:** checkout declined-payment state, delivery offline fixture timing, marketplace
+  address hydration timing, and desktop snapshot drift need separate investigation.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

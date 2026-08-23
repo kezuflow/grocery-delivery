@@ -369,6 +369,9 @@ function routeResponse(method, url, role, scenario, body) {
       cacheVersion: 1,
     });
   if (url.pathname === "/api/v1/cart")
+    if (!role && method === "GET")
+      return error(401, "UNAUTHENTICATED", "an active customer session is required");
+  if (url.pathname === "/api/v1/cart")
     return requireRole(role, "customer", () => {
       if (method === "PUT") {
         if (body.expectedUpdatedAt !== undefined && body.expectedUpdatedAt !== cart.updatedAt) {
@@ -480,6 +483,8 @@ function routeResponse(method, url, role, scenario, body) {
       if (scenario) subscriptionScenarios.set(scenario, subscription);
       return ok(subscription);
     });
+  if (url.pathname === "/api/v1/subscription")
+    if (!role) return error(401, "UNAUTHENTICATED", "an active customer session is required");
   if (url.pathname === "/api/v1/subscription")
     return requireRole(role, "customer", () => {
       if (

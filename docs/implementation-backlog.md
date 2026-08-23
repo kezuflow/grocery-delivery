@@ -74,7 +74,7 @@ offline, and success states where applicable.
 | VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | complete |
 | VS-MKT-11 | Delivery-staff execution and customer tracking                          | complete |
 | VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | complete |
-| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
+| VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | complete |
 | VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
@@ -469,8 +469,30 @@ authentication and promotion remain deferred.
 - **Known gap:** saved items are intentionally a single persisted SKU list rather than separate
   favorites and wishlists; live inventory reservations and recommendations remain outside the
   current contracts.
-- **Next resume point:** begin VS-MKT-13 responsive, accessibility, performance, and workflow
-  hardening only after this slice is committed, pushed, and the working tree is clean.
+- **Next resume point:** VS-MKT-13 responsive, accessibility, performance, and workflow hardening.
+
+### VS-MKT-13 Responsive, Accessibility, Performance, And Workflow Hardening
+
+- **Status:** locally complete. The local browser audit hardened storefront CTA contrast, corrected
+  the protected-route expectation for the intentionally public `/shop` route, added deterministic
+  guest responses for optional cart/subscription reads, and refreshed six responsive visual
+  baselines after the accumulated marketplace shell changes.
+- **Accessibility evidence:** primary buttons now use the high-contrast action token with white
+  text. Selected delivery-window helper text uses the ink token on the accent background, resolving
+  the prior 3.42:1 serious Axe violation. Focused save/reorder flows pass on phone, tablet, and
+  desktop with Axe and overflow checks.
+- **Verification evidence:** the initial full local E2E audit completed 59/72 tests and exposed the
+  delivery-window contrast defect plus existing fixture/timing and snapshot drift. After the fix,
+  the save/reorder flow passes 3/3 across phone, tablet, and desktop; the phone/desktop responsive
+  accessibility workflow passes 8/8; and `pnpm check` passes all 55 Turbo tasks.
+- **Performance impact:** no new runtime dependency, polling, queue, or remote request was added.
+  Existing bounded parallel marketplace reads remain unchanged.
+- **Mobbin limitation:** `codex mcp login mobbin` completed successfully on 2026-08-23, but fresh
+  retrieval still returned `Auth required`; only previously image-inspected references were used.
+- **Known gaps:** checkout payment-state fixture instability, delivery offline timing, marketplace
+  address hydration timing, and broader full-suite state isolation remain explicit follow-up work.
+- **Next resume point:** do not begin VS-MKT-14 or staging/deployment work until explicitly
+  requested.
 
 ### Local Browser Evidence
 

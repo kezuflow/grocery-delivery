@@ -6,7 +6,7 @@ export type ButtonTone = "primary" | "secondary" | "accent" | "danger" | "ghost"
 export type ButtonSize = "sm" | "md" | "lg";
 
 const toneClasses: Record<ButtonTone, string> = {
-  primary: "bg-deep text-paper hover:bg-deep",
+  primary: "bg-base-action !text-white hover:bg-base-action-hover",
   secondary: "border border-deep bg-transparent text-deep hover:bg-accent/30",
   accent: "bg-accent-dark text-paper hover:bg-accent-dark",
   danger: "border border-red-700 bg-transparent text-red-800 hover:bg-red-50",
