@@ -212,6 +212,11 @@ export const openApiDocument: OpenApiDocument = {
       ...protectedOperation("Read notification preferences", "get"),
       ...protectedOperation("Update notification preferences", "put"),
     },
+    "/api/v1/saved-items": protectedOperation("List saved grocery items", "get"),
+    "/api/v1/saved-items/{skuId}": {
+      ...protectedOperation("Save a grocery item", "put"),
+      ...protectedOperation("Remove a saved grocery item", "delete"),
+    },
     "/api/v1/admin/support/cases": protectedOperation("List support cases", "get"),
     "/api/v1/admin/support/cases/{id}/status": protectedOperation(
       "Update support case status",

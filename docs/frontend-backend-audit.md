@@ -431,6 +431,38 @@ scope. The landing page is intentionally excluded from this benchmark.
   compatible Carbon contract or persistence boundary exists yet; the completed slice keeps event
   progression, delivery-window context, proof media, and support as the authoritative local workflow.
 
+### VS-MKT-12 account parity, reorder, saved items, and retention
+
+- **Routes and UI inspected:** `/account`, `/account/orders`, `/account/orders/:orderId`,
+  `/account/saved`, and product detail. Existing account hydration, order history/detail, product
+  detail actions, and customer navigation were extended rather than duplicated.
+- **Contracts and APIs inspected:** existing catalog, cart, order, and notification-preferences
+  contracts; new `saved-items.ts`; protected saved-item list/save/remove routes; existing typed
+  `PUT /api/v1/cart` for reorder. Reorder does not submit prices, totals, or availability claims.
+- **Repositories and persistence inspected:** existing D1 catalog/cart/notification repositories;
+  new `SavedItemsRepository` with in-memory and D1 implementations; forward-only migration
+  `0040_customer_saved_items.sql`. Saved rows contain only customer ownership, SKU ID, and saved
+  timestamp. Reads resolve active catalog details and naturally omit unavailable historical SKUs.
+- **Authorization, validation, and retry:** saved routes require an active customer session and
+  reject unavailable SKUs. Save replay uses an upsert keyed by customer/SKU. Remove is scoped to the
+  active customer. Reorder reuses cart stale-version, quantity, availability, and price
+  reconciliation behavior. Notification updates retain the existing customer ownership boundary.
+- **Responsive/accessibility decisions:** account navigation exposes Saved items for customers;
+  saved entries use stable image dimensions, readable price/unit hierarchy, native buttons, visible
+  focus, empty/pending/removal feedback, and no document overflow. Reorder uses an icon plus text
+  action with a live status message. Phone and desktop browser flows pass Axe severity checks.
+- **Mobbin evidence:** previously inspected [Account](https://mobbin.com/flows/87df6ee3-3fb5-41aa-8a31-eae7b22fea53)
+  remains the only account reference used. OAuth login completed, but fresh Mobbin MCP retrieval
+  still returned `Auth required`, so no new visual claims were made.
+- **Verification evidence:** saved-item repository, API customer-scope/unavailable-SKU/idempotency,
+  web client, navigation, and existing account tests pass. The focused browser trace passes on phone
+  and desktop through product save -> account list -> remove -> order reorder -> notification
+  preference update and reload. `pnpm check` passes all 55 Turbo tasks. A broader visual run also
+  surfaced existing unrelated snapshot drift and storefront color-contrast failures; those remain
+  explicit VS-MKT-13 hardening inputs rather than being hidden by snapshot updates in this slice.
+- **Known gap:** favorites and saved items share one persisted SKU list; live recommendations,
+  inventory reservation, and multiple customer lists remain outside the available Carbon contracts.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

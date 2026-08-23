@@ -130,6 +130,8 @@ import {
   supportCasesResponseSchema,
   notificationPreferencesRequestSchema,
   notificationPreferencesResponseSchema,
+  savedItemRequestSchema,
+  savedItemsResponseSchema,
   customerOrderRequestCreateSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
@@ -176,6 +178,7 @@ import {
   D1PromotionBannerAnalyticsRepository,
   D1SupportCaseRepository,
   D1NotificationPreferencesRepository,
+  D1SavedItemsRepository,
   D1CustomerOrderRequestRepository,
   D1CustomerOrderSubstitutionRepository,
   D1LaunchConfigurationRepository,
@@ -183,6 +186,7 @@ import {
   type SupportCaseRepository,
   type SupportCase,
   type NotificationPreferencesRepository,
+  type SavedItemsRepository,
   type CustomerOrderRequestRepository,
   type CustomerOrderSubstitutionRepository,
   InMemoryCartRepository,
@@ -328,6 +332,7 @@ export type ApiOptions = Readonly<{
   operationalAlertThresholds?: Partial<OperationalAlertThresholds>;
   supportCaseRepository?: SupportCaseRepository;
   notificationPreferencesRepository?: NotificationPreferencesRepository;
+  savedItemsRepository?: SavedItemsRepository;
   customerOrderRequestRepository?: CustomerOrderRequestRepository;
   customerOrderSubstitutionRepository?: CustomerOrderSubstitutionRepository;
   identityRepository?: AccountIdentityRepository;
@@ -570,6 +575,8 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       context.req.path === "/api/v1/admin/operations/projection" ||
       context.req.path.startsWith("/api/v1/support") ||
       context.req.path === "/api/v1/notification-preferences" ||
+      context.req.path === "/api/v1/saved-items" ||
+      context.req.path.startsWith("/api/v1/saved-items/") ||
       context.req.path.startsWith("/api/v1/deliveryman/") ||
       context.req.path.startsWith("/api/v1/orders/") ||
       context.req.path === "/api/v1/orders" ||
@@ -2538,6 +2545,154 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     });
     const body = { data: value, meta: { correlationId: context.get("correlationId") } };
     notificationPreferencesResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/saved-items", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.savedItemsRepository ??
+      (bindings.DB ? new D1SavedItemsRepository(bindings.DB) : undefined);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SAVED_ITEMS_UNAVAILABLE",
+          "saved items are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const body = await resolveSavedItemsResponse(
+      repository,
+      catalogReader,
+      session.customerId,
+      context.get("correlationId"),
+    );
+    context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
+  app.put("/api/v1/saved-items/:skuId", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.savedItemsRepository ??
+      (bindings.DB ? new D1SavedItemsRepository(bindings.DB) : undefined);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SAVED_ITEMS_UNAVAILABLE",
+          "saved items are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const input = savedItemRequestSchema.safeParse({ skuId: context.req.param("skuId") });
+    if (!input.success) {
+      return context.json(
+        errorResponse("INVALID_SAVED_ITEM", "saved item is invalid", context.get("correlationId")),
+        400,
+      );
+    }
+    const catalogItems = await catalogReader.findActiveByIds([input.data.skuId]);
+    if (catalogItems.length !== 1) {
+      return context.json(
+        errorResponse(
+          "SKU_NOT_AVAILABLE",
+          "the catalog item is not available",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    await repository.save({
+      customerId: session.customerId,
+      skuId: input.data.skuId,
+      savedAt: now().toISOString(),
+    });
+    const body = await resolveSavedItemsResponse(
+      repository,
+      catalogReader,
+      session.customerId,
+      context.get("correlationId"),
+    );
+    context.header("cache-control", "private, no-store");
+    return context.json(body, 200);
+  });
+
+  app.delete("/api/v1/saved-items/:skuId", async (context) => {
+    const bindings = context.env ?? {};
+    const repository =
+      options.savedItemsRepository ??
+      (bindings.DB ? new D1SavedItemsRepository(bindings.DB) : undefined);
+    const catalogReader =
+      options.catalogCheckoutReader ??
+      (bindings.DB ? new D1CatalogReader(bindings.DB) : createDefaultCatalogReader());
+    const session = context.get("session");
+    if (!session || session.role !== "customer" || !session.customerId) {
+      return context.json(
+        errorResponse(
+          "UNAUTHENTICATED",
+          "an active customer session is required",
+          context.get("correlationId"),
+        ),
+        401,
+      );
+    }
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "SAVED_ITEMS_UNAVAILABLE",
+          "saved items are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const input = savedItemRequestSchema.safeParse({ skuId: context.req.param("skuId") });
+    if (!input.success) {
+      return context.json(
+        errorResponse("INVALID_SAVED_ITEM", "saved item is invalid", context.get("correlationId")),
+        400,
+      );
+    }
+    await repository.remove(session.customerId, input.data.skuId);
+    const body = await resolveSavedItemsResponse(
+      repository,
+      catalogReader,
+      session.customerId,
+      context.get("correlationId"),
+    );
+    context.header("cache-control", "private, no-store");
     return context.json(body, 200);
   });
 
@@ -6201,6 +6356,41 @@ function errorResponse(code: string, message: string, correlationId: string): Ap
     error: { code, message },
     meta: { correlationId },
   };
+}
+
+async function resolveSavedItemsResponse(
+  repository: SavedItemsRepository,
+  catalogReader: CatalogCheckoutReader,
+  customerId: string,
+  correlationId: string,
+) {
+  const saved = await repository.listByCustomer(customerId);
+  const catalogItems = await catalogReader.findActiveByIds(saved.map((item) => item.skuId));
+  const byId = new Map(catalogItems.map((item) => [item.id, item] as const));
+  const body = {
+    data: {
+      items: saved.flatMap((entry) => {
+        const item = byId.get(entry.skuId);
+        return item
+          ? [
+              {
+                skuId: item.id,
+                name: item.name,
+                slug: item.slug,
+                description: item.description,
+                unit: item.unit,
+                imageUrl: item.imageUrl,
+                price: item.price,
+                savedAt: entry.savedAt,
+              },
+            ]
+          : [];
+      }),
+    },
+    meta: { correlationId },
+  };
+  savedItemsResponseSchema.parse(body);
+  return body;
 }
 
 function isSameDeliveryMediaRequest(

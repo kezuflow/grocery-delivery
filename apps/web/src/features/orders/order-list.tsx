@@ -2,6 +2,7 @@ import type { OrderListResponse } from "@carbon/contracts";
 
 import { EmptyState, StatusPill } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
+import { ReorderButton } from "./reorder-button";
 
 export function CustomerOrderList({
   orders,
@@ -41,12 +42,15 @@ export function CustomerOrderList({
                 />
               </td>
               <td className="p-4">
-                <a
-                  className="font-bold text-deep underline-offset-4 hover:underline"
-                  href={`/account/orders/${encodeURIComponent(order.id)}`}
-                >
-                  View order
-                </a>
+                <div className="grid gap-2 justify-items-start">
+                  <a
+                    className="font-bold text-deep underline-offset-4 hover:underline"
+                    href={`/account/orders/${encodeURIComponent(order.id)}`}
+                  >
+                    View order
+                  </a>
+                  <ReorderButton lines={order.lines} />
+                </div>
               </td>
             </tr>
           ))}

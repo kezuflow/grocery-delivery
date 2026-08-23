@@ -73,7 +73,7 @@ offline, and success states where applicable.
 | VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | complete |
 | VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | complete |
 | VS-MKT-11 | Delivery-staff execution and customer tracking                          | complete |
-| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
+| VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | complete |
 | VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
 | VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
 
@@ -431,6 +431,46 @@ authentication and promotion remain deferred.
   Carbon tracking contract exposes event progression and proof media only. The customer can still
   contact support and inspect the server-confirmed delivery window and event timeline.
 - **Next resume point:** begin VS-MKT-12 account parity, reorder, favorites, saved items, and retention.
+
+## VS-MKT-12 Account Parity, Reorder, Saved Items, And Retention
+
+- **Status:** locally complete. Customers can save active catalog items, remove them from a
+  customer-owned list, reorder prior order lines into the server-validated cart, and persist
+  notification preferences across reloads.
+- **Backend trace:** shared `saved-items.ts` schemas feed protected `GET /api/v1/saved-items`,
+  `PUT /api/v1/saved-items/:skuId`, and `DELETE /api/v1/saved-items/:skuId` routes. The new
+  `customer_saved_items` D1 table and repository keep only customer/SKU/timestamp state; current
+  names, images, prices, and availability are resolved from the existing catalog reader. Reorder
+  sends only SKU identifiers and quantities through the existing `PUT /api/v1/cart` contract, so
+  the server re-resolves current prices, availability, and limits. Notification preferences reuse
+  the existing repository and API boundary.
+- **Responsive UI:** product detail adds a save-for-later action; `/account/saved` uses a compact
+  responsive item grid with image, current price, unit, empty, pending, and removal states. Order
+  history and detail expose a reorder action with pending, server-adjustment, and error feedback.
+  Customer navigation includes Saved items while existing account and mobile navigation remain
+  role-scoped.
+- **Mobbin references and limitation:** the previously image-inspected account flow
+  [Account](https://mobbin.com/flows/87df6ee3-3fb5-41aa-8a31-eae7b22fea53) remains the bounded
+  reference for account hierarchy and retention entry points. `codex mcp login mobbin` completed
+  successfully on 2026-08-23, but subsequent retrieval returned `Auth required`; no uninspected
+  screens or proprietary assets were used.
+- **Acceptance and authorization:** unauthenticated and non-customer sessions are rejected by the
+  protected routes; unavailable SKUs cannot be saved; duplicate save replay is idempotent; removal
+  is customer-scoped; stale/changed cart and server-owned price reconciliation remain handled by the
+  existing cart contract. Empty saved state and preference persistence are covered.
+- **Verification evidence:** contracts, D1 repository, API, web client, and navigation tests pass;
+  focused Playwright passes 1/1 on phone and 1/1 on desktop for save/remove/reorder, notification
+  preference persistence, Axe, and overflow. `pnpm check` passes all 55 Turbo tasks, including web
+  68/68, API 85/85 unit/integration, DB 53/53, and contracts 33/33 tests.
+- **Request and observability impact:** account hydration adds one bounded saved-items read in its
+  existing parallel request fan-out. Save/remove add one private no-store mutation/read response;
+  reorder reuses the existing cart request. No polling, new dependency, queue, or observability
+  boundary was introduced.
+- **Known gap:** saved items are intentionally a single persisted SKU list rather than separate
+  favorites and wishlists; live inventory reservations and recommendations remain outside the
+  current contracts.
+- **Next resume point:** begin VS-MKT-13 responsive, accessibility, performance, and workflow
+  hardening only after this slice is committed, pushed, and the working tree is clean.
 
 ### Local Browser Evidence
 

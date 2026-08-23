@@ -531,6 +531,30 @@ test("customer resolves a substitution and submits support order requests", asyn
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("customer saves an item and can reorder a previous purchase", async ({ openAs, page }) => {
+  await openAs("customer", "/shop/roma-tomatoes");
+  await page.getByRole("button", { name: "Save for later" }).click();
+  await expect(page.getByRole("status")).toContainText("saved for later");
+
+  await openAs("customer", "/account/saved");
+  await expect(page.getByRole("heading", { name: "Saved items" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Roma tomatoes" })).toBeVisible();
+  await page.getByRole("button", { name: /Remove/ }).click();
+  await expect(page.getByRole("heading", { name: "No saved items yet" })).toBeVisible();
+
+  await openAs("customer", "/account/orders/order-1");
+  await page.getByRole("button", { name: /Reorder/ }).click();
+  await expect(page.getByText("Items added to your cart.")).toBeVisible();
+  await openAs("customer", "/account");
+  await page.getByLabel("Marketing messages").check();
+  await page.getByRole("button", { name: "Save preferences" }).click();
+  await expect(page.getByRole("status")).toContainText("Notification preferences saved");
+  await page.reload();
+  await expect(page.getByLabel("Marketing messages")).toBeChecked();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("keyboard focus and reduced motion remain usable", async ({ openAs, page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openAs(null, "/");

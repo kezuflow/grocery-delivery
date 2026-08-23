@@ -9,6 +9,7 @@ import {
 } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
 import { OrderPaymentAction } from "./order-payment-action";
+import { ReorderButton } from "./reorder-button";
 
 const trackingLabels: Record<string, string> = {
   pending: "Preparing",
@@ -33,6 +34,9 @@ export function CustomerOrderDetailView({
               Locked {new Date(order.lockedAt).toLocaleString("en-PH")}
             </CardDescription>
           </CardHeader>
+          <div className="mb-5">
+            <ReorderButton lines={order.lines} />
+          </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <DetailRow label="Cycle" value={order.cycleId} />
             <DetailRow label="Payment" value={order.paymentState} />

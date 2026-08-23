@@ -49,6 +49,8 @@ import {
   supportCasesResponseSchema,
   notificationPreferencesRequestSchema,
   notificationPreferencesResponseSchema,
+  savedItemRequestSchema,
+  savedItemsResponseSchema,
   customerOrderRequestCreateSchema,
   customerOrderRequestResponseSchema,
   customerOrderRequestsResponseSchema,
@@ -111,6 +113,7 @@ import {
   type SupportCaseResponse,
   type SupportCasesResponse,
   type NotificationPreferencesResponse,
+  type SavedItemsResponse,
   type PaymentRefundResponse,
   type PaymentMethodListResponse,
   type CustomerOrderRequestResponse,
@@ -404,6 +407,29 @@ export function createApiClient(baseTransport: ApiTransport) {
         notificationPreferencesResponseSchema,
         "PUT",
         init,
+      );
+    },
+    getSavedItems(init?: RequestInit): Promise<SavedItemsResponse> {
+      return getJson(transport, "/api/v1/saved-items", savedItemsResponseSchema, init);
+    },
+    saveItem(skuId: string, init?: RequestInit): Promise<SavedItemsResponse> {
+      const payload = savedItemRequestSchema.parse({ skuId });
+      return sendJson(
+        transport,
+        `/api/v1/saved-items/${encodeURIComponent(payload.skuId)}`,
+        payload,
+        savedItemsResponseSchema,
+        "PUT",
+        init,
+      );
+    },
+    removeSavedItem(skuId: string, init?: RequestInit): Promise<SavedItemsResponse> {
+      const payload = savedItemRequestSchema.parse({ skuId });
+      return getJson(
+        transport,
+        `/api/v1/saved-items/${encodeURIComponent(payload.skuId)}`,
+        savedItemsResponseSchema,
+        { ...init, method: "DELETE" },
       );
     },
     createSupportCase(

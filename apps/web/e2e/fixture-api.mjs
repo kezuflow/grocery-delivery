@@ -159,6 +159,13 @@ let cart = {
   adjustments: [],
   maxQuantityPerLine: 1000,
 };
+const savedItemIds = new Set();
+let notificationPreferences = {
+  customerId: "customer-1",
+  deliveryUpdates: true,
+  marketing: false,
+  updatedAt: timestamp,
+};
 const subscriptionScenarios = new Map();
 function activeSubscription() {
   return {
@@ -329,6 +336,12 @@ function routeResponse(method, url, role, scenario, body) {
             ],
     });
   if (url.pathname === "/api/v1/catalog") return ok(catalog);
+  if (url.pathname.startsWith("/api/v1/catalog/") && method === "GET") {
+    const slug = decodeURIComponent(url.pathname.slice("/api/v1/catalog/".length));
+    const item = catalog.items.find((candidate) => candidate.slug === slug);
+    if (!item) return error(404, "CATALOG_ITEM_NOT_FOUND", "catalog item was not found");
+    return ok(item);
+  }
   if (url.pathname === "/api/v1/admin/identity/roles" && method === "POST")
     return requireRole(role, "admin", () =>
       ok({
@@ -389,6 +402,77 @@ function routeResponse(method, url, role, scenario, body) {
         };
       }
       return ok(cart);
+    });
+  if (url.pathname === "/api/v1/saved-items")
+    return requireRole(role, "customer", () =>
+      ok({
+        items: [...savedItemIds].flatMap((skuId) => {
+          const item = catalog.items.find((candidate) => candidate.id === skuId);
+          return item
+            ? [
+                {
+                  skuId: item.id,
+                  name: item.name,
+                  slug: item.slug,
+                  description: item.description,
+                  unit: item.unit,
+                  imageUrl: item.imageUrl,
+                  price: item.price,
+                  savedAt: timestamp,
+                },
+              ]
+            : [];
+        }),
+      }),
+    );
+  if (url.pathname.startsWith("/api/v1/saved-items/") && method === "PUT")
+    return requireRole(role, "customer", () => {
+      const skuId = decodeURIComponent(url.pathname.slice("/api/v1/saved-items/".length));
+      if (!catalog.items.some((item) => item.id === skuId))
+        return error(409, "SKU_NOT_AVAILABLE", "the catalog item is not available");
+      savedItemIds.add(skuId);
+      return ok({
+        items: [...savedItemIds].flatMap((id) => {
+          const item = catalog.items.find((candidate) => candidate.id === id);
+          return item
+            ? [
+                {
+                  skuId: item.id,
+                  name: item.name,
+                  slug: item.slug,
+                  description: item.description,
+                  unit: item.unit,
+                  imageUrl: item.imageUrl,
+                  price: item.price,
+                  savedAt: timestamp,
+                },
+              ]
+            : [];
+        }),
+      });
+    });
+  if (url.pathname.startsWith("/api/v1/saved-items/") && method === "DELETE")
+    return requireRole(role, "customer", () => {
+      savedItemIds.delete(decodeURIComponent(url.pathname.slice("/api/v1/saved-items/".length)));
+      return ok({
+        items: [...savedItemIds].flatMap((skuId) => {
+          const item = catalog.items.find((candidate) => candidate.id === skuId);
+          return item
+            ? [
+                {
+                  skuId: item.id,
+                  name: item.name,
+                  slug: item.slug,
+                  description: item.description,
+                  unit: item.unit,
+                  imageUrl: item.imageUrl,
+                  price: item.price,
+                  savedAt: timestamp,
+                },
+              ]
+            : [];
+        }),
+      });
     });
   if (url.pathname === "/api/v1/subscription/trial" && method === "POST")
     return requireRole(role, "customer", () => {
@@ -636,14 +720,17 @@ function routeResponse(method, url, role, scenario, body) {
         : ok({ cases: [] }),
     );
   if (url.pathname === "/api/v1/notification-preferences")
-    return requireRole(role, "customer", () =>
-      ok({
-        customerId: "customer-1",
-        deliveryUpdates: true,
-        marketing: false,
-        updatedAt: timestamp,
-      }),
-    );
+    return requireRole(role, "customer", () => {
+      if (method === "PUT") {
+        notificationPreferences = {
+          ...notificationPreferences,
+          deliveryUpdates: Boolean(body.deliveryUpdates),
+          marketing: Boolean(body.marketing),
+          updatedAt: new Date(Date.parse(notificationPreferences.updatedAt) + 1000).toISOString(),
+        };
+      }
+      return ok(notificationPreferences);
+    });
   if (url.pathname === "/api/v1/account/export")
     return requireRole(role, "customer", () =>
       ok({

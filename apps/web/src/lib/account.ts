@@ -13,6 +13,7 @@ import type {
   SubscriptionResponse,
   SupportCasesResponse,
   NotificationPreferencesResponse,
+  SavedItemsResponse,
   CustomerOrderRequestsResponse,
   CustomerOrderSubstitutionsResponse,
   AccountExportResponse,
@@ -35,6 +36,7 @@ export type CustomerAccountData = Readonly<{
   orderRequests: CustomerOrderRequestsResponse["data"]["requests"];
   orderSubstitutions: CustomerOrderSubstitutionsResponse["data"]["substitutions"];
   notificationPreferences: NotificationPreferencesResponse["data"];
+  savedItems: SavedItemsResponse["data"]["items"];
   privacy: Readonly<{
     export: AccountExportResponse["data"] | null;
     deletionEligible: boolean;
@@ -79,6 +81,7 @@ export async function resolveCustomerAccount(
       orderData,
       supportCases,
       notificationPreferences,
+      savedItems,
       orderRequests,
       orderSubstitutions,
       accountExport,
@@ -104,6 +107,7 @@ export async function resolveCustomerAccount(
           updatedAt: new Date(0).toISOString(),
         },
       })),
+      client.getSavedItems(init).catch(() => ({ data: { items: [] } })),
       client.getOrderRequests(init).catch(() => ({ data: { requests: [] } })),
       client.getOrderSubstitutions(init).catch(() => ({ data: { substitutions: [] } })),
       client.exportAccount(init).catch(() => null),
@@ -123,6 +127,7 @@ export async function resolveCustomerAccount(
       orderRequests: orderRequests.data.requests,
       orderSubstitutions: orderSubstitutions.data.substitutions,
       notificationPreferences: notificationPreferences.data,
+      savedItems: savedItems.data.items,
       privacy: {
         export: accountExport?.data ?? null,
         deletionEligible: deletionEligibility?.data.eligible ?? false,
@@ -155,6 +160,7 @@ export async function resolveCustomerAccount(
         marketing: false,
         updatedAt: new Date(0).toISOString(),
       },
+      savedItems: [],
       privacy: {
         export: null,
         deletionEligible: false,

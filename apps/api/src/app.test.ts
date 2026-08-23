@@ -31,6 +31,7 @@ import {
   promotionBannerResponseSchema,
   promotionMediaUploadResponseSchema,
   notificationPreferencesResponseSchema,
+  savedItemsResponseSchema,
   supportCaseResponseSchema,
   supportCasesResponseSchema,
   customerOrderRequestResponseSchema,
@@ -82,6 +83,7 @@ import {
   InMemoryPromotionBannerRepository,
   InMemorySupportCaseRepository,
   InMemoryNotificationPreferencesRepository,
+  InMemorySavedItemsRepository,
   InMemoryCustomerOrderRequestRepository,
   InMemoryCustomerOrderSubstitutionRepository,
 } from "@carbon/db";
@@ -1202,6 +1204,40 @@ describe("API worker", () => {
       deliveryUpdates: false,
       marketing: true,
     });
+  });
+
+  it("saves, lists, removes, and rejects unavailable customer-owned items", async () => {
+    const repository = new InMemorySavedItemsRepository();
+    const app = createApi({
+      sink: () => undefined,
+      savedItemsRepository: repository,
+      catalogCheckoutReader: createDefaultCatalogReader(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-customer",
+              userId: "user-1",
+              role: "customer",
+              adminPermissions: [],
+              customerId: "customer-1",
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const saved = await app.request("/api/v1/saved-items/sku-bananas", { method: "PUT" });
+    expect(saved.status).toBe(200);
+    expect(savedItemsResponseSchema.parse(await saved.json()).data.items[0]?.skuId).toBe(
+      "sku-bananas",
+    );
+    const replay = await app.request("/api/v1/saved-items/sku-bananas", { method: "PUT" });
+    expect(savedItemsResponseSchema.parse(await replay.json()).data.items).toHaveLength(1);
+    const unavailable = await app.request("/api/v1/saved-items/sku-hidden", { method: "PUT" });
+    expect(unavailable.status).toBe(409);
+    const removed = await app.request("/api/v1/saved-items/sku-bananas", { method: "DELETE" });
+    expect(savedItemsResponseSchema.parse(await removed.json()).data.items).toEqual([]);
   });
 
   it("scopes deliveryman assignments and deduplicates event retries", async () => {

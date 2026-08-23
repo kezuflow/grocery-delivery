@@ -7,7 +7,7 @@ function transport(response: unknown, status = 200, inspect?: (init?: RequestIni
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof URL ? input : typeof input === "string" ? input : input.url;
       expect(new URL(url).pathname).toMatch(
-        /^\/api\/v1\/(plans|catalog|me|cart|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|order-substitutions|payments|admin)/,
+        /^\/api\/v1\/(plans|catalog|me|cart|saved-items|delivery-address|delivery-windows|deliveryman\/assignments|deliveryman\/events|subscription|orders|order-substitutions|payments|admin)/,
       );
       inspect?.(init);
       return Promise.resolve(Response.json(response, { status }));
@@ -160,6 +160,16 @@ describe("web API client", () => {
     await expect(
       client.updateCart({ lines: [{ skuId: "sku-1", quantity: 2 }] }),
     ).resolves.toMatchObject({ data: { subtotal: { centavos: 20000 } } });
+  });
+
+  it("saves and removes a SKU through the customer-owned contract", async () => {
+    const client = createApiClient(
+      transport({ data: { items: [] }, meta }, 200, (init) => {
+        expect(init?.method).toBe("PUT");
+        expect(JSON.parse(init?.body as string)).toEqual({ skuId: "sku-1" });
+      }),
+    );
+    await expect(client.saveItem("sku-1")).resolves.toMatchObject({ data: { items: [] } });
   });
 
   it("rebases browser API requests onto the same origin", async () => {

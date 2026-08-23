@@ -72,6 +72,23 @@ export function ProductDetailActions({
     }
   }
 
+  async function saveItem() {
+    if (!customerReady) {
+      setAuthOpen(true);
+      return;
+    }
+    setPending(true);
+    setMessage(null);
+    try {
+      await createApiClient(createSameOriginApiTransport()).saveItem(item.id);
+      setMessage(`${item.name} was saved for later.`);
+    } catch (error) {
+      setMessage(error instanceof ApiClientError ? error.message : "We could not save this item.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   function requestAdd() {
     if (!customerReady) {
       setAuthOpen(true);
@@ -106,6 +123,9 @@ export function ProductDetailActions({
       ) : null}
       <Button loading={pending} onClick={requestAdd} type="button">
         Add to weekly cart
+      </Button>
+      <Button disabled={pending} onClick={() => void saveItem()} tone="secondary" type="button">
+        Save for later
       </Button>
       {message ? (
         <p className="text-sm text-market-muted" role="status">

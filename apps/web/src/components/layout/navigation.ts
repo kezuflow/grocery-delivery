@@ -13,6 +13,7 @@ const customerNavigation: readonly NavigationItem[] = [
   { href: "/account/cart", label: "Your cart" },
   { href: "/account/checkout", label: "Checkout" },
   { href: "/account/orders", label: "Order history" },
+  { href: "/account/saved", label: "Saved items" },
   { href: "/account/support", label: "Support" },
 ];
 

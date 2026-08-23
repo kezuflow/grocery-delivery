@@ -48,6 +48,7 @@ describe("role navigation", () => {
       "/account/cart",
       "/account/checkout",
       "/account/orders",
+      "/account/saved",
       "/account/support",
     ]);
     expect(getNavigation(deliveryman).map((item) => item.href)).toEqual([
