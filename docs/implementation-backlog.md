@@ -79,6 +79,25 @@ offline, and success states where applicable.
 
 Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
 
+### Completed Admin Console UI Refinement
+
+- **Status:** locally complete as a user-requested visual and interaction refinement of the existing
+  permission-scoped admin workspaces.
+- **Outcome:** `/admin` and its existing workspace routes now use a dense operations-console shell
+  with a compact product rail, grouped and permission-filtered navigation, active-route treatment,
+  local-environment context, keyboard-accessible workspace search, compact operational metrics,
+  alert/activity lists, and responsive mobile navigation. Server-owned dashboard data, route URLs,
+  and permission guards are unchanged.
+- **References:** Supabase project overview, navigation, search, observability, and table-editor
+  patterns inspected through Mobbin MCP on 2026-08-23. Carbon branding, content, icons, and data
+  remain original to this application.
+- **Local evidence:** desktop browser inspection at `http://localhost:3000/admin` confirmed the
+  complete navigation and dashboard hierarchy; searching `proc` returned only the Procurement
+  workspace. Web typecheck, lint, and all 68 focused web tests pass.
+- **Impact:** no API, persistence, latency, or observability boundary changed. The added client code
+  is limited to current-route highlighting and local filtering of the already-authorized navigation
+  list.
+
 ### Completed Storefront Chrome Refinement
 
 - **Status:** locally complete as a user-requested VS-MKT-04 visual and interaction refinement.

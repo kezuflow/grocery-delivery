@@ -1,14 +1,19 @@
+import {
+  Activity,
+  ArrowUpRight,
+  BellRing,
+  Box,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  PackageOpen,
+  Truck,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+import { EmptyState, StatusPill } from "../../components/ui";
 import type { AdminDashboardData } from "../../lib/admin";
 import type { AdminPermission } from "../../lib/permissions";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  EmptyState,
-  LinkButton,
-  StatusPill,
-} from "../../components/ui";
 import { visibleAdminWorkspaceLinks } from "./workspace-links";
 
 export function AdminOverview({
@@ -17,58 +22,88 @@ export function AdminOverview({
 }: Readonly<{ dashboard: AdminDashboardData; permissions: readonly AdminPermission[] }>) {
   const projection = dashboard.projection;
   const links = visibleAdminWorkspaceLinks(permissions);
+  const openCases = dashboard.supportCases.filter((item) => item.status !== "resolved").length;
+
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-5">
       <section
-        aria-label="Weekly operations metrics"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        aria-labelledby="health-heading"
+        className="overflow-hidden rounded-md border border-[#dedede] bg-white"
       >
-        <MetricCard
-          label="Cycle"
-          value={projection?.cycleId ?? "Unavailable"}
-          note={
-            projection
-              ? `Updated ${new Date(projection.generatedAt).toLocaleString("en-PH")}`
-              : "Reporting access required"
-          }
-        />
-        <MetricCard
-          label="Pending outbox"
-          value={String(projection?.outbox.pendingCount ?? 0)}
-          note={`${projection?.outbox.deadLetteredCount ?? 0} dead-lettered`}
-        />
-        <MetricCard
-          label="Open shortages"
-          value={String(projection?.procurement.openShortages ?? 0)}
-          note={`${projection?.procurement.exceptionalManifests ?? 0} packing exceptions`}
-        />
-        <MetricCard
-          label="Deliveries"
-          value={String(
-            projection?.delivery.totalAssignments ?? dashboard.dispatch?.assignments.length ?? 0,
-          )}
-          note={`${projection?.delivery.failed ?? 0} failed`}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e4e4] px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold text-[#222]" id="health-heading">
+              Operations health
+            </h2>
+            <p className="mt-0.5 text-xs text-[#777]">
+              Live signals for the active delivery cycle.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            Systems operational
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            icon={<Clock3 aria-hidden="true" size={14} strokeWidth={1.8} />}
+            label="Active cycle"
+            note={
+              projection
+                ? `Updated ${new Date(projection.generatedAt).toLocaleString("en-PH")}`
+                : "Reporting access required"
+            }
+            value={projection?.cycleId ?? "Unavailable"}
+          />
+          <MetricCard
+            icon={<Activity aria-hidden="true" size={14} strokeWidth={1.8} />}
+            label="Pending outbox"
+            note={`${projection?.outbox.deadLetteredCount ?? 0} dead-lettered`}
+            value={String(projection?.outbox.pendingCount ?? 0)}
+          />
+          <MetricCard
+            icon={<PackageOpen aria-hidden="true" size={14} strokeWidth={1.8} />}
+            label="Open shortages"
+            note={`${projection?.procurement.exceptionalManifests ?? 0} packing exceptions`}
+            value={String(projection?.procurement.openShortages ?? 0)}
+          />
+          <MetricCard
+            icon={<Truck aria-hidden="true" size={14} strokeWidth={1.8} />}
+            label="Deliveries"
+            note={`${projection?.delivery.failed ?? 0} failed`}
+            value={String(
+              projection?.delivery.totalAssignments ?? dashboard.dispatch?.assignments.length ?? 0,
+            )}
+          />
+        </div>
       </section>
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,.75fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Operational alerts</CardTitle>
-            <CardDescription>
-              Prioritized server-generated warnings for the active cycle.
-            </CardDescription>
-          </CardHeader>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.55fr)]">
+        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
+          <div className="flex items-center gap-2 border-b border-[#e4e4e4] px-4 py-3">
+            <BellRing aria-hidden="true" className="text-[#666]" size={15} />
+            <div>
+              <h2 className="text-sm font-semibold text-[#222]">Operational alerts</h2>
+              <p className="mt-0.5 text-xs text-[#777]">Prioritized server-generated warnings.</p>
+            </div>
+            <span className="ml-auto rounded bg-[#f0f0f0] px-2 py-0.5 text-[10px] font-semibold text-[#666]">
+              {projection?.alerts.length ?? 0} open
+            </span>
+          </div>
           {projection?.alerts.length ? (
-            <ul className="grid gap-3">
+            <ul>
               {projection.alerts.map((alert) => (
                 <li
-                  className="flex flex-col gap-2 border border-line p-4 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 border-b border-[#ececec] px-4 py-3 last:border-0 sm:flex-row sm:items-center"
                   key={alert.id}
                 >
-                  <div>
-                    <strong>{alert.message}</strong>
-                    <p className="mt-1 text-xs text-muted">
-                      Observed {alert.observedValue}; threshold {alert.threshold}
+                  <span className="grid size-7 shrink-0 place-items-center rounded bg-amber-50 text-amber-700">
+                    <CircleAlert aria-hidden="true" size={15} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-[#262626]">{alert.message}</p>
+                    <p className="mt-0.5 text-[11px] text-[#777]">
+                      Observed {alert.observedValue} · threshold {alert.threshold}
                     </p>
                   </div>
                   <StatusPill status={alert.severity} />
@@ -76,72 +111,94 @@ export function AdminOverview({
               ))}
             </ul>
           ) : (
-            <EmptyState
-              description="No alert thresholds are currently exceeded."
-              title="Operations are clear"
-            />
+            <div className="p-4">
+              <EmptyState
+                description="No alert thresholds are currently exceeded."
+                title="Operations are clear"
+              />
+            </div>
           )}
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick actions</CardTitle>
-            <CardDescription>
-              Only workspaces allowed by your server-owned permissions are shown.
-            </CardDescription>
-          </CardHeader>
-          <div className="grid gap-3">
-            {links.map((link) => (
-              <div className="border-b border-line pb-3 last:border-0 last:pb-0" key={link.href}>
-                <LinkButton href={link.href} size="sm" tone="secondary">
-                  {link.label}
-                </LinkButton>
-                <p className="mt-2 text-xs leading-5 text-muted">{link.description}</p>
-              </div>
-            ))}
+        </div>
+
+        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
+          <div className="border-b border-[#e4e4e4] px-4 py-3">
+            <h2 className="text-sm font-semibold text-[#222]">Cycle activity</h2>
+            <p className="mt-0.5 text-xs text-[#777]">Current processing volume.</p>
           </div>
-        </Card>
-      </section>
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cycle activity</CardTitle>
-            <CardDescription>Current packing and campaign activity.</CardDescription>
-          </CardHeader>
-          <dl className="grid gap-3 text-sm">
+          <dl>
             <MetricRow
               label="Packing manifests"
               value={dashboard.procurement?.manifests.length ?? 0}
             />
-            <MetricRow
-              label="Open support cases"
-              value={dashboard.supportCases.filter((item) => item.status !== "resolved").length}
-            />
+            <MetricRow label="Open support cases" value={openCases} />
             <MetricRow label="Order requests" value={dashboard.orderRequests.length} />
             <MetricRow label="Campaigns" value={dashboard.promotions.length} />
           </dl>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Latest visible audit events.</CardDescription>
-          </CardHeader>
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
+        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
+          <div className="flex items-center justify-between border-b border-[#e4e4e4] px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-[#222]">Workspaces</h2>
+              <p className="mt-0.5 text-xs text-[#777]">Tools available to your role.</p>
+            </div>
+            <span className="text-[11px] text-[#888]">{links.length} available</span>
+          </div>
+          <div className="grid sm:grid-cols-2">
+            {links.map((link) => (
+              <a
+                className="group flex min-h-[82px] items-start gap-3 border-b border-[#ececec] p-4 transition-colors hover:bg-[#fafafa] sm:odd:border-r"
+                href={link.href}
+                key={link.href}
+              >
+                <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded border border-[#dfdfdf] bg-[#fafafa] text-[#666] group-hover:border-emerald-200 group-hover:text-emerald-700">
+                  <Box aria-hidden="true" size={14} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1 text-[13px] font-medium text-[#222]">
+                    {link.label}
+                    <ArrowUpRight aria-hidden="true" size={12} />
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-4 text-[#777]">
+                    {link.description}
+                  </span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
+          <div className="flex items-center gap-2 border-b border-[#e4e4e4] px-4 py-3">
+            <CheckCircle2 aria-hidden="true" className="text-emerald-600" size={15} />
+            <div>
+              <h2 className="text-sm font-semibold text-[#222]">Recent activity</h2>
+              <p className="mt-0.5 text-xs text-[#777]">Latest visible audit events.</p>
+            </div>
+          </div>
           {dashboard.auditEvents.length ? (
-            <ul className="grid gap-3">
-              {dashboard.auditEvents.slice(0, 5).map((event) => (
-                <li className="border-b border-line pb-3 last:border-0" key={event.id}>
-                  <strong>{event.action}</strong>
-                  <p className="mt-1 text-xs text-muted">
+            <ul>
+              {dashboard.auditEvents.slice(0, 6).map((event) => (
+                <li
+                  className="relative border-b border-[#ececec] px-4 py-3 pl-9 last:border-0"
+                  key={event.id}
+                >
+                  <span className="absolute left-4 top-[17px] size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-50" />
+                  <p className="text-[13px] font-medium text-[#272727]">{event.action}</p>
+                  <p className="mt-0.5 text-[11px] text-[#777]">
                     {event.targetType} · {new Date(event.occurredAt).toLocaleString("en-PH")}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted">
+            <p className="p-4 text-xs leading-5 text-[#777]">
               Audit activity is available to reporting administrators.
             </p>
           )}
-        </Card>
+        </div>
       </section>
     </div>
   );
@@ -151,20 +208,31 @@ function MetricCard({
   label,
   value,
   note,
-}: Readonly<{ label: string; value: string; note: string }>) {
+  icon,
+}: Readonly<{ label: string; value: string; note: string; icon: ReactNode }>) {
   return (
-    <Card>
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-3 break-words text-3xl font-bold">{value}</p>
-      <p className="mt-2 text-xs text-muted">{note}</p>
-    </Card>
+    <article className="min-w-0 border-b border-[#e4e4e4] p-4 sm:odd:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
+      <div className="flex items-center gap-2 text-xs font-medium text-[#666]">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="mt-3 break-words text-2xl font-semibold tracking-[-0.03em] text-[#202020]">
+        {value}
+      </p>
+      <p className="mt-1.5 truncate text-[11px] text-[#858585]" title={note}>
+        {note}
+      </p>
+    </article>
   );
 }
+
 function MetricRow({ label, value }: Readonly<{ label: string; value: number }>) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line pb-3 last:border-0">
-      <dt className="text-muted">{label}</dt>
-      <dd className="font-bold">{value}</dd>
+    <div className="flex min-h-11 items-center justify-between gap-4 border-b border-[#ececec] px-4 py-2 last:border-0">
+      <dt className="text-xs text-[#666]">{label}</dt>
+      <dd className="rounded bg-[#f1f1f1] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#333]">
+        {value}
+      </dd>
     </div>
   );
 }

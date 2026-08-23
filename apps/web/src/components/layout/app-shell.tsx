@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import { BookOpen, ChevronDown, CircleHelp, Leaf, Store } from "lucide-react";
 
 import type { SessionSummary } from "../../lib/permissions";
+import { AdminNavigation } from "./admin-navigation";
+import { AdminWorkspaceSearch } from "./admin-workspace-search";
 import { AccountMenu } from "./account-menu";
 import { BrandLink } from "./brand-link";
 import { Breadcrumbs, type Breadcrumb } from "./breadcrumbs";
@@ -26,6 +29,108 @@ export function AppShell({
   children: ReactNode;
 }>) {
   const navigation = getNavigation(session);
+
+  if (session.role === "admin") {
+    return (
+      <main className="min-h-screen bg-[#f7f7f7] text-[#1f1f1f]">
+        <OnlineStatus />
+        <div className="min-h-screen lg:grid lg:grid-cols-[48px_216px_minmax(0,1fr)]">
+          <aside className="hidden border-r border-[#dedede] bg-[#f2f2f2] lg:flex lg:flex-col lg:items-center">
+            <a
+              aria-label="Carbon operations home"
+              className="grid size-12 place-items-center border-b border-[#dedede] text-emerald-700 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500"
+              href="/admin"
+            >
+              <Leaf aria-hidden="true" size={19} strokeWidth={2.2} />
+            </a>
+            <nav
+              aria-label="Product shortcuts"
+              className="flex flex-1 flex-col items-center gap-1 py-3"
+            >
+              <a
+                aria-label="Storefront"
+                className="grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#e5e5e5] hover:text-[#222]"
+                href="/"
+                title="Storefront"
+              >
+                <Store aria-hidden="true" size={16} />
+              </a>
+              <a
+                aria-label="Operations guide"
+                className="grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#e5e5e5] hover:text-[#222]"
+                href="/admin/reporting"
+                title="Reporting"
+              >
+                <BookOpen aria-hidden="true" size={16} />
+              </a>
+            </nav>
+            <a
+              aria-label="Support"
+              className="mb-3 grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#e5e5e5] hover:text-[#222]"
+              href="/admin/support"
+              title="Support"
+            >
+              <CircleHelp aria-hidden="true" size={16} />
+            </a>
+          </aside>
+
+          <aside className="hidden min-h-screen border-r border-[#dedede] bg-[#fafafa] lg:block">
+            <div className="flex h-12 items-center border-b border-[#dedede] px-4">
+              <a className="flex min-w-0 items-center gap-2 text-xs font-semibold" href="/admin">
+                <span className="grid size-5 shrink-0 place-items-center rounded bg-emerald-600 text-[10px] font-bold text-white">
+                  C
+                </span>
+                <span className="truncate">Carbon operations</span>
+                <ChevronDown aria-hidden="true" className="ml-auto text-[#888]" size={13} />
+              </a>
+            </div>
+            <AdminNavigation items={navigation} />
+          </aside>
+
+          <section className="min-w-0">
+            <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-[#dedede] bg-white/95 px-4 backdrop-blur sm:px-5">
+              <div className="lg:hidden">
+                <MobileNavigation items={navigation} />
+              </div>
+              <div className="hidden shrink-0 items-center gap-1.5 text-xs text-[#777] sm:flex">
+                <span>Carbon</span>
+                <span aria-hidden="true">/</span>
+                <span className="font-medium text-[#222]">Operations</span>
+                <span className="ml-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                  Local
+                </span>
+              </div>
+              <div className="flex flex-1 justify-center">
+                <AdminWorkspaceSearch items={navigation} />
+              </div>
+              <AccountMenu session={session} />
+            </header>
+
+            <div className="mx-auto max-w-[1380px] px-4 py-5 sm:px-6 sm:py-6 xl:px-8">
+              <Breadcrumbs items={breadcrumbs} />
+              <header className="mt-4 flex flex-col gap-3 border-b border-[#dedede] pb-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#777]">
+                    {eyebrow}
+                  </p>
+                  <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-[#181818]">
+                    {title}
+                  </h1>
+                  {description ? (
+                    <p className="mt-1.5 max-w-3xl text-[13px] leading-5 text-[#6c6c6c]">
+                      {description}
+                    </p>
+                  ) : null}
+                </div>
+                {status ? <div className="shrink-0 pt-1">{status}</div> : null}
+              </header>
+              <div className="min-w-0 py-5">{children}</div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-paper text-ink">

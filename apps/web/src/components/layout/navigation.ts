@@ -5,6 +5,7 @@ export type NavigationItem = Readonly<{
   href: string;
   label: string;
   permission?: AdminPermission;
+  group?: "Workspace" | "Operations" | "Manage";
 }>;
 
 const customerNavigation: readonly NavigationItem[] = [
@@ -26,17 +27,27 @@ const deliveryNavigation: readonly NavigationItem[] = [
 ];
 
 const adminNavigation: readonly NavigationItem[] = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/catalog", label: "Catalog", permission: "catalog" },
-  { href: "/admin/orders", label: "Orders", permission: "dispatch" },
-  { href: "/admin/procurement", label: "Procurement", permission: "procurement" },
-  { href: "/admin/packing", label: "Packing", permission: "packing" },
-  { href: "/admin/dispatch", label: "Dispatch", permission: "dispatch" },
-  { href: "/admin/support", label: "Support", permission: "support" },
-  { href: "/admin/promotions", label: "Promotions", permission: "marketing" },
-  { href: "/admin/reporting", label: "Reporting", permission: "reporting" },
-  { href: "/admin/staff", label: "Staff", permission: "superadmin" },
-  { href: "/admin/configuration", label: "Configuration", permission: "superadmin" },
+  { href: "/admin", label: "Overview", group: "Workspace" },
+  { href: "/admin/catalog", label: "Catalog", permission: "catalog", group: "Workspace" },
+  { href: "/admin/orders", label: "Orders", permission: "dispatch", group: "Operations" },
+  {
+    href: "/admin/procurement",
+    label: "Procurement",
+    permission: "procurement",
+    group: "Operations",
+  },
+  { href: "/admin/packing", label: "Packing", permission: "packing", group: "Operations" },
+  { href: "/admin/dispatch", label: "Dispatch", permission: "dispatch", group: "Operations" },
+  { href: "/admin/support", label: "Support", permission: "support", group: "Operations" },
+  { href: "/admin/promotions", label: "Promotions", permission: "marketing", group: "Manage" },
+  { href: "/admin/reporting", label: "Reporting", permission: "reporting", group: "Manage" },
+  { href: "/admin/staff", label: "Staff", permission: "superadmin", group: "Manage" },
+  {
+    href: "/admin/configuration",
+    label: "Configuration",
+    permission: "superadmin",
+    group: "Manage",
+  },
 ];
 
 export function getNavigation(session: SessionSummary): readonly NavigationItem[] {

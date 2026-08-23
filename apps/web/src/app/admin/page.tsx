@@ -20,7 +20,10 @@ export default async function AdminPage() {
       eyebrow="Operations console"
       session={session}
       status={
-        <span className="account-status">{session.adminPermissions.join(", ") || "admin"}</span>
+        <span className="inline-flex items-center gap-2 rounded-md border border-[#dedede] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#555]">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          {session.adminPermissions.join(", ") || "admin"}
+        </span>
       }
       title="Weekly operations"
     >
