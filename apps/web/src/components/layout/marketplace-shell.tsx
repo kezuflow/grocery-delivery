@@ -89,10 +89,7 @@ export function MarketplaceShell({
           >
             <Library size={19} />
           </button>
-          <a
-            className="shrink-0 text-[17px] font-extrabold lowercase tracking-normal"
-            href="/shop"
-          >
+          <a className="shrink-0 text-[17px] font-extrabold lowercase tracking-normal" href="/shop">
             freshmarkets
           </a>
           <FulfillmentControl />
