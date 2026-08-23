@@ -7,9 +7,15 @@ import type {
 
 import { cn } from "./cn";
 
-export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
+export function Table({
+  className,
+  wrapperClassName,
+  ...props
+}: TableHTMLAttributes<HTMLTableElement> & { wrapperClassName?: string }) {
   return (
-    <div className="w-full overflow-x-auto rounded-md border border-[#e4e4e4]">
+    <div
+      className={cn("w-full overflow-x-auto rounded-md border border-[#e4e4e4]", wrapperClassName)}
+    >
       <table
         className={cn("w-full min-w-[42rem] border-collapse text-left text-[13px]", className)}
         {...props}

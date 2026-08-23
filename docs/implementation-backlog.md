@@ -117,6 +117,18 @@ Landing-page work is outside the marketplace program and resumes after the core 
   product-level create/update/archive and durable image upload are required beyond the current launch
   manifest workflow.
 
+### Catalog Shell And Row Action Refinement
+
+- **Status:** locally complete as a follow-up visual and interaction refinement.
+- **Outcome:** `/admin/catalog` keeps the catalog table directly in the admin shell without the
+  enclosing card treatment. The former hover-only `Inspect` action is replaced with a compact,
+  keyboard-visible overflow menu containing `Edit`, `Pause`, and `Delete`.
+- **Behavior:** `Edit` opens the existing catalog item dialog. `Pause` and `Delete` explain the
+  current server-owned launch-configuration boundary rather than attempting unauthorized client-side
+  mutations; a dedicated catalog command API remains the next backend slice.
+- **Local evidence:** desktop browser inspection confirmed the unboxed table and accessible row menu;
+  `pnpm check` passed all 55 Turbo tasks, including 68 web tests.
+
 ### Completed Storefront Chrome Refinement
 
 - **Status:** locally complete as a user-requested VS-MKT-04 visual and interaction refinement.

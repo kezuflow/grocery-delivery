@@ -1,11 +1,20 @@
 "use client";
 
 import type { CatalogListResponse } from "@carbon/contracts";
-import { Image as ImageIcon, Search, SlidersHorizontal, Upload, X } from "lucide-react";
+import {
+  Image as ImageIcon,
+  MoreHorizontal,
+  Pencil,
+  Pause,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
-  Card,
   CardDescription,
   CardTitle,
   Dialog,
@@ -59,6 +68,8 @@ export function AdminCatalog({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [draftImage, setDraftImage] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const canConfigure = permissions.includes("superadmin");
   const categoryNames = new Map(catalog?.categories.map((item) => [item.id, item.name]));
   const items = useMemo(() => {
@@ -76,8 +87,8 @@ export function AdminCatalog({
 
   return (
     <div className="grid gap-5">
-      <Card className="!p-0">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e4e4e4] px-4 py-4">
+      <section>
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#dedede] pb-4">
           <div>
             <div className="flex items-center gap-2">
               <CardTitle>Catalog items</CardTitle>
@@ -106,7 +117,7 @@ export function AdminCatalog({
             </button>
           </div>
         </div>
-        <div className="grid gap-3 border-b border-[#e4e4e4] bg-[#fafafa] px-4 py-3 md:grid-cols-[minmax(0,1fr)_190px_auto]">
+        <div className="mt-4 grid gap-3 border-b border-[#dedede] pb-4 md:grid-cols-[minmax(0,1fr)_190px_auto]">
           <label className="relative block">
             <span className="sr-only">Search catalog</span>
             <Search
@@ -152,8 +163,16 @@ export function AdminCatalog({
             {error}
           </p>
         ) : null}
+        {actionMessage ? (
+          <p
+            className="mt-3 border-l-2 border-emerald-500 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
+            role="status"
+          >
+            {actionMessage}
+          </p>
+        ) : null}
         {items.length ? (
-          <Table>
+          <Table wrapperClassName="mt-4 rounded-none border-x-0 border-t-0">
             <TableHeader>
               <tr>
                 <TableHeaderCell>Item</TableHeaderCell>
@@ -203,18 +222,62 @@ export function AdminCatalog({
                     <TableCell>
                       <StatusPill status={item.active ? "active" : "inactive"} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="relative text-right">
                       <button
-                        className="text-[11px] font-semibold text-emerald-700 opacity-0 group-hover:opacity-100"
+                        aria-expanded={openMenuId === item.id}
+                        aria-label={`Actions for ${item.name}`}
+                        className="inline-grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#ededed] hover:text-[#222] focus-visible:outline-2 focus-visible:outline-emerald-600"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setSelectedId(item.id);
-                          setDraftImage(item.imageUrl);
+                          setOpenMenuId((current) => (current === item.id ? null : item.id));
                         }}
+                        title="More actions"
                         type="button"
                       >
-                        Inspect
+                        <MoreHorizontal aria-hidden="true" size={17} />
                       </button>
+                      {openMenuId === item.id ? (
+                        <div className="absolute right-3 top-11 z-20 min-w-36 overflow-hidden rounded-md border border-[#d8d8d8] bg-white p-1 text-left shadow-lg">
+                          <button
+                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-[#333] hover:bg-[#f2f2f2]"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(item.id);
+                              setDraftImage(item.imageUrl);
+                              setOpenMenuId(null);
+                            }}
+                            type="button"
+                          >
+                            <Pencil aria-hidden="true" size={14} /> Edit
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-[#333] hover:bg-[#f2f2f2]"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionMessage(
+                                `Pause ${item.name} through the server-owned launch configuration.`,
+                              );
+                              setOpenMenuId(null);
+                            }}
+                            type="button"
+                          >
+                            <Pause aria-hidden="true" size={14} /> Pause
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-red-700 hover:bg-red-50"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionMessage(
+                                `Delete ${item.name} through the server-owned launch configuration.`,
+                              );
+                              setOpenMenuId(null);
+                            }}
+                            type="button"
+                          >
+                            <Trash2 aria-hidden="true" size={14} /> Delete
+                          </button>
+                        </div>
+                      ) : null}
                     </TableCell>
                   </tr>
                 );
@@ -227,7 +290,7 @@ export function AdminCatalog({
             title="No matching catalog items"
           />
         )}
-      </Card>
+      </section>
 
       <Dialog
         description="Local image preview and library selection. Persisting a catalog image still requires the approved server configuration workflow."
