@@ -41,6 +41,8 @@ import {
 import {
   catalogListResponseSchema,
   catalogItemResponseSchema,
+  catalogAdminStatusRequestSchema,
+  catalogAdminStatusResponseSchema,
   catalogQuerySchema,
   cartResponseSchema,
   cartUpdateRequestSchema,
@@ -154,6 +156,7 @@ import {
   createDefaultPlanReader,
   D1CartRepository,
   D1CatalogReader,
+  D1CatalogAdminRepository,
   D1DeliveryAddressRepository,
   D1DeliveryWindowRepository,
   D1DeliveryEventRepository,
@@ -194,6 +197,7 @@ import {
   type CatalogDatabase,
   type CatalogReader,
   type CatalogCheckoutReader,
+  type CatalogAdminRepository,
   type PlanLookup,
   type PlanReader,
   type PlanRepository,
@@ -323,6 +327,7 @@ export type ApiOptions = Readonly<{
   planRepository?: PlanRepository;
   planApprovalService?: PlanApprovalService;
   catalogCheckoutReader?: CatalogCheckoutReader;
+  catalogAdminRepository?: CatalogAdminRepository;
   cartRepository?: CartRepository;
   deliveryAddressRepository?: DeliveryAddressRepository;
   deliveryWindowRepository?: DeliveryWindowRepository;
@@ -5520,6 +5525,10 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     const maxPriceValue = context.req.query("maxPriceCentavos");
     const minPriceCentavos = minPriceValue === undefined ? undefined : Number(minPriceValue);
     const maxPriceCentavos = maxPriceValue === undefined ? undefined : Number(maxPriceValue);
+    const session = context.get("session");
+    const includeInactive =
+      context.req.query("includeInactive") === "true" &&
+      Boolean(session && hasAdminPermission(session.role, session.adminPermissions, "catalog"));
     const query = catalogQuerySchema.safeParse({
       ...(context.req.query("search") !== undefined ? { search: context.req.query("search") } : {}),
       ...(context.req.query("category") !== undefined
@@ -5529,6 +5538,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       ...(minPriceValue !== undefined ? { minPriceCentavos } : {}),
       ...(maxPriceValue !== undefined ? { maxPriceCentavos } : {}),
       ...(context.req.query("cursor") ? { cursor: context.req.query("cursor") } : {}),
+      ...(includeInactive ? { includeInactive: true } : {}),
       limit,
     });
     if (
@@ -5578,6 +5588,7 @@ export function createApi(options: ApiOptions = {}): ApiApp {
         ? { maxPriceCentavos: query.data.maxPriceCentavos }
         : {}),
       limit: query.data.limit,
+      ...(query.data.includeInactive ? { includeInactive: true } : {}),
     });
     const body: CatalogListResponse = {
       data: {
@@ -5624,6 +5635,69 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     };
     catalogItemResponseSchema.parse(body);
     context.header("cache-control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
+    return context.json(body, 200);
+  });
+
+  app.patch("/api/v1/admin/catalog/:id/status", async (context) => {
+    const bindings: ApiBindings = context.env ?? {};
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "catalog")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "catalog administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const input = catalogAdminStatusRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_CATALOG_STATUS",
+          "catalog status is invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const repository =
+      options.catalogAdminRepository ??
+      (bindings.DB ? new D1CatalogAdminRepository(bindings.DB) : undefined);
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "CATALOG_ADMIN_UNAVAILABLE",
+          "catalog administration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const updatedAt = now().toISOString();
+    const updated = await repository.updateSkuStatus(
+      context.req.param("id"),
+      input.data.status,
+      updatedAt,
+    );
+    if (!updated) {
+      return context.json(
+        errorResponse(
+          "CATALOG_ITEM_NOT_FOUND",
+          "catalog item was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const body = {
+      data: { id: context.req.param("id"), status: input.data.status, updatedAt },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    catalogAdminStatusResponseSchema.parse(body);
     return context.json(body, 200);
   });
 

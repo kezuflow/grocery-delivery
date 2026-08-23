@@ -4,6 +4,8 @@ import {
   cartUpdateRequestSchema,
   catalogListResponseSchema,
   catalogItemResponseSchema,
+  catalogAdminStatusRequestSchema,
+  catalogAdminStatusResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
@@ -78,6 +80,7 @@ import {
   type CartUpdateRequest,
   type CatalogListResponse,
   type CatalogItemResponse,
+  type CatalogAdminStatusResponse,
   type CatalogSort,
   type CurrentSessionResponse,
   type DeliveryAddressInput,
@@ -173,7 +176,9 @@ export function createApiClient(baseTransport: ApiTransport) {
             sort?: CatalogSort;
             minPriceCentavos?: number;
             maxPriceCentavos?: number;
+            includeInactive?: boolean;
           }> = {},
+      init?: RequestInit,
     ): Promise<CatalogListResponse> {
       const query = typeof options === "number" ? { limit: options } : options;
       const params = new URLSearchParams({ limit: String(query.limit ?? 20) });
@@ -185,13 +190,29 @@ export function createApiClient(baseTransport: ApiTransport) {
         params.set("minPriceCentavos", String(query.minPriceCentavos));
       if (query.maxPriceCentavos !== undefined)
         params.set("maxPriceCentavos", String(query.maxPriceCentavos));
-      return getJson(transport, `/api/v1/catalog?${params}`, catalogListResponseSchema);
+      if (query.includeInactive) params.set("includeInactive", "true");
+      return getJson(transport, `/api/v1/catalog?${params}`, catalogListResponseSchema, init);
     },
     getCatalogItem(slug: string): Promise<CatalogItemResponse> {
       return getJson(
         transport,
         `/api/v1/catalog/${encodeURIComponent(slug)}`,
         catalogItemResponseSchema,
+      );
+    },
+    updateAdminCatalogStatus(
+      id: string,
+      status: "active" | "paused" | "archived",
+      init?: RequestInit,
+    ): Promise<CatalogAdminStatusResponse> {
+      const payload = catalogAdminStatusRequestSchema.parse({ status });
+      return sendJson(
+        transport,
+        `/api/v1/admin/catalog/${encodeURIComponent(id)}/status`,
+        payload,
+        catalogAdminStatusResponseSchema,
+        "PATCH",
+        init,
       );
     },
     getActivePromotionBanners(

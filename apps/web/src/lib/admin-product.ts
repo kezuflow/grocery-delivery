@@ -37,7 +37,12 @@ export type AdminStaffData = Readonly<{
 export async function loadAdminCatalog(): Promise<AdminCatalogData> {
   try {
     const client = createApiClient(createRuntimeApiTransport());
-    const response = await client.listCatalog(100);
+    const response = await client.listCatalog(
+      { limit: 100, includeInactive: true },
+      {
+        headers: { cookie: (await cookies()).toString() },
+      },
+    );
     return { catalog: response.data, error: null };
   } catch {
     return { catalog: null, error: "The server catalog is temporarily unavailable." };

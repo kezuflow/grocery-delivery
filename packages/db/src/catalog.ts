@@ -15,6 +15,7 @@ export type CatalogQuery = Readonly<{
   sort?: "popular" | "name" | "price-low" | "price-high";
   minPriceCentavos?: number;
   maxPriceCentavos?: number;
+  includeInactive?: boolean;
   afterId?: string;
   offset?: number;
   limit: number;
@@ -28,6 +29,11 @@ export type CatalogDatabase = Readonly<{
 export type CatalogPreparedStatement = Readonly<{
   bind(...values: unknown[]): CatalogPreparedStatement;
   all<T extends Record<string, unknown>>(): Promise<{ results: readonly T[] }>;
+}>;
+
+export type CatalogMutationDatabase = Readonly<{
+  prepare(sql: string): CatalogPreparedStatement;
+  batch(statements: readonly CatalogPreparedStatement[]): Promise<readonly unknown[]>;
 }>;
 
 export type CatalogPage = Readonly<{
@@ -45,6 +51,12 @@ export interface CatalogReader {
 
 export interface CatalogCheckoutReader {
   findActiveByIds(skuIds: readonly string[]): Promise<readonly CatalogSku[]>;
+}
+
+export type CatalogAdminStatus = "active" | "paused" | "archived";
+
+export interface CatalogAdminRepository {
+  updateSkuStatus(skuId: string, status: CatalogAdminStatus, updatedAt: string): Promise<boolean>;
 }
 
 export interface CatalogPricingRepository {
@@ -76,7 +88,9 @@ export class InMemoryCatalogReader implements CatalogReader, CatalogCheckoutRead
     if (query.categorySlug && !category) {
       return Promise.resolve({
         cacheVersion: this.cacheVersion,
-        categories: this.categories.filter((candidate) => candidate.active),
+        categories: query.includeInactive
+          ? this.categories
+          : this.categories.filter((candidate) => candidate.active),
         items: [],
         nextAfterId: null,
         nextOffset: null,
@@ -84,7 +98,8 @@ export class InMemoryCatalogReader implements CatalogReader, CatalogCheckoutRead
     }
     const search = query.search?.toLowerCase();
     const categoryItems = this.items.filter((item) => {
-      if (!item.active || (category && item.categoryId !== category.id)) return false;
+      if (!query.includeInactive && !item.active) return false;
+      if (category && item.categoryId !== category.id) return false;
       if (query.minPriceCentavos !== undefined && item.price.centavos < query.minPriceCentavos)
         return false;
       if (query.maxPriceCentavos !== undefined && item.price.centavos > query.maxPriceCentavos)
@@ -116,7 +131,9 @@ export class InMemoryCatalogReader implements CatalogReader, CatalogCheckoutRead
 
     return Promise.resolve({
       cacheVersion: this.cacheVersion,
-      categories: this.categories.filter((candidate) => candidate.active),
+      categories: query.includeInactive
+        ? this.categories
+        : this.categories.filter((candidate) => candidate.active),
       items,
       nextAfterId: start + items.length < sortedItems.length ? (lastItem?.id ?? null) : null,
       nextOffset: start + items.length < sortedItems.length ? start + items.length : null,
@@ -141,7 +158,7 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
       .prepare(
         `SELECT id, name, slug, active
          FROM catalog_categories
-         WHERE active = 1
+         ${query.includeInactive ? "" : "WHERE active = 1"}
          ORDER BY slug ASC`,
       )
       .bind()
@@ -162,7 +179,7 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
                 s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
          INNER JOIN catalog_categories c ON c.id = s.category_id
-         WHERE s.active = 1 AND c.active = 1 AND c.slug = ?
+         WHERE ${query.includeInactive ? "1 = 1" : "s.active = 1 AND c.active = 1"} AND c.slug = ?
            AND (? IS NULL OR lower(s.name || ' ' || s.description || ' ' || s.slug) LIKE '%' || ? || '%')
            AND (? IS NULL OR s.current_price_centavos >= ?)
            AND (? IS NULL OR s.current_price_centavos <= ?)
@@ -170,10 +187,10 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
          ORDER BY ${orderBy}
          LIMIT ?${useOffset ? " OFFSET ?" : ""}`
       : `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
-                s.image_url, s.current_price_centavos, s.active
+         s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
          INNER JOIN catalog_categories c ON c.id = s.category_id
-         WHERE s.active = 1 AND c.active = 1
+         WHERE ${query.includeInactive ? "1 = 1" : "s.active = 1 AND c.active = 1"}
            AND (? IS NULL OR lower(s.name || ' ' || s.description || ' ' || s.slug) LIKE '%' || ? || '%')
            AND (? IS NULL OR s.current_price_centavos >= ?)
            AND (? IS NULL OR s.current_price_centavos <= ?)
@@ -254,6 +271,41 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
       .bind(...skuIds)
       .all<CatalogSkuRow>();
     return rows.results.map(mapSku);
+  }
+}
+
+export class D1CatalogAdminRepository implements CatalogAdminRepository {
+  constructor(private readonly database: CatalogMutationDatabase) {}
+
+  async updateSkuStatus(
+    skuId: string,
+    status: CatalogAdminStatus,
+    updatedAt: string,
+  ): Promise<boolean> {
+    const existing = await this.database
+      .prepare("SELECT id FROM catalog_skus WHERE id = ? LIMIT 1")
+      .bind(skuId)
+      .all<{ id: string }>();
+    if (!existing.results[0]) return false;
+
+    const active = status === "active" ? 1 : 0;
+    await this.database.batch([
+      this.database
+        .prepare(
+          `UPDATE catalog_skus
+           SET active = ?, updated_at = ?
+           WHERE id = ?`,
+        )
+        .bind(active, updatedAt, skuId),
+      this.database
+        .prepare(
+          `UPDATE catalog_cache_state
+           SET version = version + 1, updated_at = ?
+           WHERE id = 'public'`,
+        )
+        .bind(updatedAt),
+    ]);
+    return true;
   }
 }
 

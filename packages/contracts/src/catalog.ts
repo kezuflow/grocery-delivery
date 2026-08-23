@@ -45,6 +45,7 @@ export const catalogQuerySchema = z.object({
   sort: catalogSortSchema.default("popular"),
   minPriceCentavos: z.number().int().nonnegative().optional(),
   maxPriceCentavos: z.number().int().nonnegative().optional(),
+  includeInactive: z.boolean().optional(),
   cursor: z
     .string()
     .trim()
@@ -67,9 +68,24 @@ export const catalogItemResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const catalogAdminStatusRequestSchema = z.object({
+  status: z.enum(["active", "paused", "archived"]),
+});
+
+export const catalogAdminStatusResponseSchema = z.object({
+  data: z.object({
+    id: z.string().min(1),
+    status: z.enum(["active", "paused", "archived"]),
+    updatedAt: z.string().datetime(),
+  }),
+  meta: responseMetaSchema,
+});
+
 export type CatalogCategoryResponse = z.infer<typeof catalogCategorySchema>;
 export type CatalogSkuResponse = z.infer<typeof catalogSkuSchema>;
 export type CatalogSort = z.infer<typeof catalogSortSchema>;
 export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 export type CatalogListResponse = z.infer<typeof catalogListResponseSchema>;
 export type CatalogItemResponse = z.infer<typeof catalogItemResponseSchema>;
+export type CatalogAdminStatusRequest = z.infer<typeof catalogAdminStatusRequestSchema>;
+export type CatalogAdminStatusResponse = z.infer<typeof catalogAdminStatusResponseSchema>;

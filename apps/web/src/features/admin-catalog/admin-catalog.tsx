@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   CardDescription,
@@ -29,6 +30,11 @@ import {
 } from "../../components/ui";
 import { formatPhp } from "../../lib/format";
 import type { AdminPermission } from "../../lib/permissions";
+import {
+  ApiClientError,
+  createApiClient,
+  createSameOriginApiTransport,
+} from "../../lib/api/client";
 
 const imageLibrary = [
   ["apple.webp", "Apples"],
@@ -63,6 +69,8 @@ export function AdminCatalog({
   error: string | null;
   permissions: readonly AdminPermission[];
 }>) {
+  const router = useRouter();
+  const client = createApiClient(createSameOriginApiTransport());
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,6 +78,7 @@ export function AdminCatalog({
   const [draftImage, setDraftImage] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const canConfigure = permissions.includes("superadmin");
   const categoryNames = new Map(catalog?.categories.map((item) => [item.id, item.name]));
   const items = useMemo(() => {
@@ -220,7 +229,7 @@ export function AdminCatalog({
                       {formatPhp(item.price.centavos)}
                     </TableCell>
                     <TableCell>
-                      <StatusPill status={item.active ? "active" : "inactive"} />
+                      <StatusPill status={item.active ? "active" : "paused"} />
                     </TableCell>
                     <TableCell className="relative text-right">
                       <button
@@ -251,26 +260,22 @@ export function AdminCatalog({
                             <Pencil aria-hidden="true" size={14} /> Edit
                           </button>
                           <button
-                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-[#333] hover:bg-[#f2f2f2]"
+                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-[#333] hover:bg-[#f2f2f2] disabled:opacity-50"
+                            disabled={updatingId === item.id}
                             onClick={(event) => {
                               event.stopPropagation();
-                              setActionMessage(
-                                `Pause ${item.name} through the server-owned launch configuration.`,
-                              );
-                              setOpenMenuId(null);
+                              void updateStatus(item.id, "paused", item.name);
                             }}
                             type="button"
                           >
                             <Pause aria-hidden="true" size={14} /> Pause
                           </button>
                           <button
-                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-red-700 hover:bg-red-50"
+                            className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            disabled={updatingId === item.id}
                             onClick={(event) => {
                               event.stopPropagation();
-                              setActionMessage(
-                                `Delete ${item.name} through the server-owned launch configuration.`,
-                              );
-                              setOpenMenuId(null);
+                              void updateStatus(item.id, "archived", item.name);
                             }}
                             type="button"
                           >
@@ -405,6 +410,29 @@ export function AdminCatalog({
       </Dialog>
     </div>
   );
+
+  async function updateStatus(
+    id: string,
+    status: "paused" | "archived",
+    itemName: string,
+  ): Promise<void> {
+    setUpdatingId(id);
+    setOpenMenuId(null);
+    setActionMessage(null);
+    try {
+      await client.updateAdminCatalogStatus(id, status);
+      setActionMessage(`${itemName} is now ${status === "paused" ? "paused" : "archived"}.`);
+      router.refresh();
+    } catch (error) {
+      setActionMessage(
+        error instanceof ApiClientError
+          ? `${error.message} (${error.code}${error.correlationId ? `, ${error.correlationId}` : ""})`
+          : "The catalog status could not be updated.",
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 }
 
 function localImageFor(slug: string) {

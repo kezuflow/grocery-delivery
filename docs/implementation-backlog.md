@@ -142,6 +142,20 @@ Landing-page work is outside the marketplace program and resumes after the core 
   sections render with accessible controls. `pnpm check` passed all 55 Turbo tasks, including 68 web
   tests.
 
+### Inline Catalog Status Actions
+
+- **Status:** locally complete as a follow-up admin workflow correction.
+- **Outcome:** catalog administrators can now pause or archive an item directly from the row overflow
+  menu. The old launch-configuration handoff message has been removed for these status actions.
+- **Trace:** the web menu calls `PATCH /api/v1/admin/catalog/:id/status`; the API validates the status,
+  requires catalog permission, updates the D1 SKU active state, increments the public catalog cache
+  version, and returns the updated status. The catalog page requests inactive rows for authorized
+  administrators so paused and archived items remain visible for operational recovery.
+- **Local evidence:** API coverage verifies a catalog administrator can pause `sku-apples`; browser
+  inspection confirmed the admin catalog retains inactive rows and exposes Edit, Pause, and Delete
+  actions. `pnpm check` passed all 55 Turbo tasks, including 79 API unit/runtime tests, both API
+  integration suites, 68 web tests, and 53 database tests.
+
 ### Completed Storefront Chrome Refinement
 
 - **Status:** locally complete as a user-requested VS-MKT-04 visual and interaction refinement.

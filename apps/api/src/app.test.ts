@@ -5,6 +5,7 @@ import {
   cartResponseSchema,
   catalogListResponseSchema,
   catalogItemResponseSchema,
+  catalogAdminStatusResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
   deliveryAddressesResponseSchema,
@@ -594,6 +595,45 @@ describe("API worker", () => {
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("updates catalog status for catalog administrators", async () => {
+    const updates: Array<{ id: string; status: string; updatedAt: string }> = [];
+    const adminApp = createApi({
+      now: () => new Date("2026-08-21T08:00:00.000Z"),
+      catalogAdminRepository: {
+        updateSkuStatus: (id, status, updatedAt) => {
+          updates.push({ id, status, updatedAt });
+          return Promise.resolve(id === "sku-apples");
+        },
+      },
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-catalog-admin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["catalog"],
+              customerId: null,
+              expiresAt: "2099-08-21T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request("/api/v1/admin/catalog/sku-apples/status", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "paused" }),
+    });
+    const body = catalogAdminStatusResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({ id: "sku-apples", status: "paused" });
+    expect(updates).toEqual([
+      { id: "sku-apples", status: "paused", updatedAt: "2026-08-21T08:00:00.000Z" },
+    ]);
   });
 
   it("applies and replays a superadmin launch configuration", async () => {
