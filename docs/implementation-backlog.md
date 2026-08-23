@@ -129,6 +129,19 @@ Landing-page work is outside the marketplace program and resumes after the core 
 - **Local evidence:** desktop browser inspection confirmed the unboxed table and accessible row menu;
   `pnpm check` passed all 55 Turbo tasks, including 68 web tests.
 
+### Configuration Form Refinement
+
+- **Status:** locally complete as a user-requested admin workflow refinement.
+- **Outcome:** `/admin/configuration` no longer exposes the launch manifest as a raw JSON textarea.
+  Superadmins now edit approval reason, categories, catalog items, procurement inputs, markup,
+  image URLs, active states, and delivery windows through structured controls with add/remove row
+  actions, reset, and an explicit apply action.
+- **Boundary:** the form still submits the existing typed launch-configuration contract to the
+  superadmin-only endpoint; server-derived prices, authorization, and idempotency remain unchanged.
+- **Local evidence:** browser inspection confirmed the JSON editor is absent and the structured
+  sections render with accessible controls. `pnpm check` passed all 55 Turbo tasks, including 68 web
+  tests.
+
 ### Completed Storefront Chrome Refinement
 
 - **Status:** locally complete as a user-requested VS-MKT-04 visual and interaction refinement.
