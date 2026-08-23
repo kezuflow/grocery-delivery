@@ -4,6 +4,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { useId } from "react";
 
 import { cn } from "./cn";
 
@@ -45,16 +46,18 @@ function fieldClassName(className?: string) {
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & FieldMessageProps;
 
 export function Input({ id, label, hint, error, className, ...props }: InputProps) {
-  const describedBy = id ? (error ? `${id}-error` : hint ? `${id}-hint` : undefined) : undefined;
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
 
   return (
     <div className="grid gap-1.5">
-      <FieldMessage id={id} label={label} hint={hint} error={error} />
+      <FieldMessage id={fieldId} label={label} hint={hint} error={error} />
       <input
         aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         className={fieldClassName(className)}
-        id={id}
+        id={fieldId}
         {...props}
       />
     </div>
@@ -64,16 +67,18 @@ export function Input({ id, label, hint, error, className, ...props }: InputProp
 export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & FieldMessageProps;
 
 export function Select({ id, label, hint, error, className, children, ...props }: SelectProps) {
-  const describedBy = id ? (error ? `${id}-error` : hint ? `${id}-hint` : undefined) : undefined;
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
 
   return (
     <div className="grid gap-1.5">
-      <FieldMessage id={id} label={label} hint={hint} error={error} />
+      <FieldMessage id={fieldId} label={label} hint={hint} error={error} />
       <select
         aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         className={fieldClassName(className)}
-        id={id}
+        id={fieldId}
         {...props}
       >
         {children}
@@ -85,16 +90,18 @@ export function Select({ id, label, hint, error, className, children, ...props }
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & FieldMessageProps;
 
 export function Textarea({ id, label, hint, error, className, ...props }: TextareaProps) {
-  const describedBy = id ? (error ? `${id}-error` : hint ? `${id}-hint` : undefined) : undefined;
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
 
   return (
     <div className="grid gap-1.5">
-      <FieldMessage id={id} label={label} hint={hint} error={error} />
+      <FieldMessage id={fieldId} label={label} hint={hint} error={error} />
       <textarea
         aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         className={cn(fieldClassName(className), "min-h-28 resize-y")}
-        id={id}
+        id={fieldId}
         {...props}
       />
     </div>

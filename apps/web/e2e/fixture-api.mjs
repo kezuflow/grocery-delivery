@@ -497,7 +497,10 @@ function routeResponse(method, url, role, scenario, body) {
       return ok(order);
     });
   if (url.pathname === "/api/v1/orders" && method === "GET")
-    return requireRole(role, "customer", () => ok({ orders: [...orderScenarios.values()] }));
+    return requireRole(role, "customer", () => {
+      if (orderScenarios.size === 0) orderScenarios.set("default", fixtureOrder());
+      return ok({ orders: [...orderScenarios.values()] });
+    });
   if (url.pathname === "/api/v1/payments/charge" && method === "POST")
     return requireRole(role, "customer", () => {
       const order = [...orderScenarios.values()].find((candidate) => candidate.id === body.orderId);
@@ -520,11 +523,75 @@ function routeResponse(method, url, role, scenario, body) {
       });
     });
   if (url.pathname === "/api/v1/order-requests")
-    return requireRole(role, "customer", () => ok({ requests: [] }));
+    return requireRole(role, "customer", () =>
+      method === "POST"
+        ? ok({
+            id: "request-1",
+            customerId: "customer-1",
+            orderId: body.orderId,
+            kind: body.kind,
+            reason: body.reason,
+            status: "pending",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          })
+        : ok({ requests: [] }),
+    );
   if (url.pathname === "/api/v1/order-substitutions")
-    return requireRole(role, "customer", () => ok({ substitutions: [] }));
+    return requireRole(role, "customer", () =>
+      ok({
+        substitutions: [
+          {
+            id: "customer-substitution-1",
+            customerId: "customer-1",
+            orderId: "order-fixture-1",
+            shortageId: "shortage-1",
+            originalSkuId: "sku-tomato",
+            procurementSubstitutionId: "substitution-1",
+            substituteSkuId: "sku-carrots",
+            quantity: 1,
+            status: "pending",
+            decidedAt: null,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }),
+    );
+  if (
+    url.pathname === "/api/v1/order-substitutions/customer-substitution-1/decision" &&
+    method === "POST"
+  )
+    return requireRole(role, "customer", () =>
+      ok({
+        id: "customer-substitution-1",
+        customerId: "customer-1",
+        orderId: "order-fixture-1",
+        shortageId: "shortage-1",
+        originalSkuId: "sku-tomato",
+        procurementSubstitutionId: "substitution-1",
+        substituteSkuId: "sku-carrots",
+        quantity: 1,
+        status: body.decision === "accept" ? "accepted" : "rejected",
+        decidedAt: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }),
+    );
   if (url.pathname === "/api/v1/support/cases")
-    return requireRole(role, "customer", () => ok({ cases: [] }));
+    return requireRole(role, "customer", () =>
+      method === "POST"
+        ? ok({
+            id: "case-1",
+            customerId: "customer-1",
+            subject: body.subject,
+            message: body.message,
+            status: "open",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          })
+        : ok({ cases: [] }),
+    );
   if (url.pathname === "/api/v1/notification-preferences")
     return requireRole(role, "customer", () =>
       ok({
@@ -799,6 +866,29 @@ function orderTotals(promotionCode = null) {
     overage: quote.overage,
     deliveryFee: quote.deliveryFee,
     totalDue: quote.totalDue,
+  };
+}
+function fixtureOrder() {
+  return {
+    id: "order-fixture-1",
+    subscriptionId: "subscription-1",
+    planId: "plan-family",
+    cycleId: "cycle-2026-34",
+    lines: [{ skuId: "sku-tomato", quantity: 2, unitPrice: money(18000) }],
+    weeklyCredit: money(150000),
+    totals: orderTotals(),
+    appliedPromotion: null,
+    deliveryAddress: address,
+    deliveryWindow: {
+      id: "window-morning",
+      cycleId: "cycle-2026-34",
+      label: "Saturday 9:00 AM - 12:00 PM",
+      startsAt: "2026-08-29T01:00:00.000Z",
+      endsAt: "2026-08-29T04:00:00.000Z",
+    },
+    paymentState: "paid",
+    status: "locked",
+    lockedAt: timestamp,
   };
 }
 function ok(data) {

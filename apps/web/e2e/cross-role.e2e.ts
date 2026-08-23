@@ -508,6 +508,29 @@ test("weekly operations record procurement, shortage, packing, and dispatch", as
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("customer resolves a substitution and submits support order requests", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("customer", "/account");
+  await expect(page.getByText(/sku-tomato.*sku-carrots/)).toBeVisible();
+  await page.getByRole("button", { name: "Accept" }).click();
+  await expect(page.getByText("accepted")).toBeVisible();
+
+  await openAs("customer", "/account/support");
+  await page.getByLabel("Subject").fill("Delivery question");
+  await page.getByLabel("Message").fill("Please confirm the building instructions.");
+  await page.getByRole("button", { name: "Send request" }).click();
+  await expect(page.getByRole("status")).toContainText("support request was sent");
+
+  await page.getByLabel("Request").selectOption("refund");
+  await page.getByLabel("Reason").fill("One delivered item was unavailable.");
+  await page.getByRole("button", { name: "Submit order request" }).click();
+  await expect(page.getByRole("status")).toContainText("submitted for review");
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("keyboard focus and reduced motion remain usable", async ({ openAs, page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openAs(null, "/");

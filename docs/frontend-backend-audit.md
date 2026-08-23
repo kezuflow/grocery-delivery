@@ -362,6 +362,41 @@ scope. The landing page is intentionally excluded from this benchmark.
 - Focused browser evidence passes on phone and desktop for purchase, shortage, packing, and dispatch,
   including Axe and document-overflow checks. No backend gap or schema change was required.
 
+### VS-MKT-10 customer substitutions and support
+
+- **Routes and UI inspected:** `/account`, `/account/support`, the account substitution decision list,
+  customer support history/contact form, and cancellation/refund request form. The separate phone and
+  desktop compositions retain Carbon account navigation while keeping request actions reachable and
+  labeled at both viewports.
+- **Contracts and APIs inspected:** `customer-substitutions.ts`, `order-requests.ts`, `support.ts`,
+  `GET /api/v1/order-substitutions`, `POST /api/v1/order-substitutions/:id/decision`,
+  `GET/POST /api/v1/order-requests`, and `GET/POST /api/v1/support/cases`, plus the protected admin
+  support/order-request queues and decision routes. The typed web client already covered every required
+  customer mutation and response schema.
+- **Use cases, repositories, and tables inspected:** existing API handlers resolve the active customer,
+  order ownership, substitution state, idempotency, and administrator permission scope before calling
+  the customer-substitution, order-request, and support repositories. Their D1 implementations and
+  existing forward-only schema already persist request/decision state, so no backend extension or
+  migration was justified.
+- **Server ownership and error decisions:** the client submits only a decision, request kind/reason, or
+  support subject/message. The server owns customer/order association, eligibility, status transitions,
+  timestamps, replay, and administrative resolution. Pending actions are disabled, successful writes
+  are announced, and correlation-aware API failures remain recoverable without inventing local state.
+- **Accessibility decision:** shared `Input`, `Select`, and `Textarea` primitives now use React `useId`
+  when no explicit ID is supplied, connecting labels and hint/error descriptions without changing
+  caller APIs. This fixed the previously visible-but-unlabeled Subject, Message, Request, and Reason
+  controls across account forms.
+- **Mobbin evidence:** the previously inspected mobile
+  [Account](https://mobbin.com/flows/87df6ee3-3fb5-41aa-8a31-eae7b22fea53) flow informed compact
+  account/request hierarchy only. The CLI reported a successful Mobbin OAuth login on 2026-08-23, but
+  MCP retrieval still returned `Auth required`; no additional visual claims were made.
+- **Verification evidence:** all 67 web tests plus web lint/typecheck pass. Focused local Playwright
+  passes 1/1 phone and 1/1 desktop for substitution acceptance, support creation, refund-request
+  creation, status announcements, no horizontal overflow, and no serious/critical Axe violations.
+  Existing API tests retain validation, unauthenticated/ownership, permission, persistence, and
+  idempotent replay coverage. Request impact is limited to explicit customer mutations and the current
+  server refresh; no polling, new latency path, dependency, or observability surface was introduced.
+
 ## Admin Product Workspace Prototype Checkpoint
 
 The legacy FE-015 admin draft is committed only as an audit prototype. It adds navigable catalog,

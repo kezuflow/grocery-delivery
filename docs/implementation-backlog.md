@@ -71,7 +71,7 @@ offline, and success states where applicable.
 | VS-MKT-07 | Local payment-adapter completion, retry, and order confirmation         | complete |
 | VS-MKT-08 | Permission-scoped local admin catalog operations                        | complete |
 | VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | complete |
-| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | planned  |
+| VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | complete |
 | VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
 | VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
 | VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
@@ -360,6 +360,41 @@ authentication and promotion remain deferred.
   persistence, audit events, and permission guards remain server-owned. No new migration or endpoint.
 - **Verification:** focused phone and desktop Playwright covers purchase, shortage, packed manifest,
   dispatch assignment, Axe, and overflow; full checks pass. VS-MKT-10 is next.
+
+## VS-MKT-10 Customer Substitutions And Support
+
+- **Status:** locally complete. Customers can accept or reject procurement substitutions from the
+  account route, create general support cases, and submit cancellation or refund requests against a
+  server-returned order from `/account/support`.
+- **Outcome and responsive UI:** the existing customer account and support workspaces now have a
+  deterministic end-to-end path through populated order and substitution data. Phone and desktop
+  layouts preserve the account navigation, readable request history, touch-sized actions, sticky
+  desktop request column, pending controls, success announcements, and actionable empty states.
+  Shared input, select, and textarea components now generate stable IDs when callers omit one, so
+  every visible label remains programmatically associated with its control.
+- **Backend reuse:** the existing customer-substitution, customer-order-request, and support-case
+  contracts, typed API methods, Better Auth customer ownership, permission-protected admin decision
+  flows, idempotency behavior, D1 repositories, and correlation-aware errors remain authoritative.
+  Cancellation/refund eligibility, substitution ownership and state, request status, and support
+  status are not inferred by the client. No endpoint, repository, migration, or parallel model was
+  added.
+- **Persistence, retry, and authorization:** substitution decisions use the existing deterministic
+  decision idempotency key; support and order requests use request idempotency keys and persist through
+  their current repositories. Buttons disable during writes, recoverable errors remain visible, and
+  protected routes continue to require the active customer session. Existing API coverage proves
+  customer ownership, permission scope, replay, validation, and persisted decision behavior.
+- **Mobbin references:** the previously image-inspected mobile
+  [Account](https://mobbin.com/flows/87df6ee3-3fb5-41aa-8a31-eae7b22fea53) flow remains the bounded
+  reference for compact account navigation and request-entry hierarchy. `codex mcp login mobbin`
+  completed successfully on 2026-08-23, but subsequent connector searches still returned
+  `Auth required`; no uninspected screens or invented reference details were used.
+- **Verification and impact:** web lint, typecheck, and all 67 web tests pass. Focused Playwright passes
+  1/1 on phone and 1/1 on desktop for accepting a substitution, creating a support case, submitting a
+  refund request, serious/critical Axe checks, and document-overflow checks. The slice adds only the
+  existing mutation requests selected by the customer and refreshes server-rendered account data after
+  creation; it adds no polling, fan-out, runtime dependency, or new observability boundary.
+- **Next resume point:** begin VS-MKT-11 delivery-staff execution and customer tracking only after this
+  slice is committed, pushed, and the working tree is clean.
 
 ### Local Browser Evidence
 
