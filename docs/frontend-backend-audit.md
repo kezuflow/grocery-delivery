@@ -48,7 +48,7 @@ browser result; classification; severity; and recommended vertical slice.
 | Admin orders            | All-order read model, payment/fulfillment state, packing, dispatch, requests                         | partial    | Audit prototype composes feeds instead of a stable order read contract |
 | Admin operations        | Procurement, packing, dispatch, support, refunds, promotions, reporting, configuration               | unverified | Pending AUD-001                                                        |
 | Admin staff             | Directory, role assignment, permissions, MFA, audit history                                          | partial    | Role assignment exists; staff-directory read contract is missing       |
-| Delivery staff          | Assignments, route, event transitions, failures, proof upload, offline queue, sync, history          | unverified | Pending AUD-001                                                        |
+| Delivery staff          | Assignments, route, event transitions, failures, proof upload, offline queue, sync, history          | matched    | VS-MKT-11 local phone/desktop evidence; ETA/location remains deferred  |
 | Cross-cutting           | Auth cookies, origins, rate limits, CSP, caching, observability, migrations, OpenNext, local runtime | unverified | Pending AUD-001                                                        |
 
 ## Audit Output
@@ -396,6 +396,40 @@ scope. The landing page is intentionally excluded from this benchmark.
   Existing API tests retain validation, unauthenticated/ownership, permission, persistence, and
   idempotent replay coverage. Request impact is limited to explicit customer mutations and the current
   server refresh; no polling, new latency path, dependency, or observability surface was introduced.
+
+### VS-MKT-11 delivery execution and customer tracking
+
+- **Routes and UI inspected:** `/deliveryman/assignments`, `/deliveryman/assignments/:assignmentId`,
+  `/deliveryman/sync`, `/deliveryman/history`, `/account/orders`, and `/account/orders/:orderId`.
+  Assignment cards expose the server-approved next event, recipient/address context, map and call
+  links, failure-reason selection, proof upload, and queue status. Customer order detail exposes the
+  delivery timeline, receipt, proof link, and support route.
+- **Contracts and APIs inspected:** `deliveryman.ts`, `tracking.ts`, and `media.ts`; assignment/event
+  reads and writes; customer tracking/media reads; the typed client methods for each boundary. The
+  API already rejects unauthenticated or wrongly scoped roles, validates transition order, uses client
+  event/media identifiers for replay, and signs media URLs with bounded expiry.
+- **Use cases, repositories, and tables inspected:** existing delivery event, tracking, and media D1
+  repositories plus IndexedDB queue behavior. Assignment ownership is checked before event/media writes;
+  tracking and media reads are checked against the active customer. No schema or repository extension
+  was justified.
+- **Server ownership and retry decisions:** client events carry intent, assignment/order identifiers,
+  and occurrence time only. The server resolves assignment ownership, legal transitions, received time,
+  status projection, and media metadata. Offline events remain pending until a successful response;
+  4xx conflicts become reviewable queue records rather than being silently retried.
+- **Responsive/accessibility decisions:** phone keeps touch-sized event actions and a compact queue/sync
+  card; desktop uses the same operational cards with wider address and timeline context. Status updates
+  use live regions, native controls, visible focus, and explicit labels; proof links identify their
+  destination. Axe and document-overflow checks pass at both required viewports.
+- **Mobbin evidence:** previously inspected mobile
+  [Ongoing delivery](https://mobbin.com/flows/5e1230df-8b95-4cc1-a3e9-790553e3f78c) remains the only
+  source for compact tracking hierarchy because fresh MCP retrieval still returned `Auth required`
+  after OAuth login.
+- **Verification evidence:** focused browser trace passes on phone and desktop through delivery event
+  queue -> Sync confirmation -> customer tracking/timeline/proof/support. Existing API and storage tests
+  retain session, ownership, transitions, idempotency, signed URL, and media validation coverage.
+- **Known gap:** ETA/location polling or realtime updates and courier identity are not added because no
+  compatible Carbon contract or persistence boundary exists yet; the completed slice keeps event
+  progression, delivery-window context, proof media, and support as the authoritative local workflow.
 
 ## Admin Product Workspace Prototype Checkpoint
 

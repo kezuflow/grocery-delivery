@@ -564,6 +564,36 @@ test("delivery events persist in IndexedDB while offline", async ({ context, ope
   await context.setOffline(false);
 });
 
+test("delivery staff completes a stop and the customer sees tracking and proof", async ({
+  openAs,
+  page,
+}) => {
+  await openAs("deliveryman", "/deliveryman/assignments/assignment-1");
+  await page.getByRole("button", { name: "Record delivered" }).click();
+  await expect(page.getByRole("status")).toContainText("Event queued and ready to sync");
+  const eventResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/deliveryman/events") &&
+      response.request().method() === "POST" &&
+      response.ok(),
+  );
+  await openAs("deliveryman", "/deliveryman/sync");
+  await eventResponse;
+  await expect(page.getByText("Up to date")).toBeVisible();
+
+  await openAs("customer", "/account/orders/order-1");
+  await expect(page.getByRole("heading", { name: "Order order-1" })).toBeVisible();
+  await expect(page.getByText("Delivered").first()).toBeVisible();
+  await expect(page.getByText("delivered").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "View proof photo" })).toHaveAttribute(
+    "href",
+    /media\.invalid/,
+  );
+  await expect(page.getByRole("link", { name: "Need help?" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("web manifest is available", async ({ request }) => {
   const response = await request.get("/manifest.webmanifest");
   expect(response.ok()).toBe(true);

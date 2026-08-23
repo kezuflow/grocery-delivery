@@ -72,7 +72,7 @@ offline, and success states where applicable.
 | VS-MKT-08 | Permission-scoped local admin catalog operations                        | complete |
 | VS-MKT-09 | Weekly procurement, shortages, packing, and dispatch operations         | complete |
 | VS-MKT-10 | Customer substitutions, cancellation/refund requests, and support       | complete |
-| VS-MKT-11 | Delivery-staff execution and customer tracking                          | planned  |
+| VS-MKT-11 | Delivery-staff execution and customer tracking                          | complete |
 | VS-MKT-12 | Account parity, reorder, favorites, saved items, and retention features | planned  |
 | VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | planned  |
 | VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
@@ -395,6 +395,42 @@ authentication and promotion remain deferred.
   creation; it adds no polling, fan-out, runtime dependency, or new observability boundary.
 - **Next resume point:** begin VS-MKT-11 delivery-staff execution and customer tracking only after this
   slice is committed, pushed, and the working tree is clean.
+
+## VS-MKT-11 Delivery Execution And Customer Tracking
+
+- **Status:** locally complete. Delivery staff can record the next server-approved stop event through
+  the existing offline-capable queue and Sync route; customer-owned order detail exposes the resulting
+  delivery timeline, signed proof-of-delivery link, and support entry point.
+- **Outcome and responsive UI:** assignment detail retains recipient/contact/address/map context,
+  next-event controls, failure-reason validation, proof-photo affordance, and explicit queued/sync
+  states. The customer order detail keeps a dense desktop receipt beside the timeline and a readable
+  single-column phone composition. The workflow was verified at phone and desktop sizes without
+  document overflow.
+- **Backend reuse:** existing deliveryman assignment/event contracts and D1 repositories enforce the
+  active deliveryman session, assignment ownership, valid event transitions, idempotent client event
+  replay, and server timestamps. Existing customer tracking/media contracts and repositories enforce
+  customer ownership and signed media URLs. No endpoint, migration, repository, or parallel model was
+  added.
+- **Persistence and offline behavior:** recording an event writes to the existing IndexedDB queue;
+  `/deliveryman/sync` flushes pending events when online and removes them only after API confirmation.
+  The local fixture now models stateful event replay and customer tracking/media responses so the
+  cross-role browser trace is deterministic. The server remains authoritative for assignment status,
+  event acceptance, and proof metadata.
+- **Mobbin references:** the previously image-inspected mobile
+  [Ongoing delivery](https://mobbin.com/flows/5e1230df-8b95-4cc1-a3e9-790553e3f78c) flow remains the
+  bounded reference for compact tracking hierarchy and status progression. `codex mcp login mobbin`
+  completed successfully on 2026-08-23, but later connector searches still returned `Auth required`;
+  no uninspected screens or invented reference details were used.
+- **Verification and impact:** focused Playwright passes 1/1 on phone and 1/1 on desktop for driver
+  event capture, Sync confirmation, customer delivered state, proof link, support entry, Axe, and
+  overflow. Existing API, contracts, domain, storage, and delivery queue tests retain authorization,
+  transition, replay, signed-media, and offline persistence coverage. Runtime impact is limited to the
+  existing event and tracking requests; no polling, dependency, or new observability boundary was
+  introduced.
+- **Known gap:** live ETA/location and courier identity are intentionally deferred because the current
+  Carbon tracking contract exposes event progression and proof media only. The customer can still
+  contact support and inspect the server-confirmed delivery window and event timeline.
+- **Next resume point:** begin VS-MKT-12 account parity, reorder, favorites, saved items, and retention.
 
 ### Local Browser Evidence
 

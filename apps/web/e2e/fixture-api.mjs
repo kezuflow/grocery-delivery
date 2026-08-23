@@ -279,6 +279,20 @@ const assignment = {
     instructions: address.instructions,
   },
 };
+const trackingEvents = [
+  {
+    id: "tracking-event-1",
+    clientEventId: "client-event-1",
+    assignmentId: assignment.id,
+    orderId: assignment.orderId,
+    deliverymanUserId: assignment.deliverymanUserId,
+    type: "arrived",
+    occurredAt: timestamp,
+    receivedAt: timestamp,
+    note: null,
+    failureReason: null,
+  },
+];
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://127.0.0.1:8790");
@@ -499,8 +513,37 @@ function routeResponse(method, url, role, scenario, body) {
   if (url.pathname === "/api/v1/orders" && method === "GET")
     return requireRole(role, "customer", () => {
       if (orderScenarios.size === 0) orderScenarios.set("default", fixtureOrder());
-      return ok({ orders: [...orderScenarios.values()] });
+      return ok({ orders: [...orderScenarios.values(), fixtureCustomerOrder()] });
     });
+  if (url.pathname === "/api/v1/orders/order-1/tracking" && method === "GET")
+    return requireRole(role, "customer", () =>
+      ok({
+        orderId: "order-1",
+        assignmentId: assignment.id,
+        windowId: assignment.windowId,
+        status: assignment.status,
+        latestEventType: trackingEvents.at(-1)?.type ?? null,
+        events: trackingEvents,
+      }),
+    );
+  if (url.pathname === "/api/v1/orders/order-1/media" && method === "GET")
+    return requireRole(role, "customer", () =>
+      ok({
+        media: [
+          {
+            id: "media-1",
+            orderId: "order-1",
+            assignmentId: assignment.id,
+            kind: "proof_of_delivery",
+            contentType: "image/jpeg",
+            sizeBytes: 128_000,
+            createdAt: timestamp,
+            downloadUrl: "https://media.invalid/download/orders%2Forder-1%2Fproof.jpg",
+            downloadUrlExpiresAt: "2026-08-22T01:15:00.000Z",
+          },
+        ],
+      }),
+    );
   if (url.pathname === "/api/v1/payments/charge" && method === "POST")
     return requireRole(role, "customer", () => {
       const order = [...orderScenarios.values()].find((candidate) => candidate.id === body.orderId);
@@ -778,26 +821,13 @@ function routeResponse(method, url, role, scenario, body) {
       ok({ cycleId: "cycle-2026-34", assignments: [assignment] }),
     );
   if (url.pathname === "/api/v1/deliveryman/assignments/assignment-1/events")
-    return requireRole(role, "deliveryman", () =>
-      ok([
-        {
-          id: "event-1",
-          clientEventId: "client-event-1",
-          assignmentId: assignment.id,
-          orderId: assignment.orderId,
-          deliverymanUserId: "user-deliveryman",
-          type: "arrived",
-          occurredAt: timestamp,
-          receivedAt: timestamp,
-          note: null,
-          failureReason: null,
-        },
-      ]),
-    );
+    return requireRole(role, "deliveryman", () => ok(trackingEvents));
   if (url.pathname === "/api/v1/deliveryman/events" && method === "POST")
-    return requireRole(role, "deliveryman", () =>
-      ok({
-        id: "event-recorded",
+    return requireRole(role, "deliveryman", () => {
+      const existing = trackingEvents.find((event) => event.clientEventId === body.clientEventId);
+      if (existing) return ok(existing);
+      const event = {
+        id: `event-${trackingEvents.length + 1}`,
         clientEventId: body.clientEventId,
         assignmentId: body.assignmentId,
         orderId: body.orderId,
@@ -807,8 +837,17 @@ function routeResponse(method, url, role, scenario, body) {
         receivedAt: timestamp,
         note: body.note ?? null,
         failureReason: body.failureReason ?? null,
-      }),
-    );
+      };
+      trackingEvents.push(event);
+      assignment.lastEventType = event.type;
+      assignment.status =
+        event.type === "delivered"
+          ? "delivered"
+          : event.type === "failed"
+            ? "failed"
+            : "out_for_delivery";
+      return ok(event);
+    });
   return error(404, "NOT_FOUND", "fixture route not found");
 }
 
@@ -890,6 +929,9 @@ function fixtureOrder() {
     status: "locked",
     lockedAt: timestamp,
   };
+}
+function fixtureCustomerOrder() {
+  return { ...fixtureOrder(), id: "order-1" };
 }
 function ok(data) {
   return { status: 200, body: { data, meta } };
