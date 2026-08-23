@@ -165,7 +165,7 @@ export function MarketplaceShell({
         </div>
       </header>
       <div className="grid w-full lg:grid-cols-[232px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-base-line bg-white lg:block">
+        <aside className="hidden bg-white lg:block">
           <div className="sticky top-16 px-3 py-6">
             <nav aria-label="Store categories" className="grid gap-0.5 text-[13px]">
               <CategoryLink active href="/shop" icon={<Home size={17} />} label="Home" />
@@ -271,7 +271,7 @@ function CategoryLink({
 }>) {
   return (
     <a
-      className={`flex min-h-10 items-center gap-3 rounded-md px-3 py-2.5 font-semibold ${active ? "bg-base-line font-bold" : "text-base-muted hover:bg-base-surface"}`}
+      className={`flex min-h-10 items-center gap-3 rounded-md border-0 px-3 py-2.5 font-semibold ${active ? "bg-base-line font-bold" : "text-base-muted hover:bg-base-surface"}`}
       href={href}
       title={label}
     >
