@@ -334,6 +334,9 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
 
 ### Completed Public Landing Page Editorial Refresh
 
+> Superseded by the later user-directed root-route simplification recorded below. The historical
+> design evidence remains here for traceability; `/` now intentionally renders only `Hello world`.
+
 - **Status:** locally complete as a user-requested public landing-page visual, content, and
   conversion refinement. No staging or production promotion was requested.
 - **Outcome and affected role:** public visitors now enter through the compact `freshmarkets`
@@ -366,6 +369,15 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
   caches from being interpreted as utility candidates.
 - **Resume point:** the public landing-page slice is locally complete. Resume only for a new
   user-directed iteration or an explicitly requested staging/production promotion phase.
+
+### Root Route Simplification
+
+- **Status:** locally complete.
+- **Outcome:** `/` no longer loads or renders the storefront landing composition. It now serves a
+  semantic `Hello world` heading; `/shop` remains the public marketplace route.
+- **Verification:** web lint, typecheck, unit tests (77/77), production build, and the landing-page
+  Playwright check pass across phone, tablet, and desktop with no serious or critical Axe findings
+  and no horizontal overflow.
 
 ### Completed Admin Console UI Refinement
 
@@ -926,8 +938,9 @@ authentication and promotion remain deferred.
 
 ### Local Browser Evidence
 
-- `GET http://localhost:3000/` renders without a session lookup or sign-in controls; its primary
-  navigation and all plan/trial actions lead to `/shop` with `Go to app`.
+- `GET http://localhost:3000/` renders the minimal public `Hello world` page without a session
+  lookup or storefront content. The root landing-page Playwright check passes on phone, tablet,
+  and desktop; `/shop` remains the public marketplace route.
 - `GET http://localhost:3000/shop` returns `200` for a guest and renders the populated local catalog
   (22 products, categories, and server-owned PHP prices).
 - A guest can search, filter, sort, and browse the catalog. The cart remains read-only and clearly
