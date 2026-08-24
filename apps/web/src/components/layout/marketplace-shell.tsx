@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft,
   Bookmark,
   ChevronRight,
   ClipboardList,
@@ -80,7 +79,10 @@ export function MarketplaceShell({
     <main className="marketplace-shell min-h-screen bg-white pb-20 text-market-ink lg:pb-0">
       <OnlineStatus />
       <header className="sticky top-0 z-40 bg-white">
-        <div className="hidden min-h-16 items-center gap-4 px-5 lg:flex xl:px-8">
+        <div
+          className="hidden min-h-16 items-center gap-4 px-5 lg:flex xl:px-8"
+          data-testid="desktop-marketplace-header"
+        >
           <button
             aria-expanded={accountOpen}
             aria-haspopup="dialog"
@@ -136,27 +138,37 @@ export function MarketplaceShell({
             {cartCount ? <CartBadge count={cartCount} /> : null}
           </button>
         </div>
-        <div className="bg-[#087443] px-4 pb-3 pt-2.5 lg:hidden">
-          <div className="mx-auto grid max-w-md gap-2 text-white">
+        <div
+          className="border-b border-base-line bg-white px-4 pb-3 pt-2.5 lg:hidden"
+          data-testid="responsive-marketplace-header"
+        >
+          <div className="grid w-full gap-2 text-market-ink">
             <div className="flex items-center justify-between gap-3">
-              <FulfillmentControl inverse={true} />
+              <FulfillmentControl />
               <DeliveryAddressControl addressLabel={addressLabel} />
             </div>
             <div className="flex items-center gap-2">
-              <a
-                aria-label="Back to stores"
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-black/20"
-                href="/shop"
+              <button
+                aria-expanded={accountOpen}
+                aria-haspopup="dialog"
+                aria-label="Open account menu"
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-base-surface hover:bg-base-line"
+                onClick={() => {
+                  setCartOpen(false);
+                  setAccountOpen(true);
+                }}
+                title="Open account menu"
+                type="button"
               >
-                <ArrowLeft size={18} />
-              </a>
+                <Library size={18} />
+              </button>
               <form action="/shop" className="relative min-w-0 flex-1" role="search">
                 <label className="sr-only" htmlFor="mobile-market-search">
                   Search the store
                 </label>
                 <Search className="absolute left-3.5 top-3 text-base-muted" size={16} />
                 <input
-                  className="h-10 w-full rounded-full border-0 bg-white pl-10 pr-3 text-sm text-base-ink outline-none placeholder:text-base-muted"
+                  className="h-10 w-full rounded-full border-0 bg-base-surface pl-10 pr-3 text-sm text-base-ink outline-none ring-1 ring-transparent placeholder:text-base-muted focus:bg-white focus:ring-market-green"
                   defaultValue={search}
                   id="mobile-market-search"
                   name="search"
@@ -168,7 +180,7 @@ export function MarketplaceShell({
                 aria-expanded={cartOpen}
                 aria-haspopup="dialog"
                 aria-label={cartCount ? `Your cart, ${cartCount} items` : "Your cart"}
-                className="relative grid size-9 shrink-0 place-items-center rounded-full bg-black/20"
+                className="relative grid size-9 shrink-0 place-items-center rounded-full bg-base-surface hover:bg-base-line"
                 onClick={() => {
                   setAccountOpen(false);
                   setCartOpen(true);
@@ -232,11 +244,11 @@ export function MarketplaceShell({
   );
 }
 
-function FulfillmentControl({ inverse = false }: Readonly<{ inverse?: boolean }>) {
+function FulfillmentControl() {
   return (
     <div
       aria-label="Fulfillment mode"
-      className={`flex shrink-0 items-center gap-1 rounded-full p-1 text-[11px] font-bold ${inverse ? "bg-black/15" : "bg-base-surface"}`}
+      className="flex shrink-0 items-center gap-1 rounded-full bg-base-surface p-1 text-[11px] font-bold"
       role="group"
     >
       <button
@@ -247,7 +259,7 @@ function FulfillmentControl({ inverse = false }: Readonly<{ inverse?: boolean }>
         <Truck size={13} /> Delivery
       </button>
       <button
-        className={`rounded-full px-3 py-1.5 ${inverse ? "text-white/60" : "text-base-muted"}`}
+        className="rounded-full px-3 py-1.5 text-base-muted"
         disabled={true}
         title="Pickup is not available for weekly orders"
         type="button"
