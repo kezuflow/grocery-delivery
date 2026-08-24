@@ -57,6 +57,20 @@ Every customer UI slice needs local desktop and phone comparison, interaction co
 Playwright assertions, accessibility checks, and stable loading, empty, error, forbidden, pending,
 offline, and success states where applicable.
 
+## Completed Design-System Context Documentation
+
+- **Status:** locally complete as an Impeccable scan-mode documentation slice.
+- **Outcome:** root `DESIGN.md` now records the incumbent Freshmarkets visual system using the
+  portable DESIGN.md token schema and the user-confirmed "Modern Public Market" direction. The
+  `.impeccable/design.json` sidecar carries tonal ramps, depth, motion, breakpoints, and representative
+  component previews for Impeccable tooling.
+- **Scope:** documentation only. No runtime UI, API, commerce behavior, authorization, persistence,
+  bundle, request, latency, or observability behavior changed.
+- **Verification:** Impeccable context resolution finds both `PRODUCT.md` and `DESIGN.md`; the sidecar
+  parses as valid JSON; Prettier passes; repository `pnpm check` passes all 55 Turbo tasks.
+- **Next resume point:** use the documented system as authority for a scoped Impeccable critique,
+  extraction, refinement, or live-mode setup rather than beginning an unbounded visual rewrite.
+
 ## Admin Dashboard Recovery Program
 
 **Status:** active. This program supersedes the prior direction that treated the launch

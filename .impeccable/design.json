@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-24T13:03:02.631Z",
+  "title": "Design System: Freshmarkets",
+  "extensions": {
+    "colorMeta": {
+      "deep-market-green": {
+        "role": "primary",
+        "displayName": "Deep Market Green",
+        "canonical": "#244d3e",
+        "tonalRamp": [
+          "#0d1d17",
+          "#123126",
+          "#173f32",
+          "#1f5945",
+          "#2b7259",
+          "#4c8a70",
+          "#8ab6a0",
+          "#dcebe2"
+        ]
+      },
+      "ink-green": {
+        "role": "neutral",
+        "displayName": "Ink Green",
+        "canonical": "#17332b",
+        "tonalRamp": [
+          "#08110e",
+          "#10231d",
+          "#17332b",
+          "#315248",
+          "#526f66",
+          "#7f978f",
+          "#b8c9c2",
+          "#e6eee9"
+        ]
+      },
+      "muted-sage": {
+        "role": "neutral",
+        "displayName": "Muted Sage",
+        "canonical": "#63756e",
+        "tonalRamp": [
+          "#18221f",
+          "#30403a",
+          "#4b5e56",
+          "#63756e",
+          "#82938c",
+          "#a6b4ae",
+          "#cad4d0",
+          "#edf1ef"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Market Paper",
+        "canonical": "#f6f7f2",
+        "tonalRamp": [
+          "#242623",
+          "#4b4d48",
+          "#72746e",
+          "#999b94",
+          "#babcb5",
+          "#d2d4cd",
+          "#e5e7e0",
+          "#f6f7f2"
+        ]
+      },
+      "soft-sage": {
+        "role": "neutral",
+        "displayName": "Soft Sage",
+        "canonical": "#edf2e8",
+        "tonalRamp": [
+          "#202720",
+          "#425142",
+          "#647565",
+          "#879987",
+          "#a8b9a7",
+          "#c2d0c0",
+          "#dce6d9",
+          "#edf2e8"
+        ]
+      },
+      "lime-accent": {
+        "role": "primary",
+        "displayName": "Lime Market Accent",
+        "canonical": "#c6e46b",
+        "tonalRamp": [
+          "#26300e",
+          "#4a5a18",
+          "#6d8525",
+          "#91ad3d",
+          "#aecb58",
+          "#c6e46b",
+          "#dceda0",
+          "#f3f9da"
+        ]
+      },
+      "coral": {
+        "role": "secondary",
+        "displayName": "Market Coral",
+        "canonical": "#9f3f27",
+        "tonalRamp": [
+          "#2a1009",
+          "#4e1c12",
+          "#722a1a",
+          "#963a25",
+          "#b35a43",
+          "#c77c68",
+          "#dfaba0",
+          "#f4ded9"
+        ]
+      },
+      "sun": {
+        "role": "secondary",
+        "displayName": "Market Sun",
+        "canonical": "#f0c75e",
+        "tonalRamp": [
+          "#302405",
+          "#60490b",
+          "#907113",
+          "#bd991e",
+          "#d8b33a",
+          "#f0c75e",
+          "#f6db91",
+          "#fcf1d2"
+        ]
+      },
+      "action-black": {
+        "role": "primary",
+        "displayName": "Action Black",
+        "canonical": "#000000",
+        "tonalRamp": [
+          "#000000",
+          "#111111",
+          "#222222",
+          "#333333",
+          "#555555",
+          "#777777",
+          "#aaaaaa",
+          "#eeeeee"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Outfit Display",
+        "purpose": "Public hero and major campaign headlines."
+      },
+      "body": {
+        "displayName": "Outfit Text",
+        "purpose": "Commerce copy, form labels, navigation, and operational content."
+      }
+    },
+    "shadows": [
+      {
+        "name": "dialog-elevation",
+        "value": "0 20px 40px rgba(0,0,0,0.18)",
+        "purpose": "Modal and sheet separation."
+      },
+      {
+        "name": "floating-action",
+        "value": "0 12px 28px rgba(0,0,0,0.14)",
+        "purpose": "Sticky checkout and cart actions."
+      },
+      {
+        "name": "marketplace-lift",
+        "value": "0 2px 12px rgba(17,24,39,0.04)",
+        "purpose": "Subtle product and cart affordance lift."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "160ms ease",
+        "purpose": "Color and focus transitions."
+      },
+      {
+        "name": "image-hover",
+        "value": "300ms ease",
+        "purpose": "Small product and campaign image scale changes."
+      }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "760px" },
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "High-confidence action used for checkout, submit, and primary navigation commands.",
+      "html": "<button class=\"ds-btn-primary\">Continue</button>",
+      "css": ".ds-btn-primary { background: var(--color-base-action-value); color: #fff; min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; font-family: var(--font-outfit); font-size: 14px; font-weight: 700; transition: background 160ms ease, outline-color 160ms ease; } .ds-btn-primary:hover { background: var(--color-base-action-hover-value); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-deep-value); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined alternative action that preserves the green market identity.",
+      "html": "<button class=\"ds-btn-secondary\">Manage</button>",
+      "css": ".ds-btn-secondary { background: transparent; color: var(--color-deep-value); min-height: 44px; padding: 0 16px; border: 1px solid var(--color-deep-value); border-radius: 999px; font-family: var(--font-outfit); font-size: 14px; font-weight: 700; transition: background 160ms ease; } .ds-btn-secondary:hover { background: color-mix(in srgb, var(--color-accent-value) 30%, transparent); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-deep-value); outline-offset: 2px; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Compact white form control with explicit focus and disabled states.",
+      "html": "<input class=\"ds-field\" aria-label=\"Search\" placeholder=\"Search\" />",
+      "css": ".ds-field { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-line-value); border-radius: 4px; background: #fff; color: var(--color-ink-value); font-family: var(--font-outfit); font-size: 14px; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease; } .ds-field:focus-visible { border-color: var(--color-deep-value); box-shadow: 0 0 0 2px var(--color-accent-value); } .ds-field:disabled { background: rgba(0,0,0,0.05); opacity: .6; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat bordered surface for grouped information and operational content.",
+      "html": "<section class=\"ds-card\"><strong>Weekly delivery</strong><p>Saturday morning window</p></section>",
+      "css": ".ds-card { padding: 20px; border: 1px solid var(--color-line-value); border-radius: 6px; background: #fff; color: var(--color-ink-value); font-family: var(--font-outfit); } .ds-card p { margin: 6px 0 0; color: var(--color-muted-value); font-size: 14px; line-height: 1.6; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Compact semantic status indicator for orders, delivery, and operational state.",
+      "html": "<span class=\"ds-status\">Ready</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: var(--color-accent-value); color: var(--color-deep-value); font-family: var(--font-outfit); font-size: 12px; font-weight: 700; }"
+    },
+    {
+      "name": "Section Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Quiet navigation item with stronger active text and tonal hover treatment.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link ds-nav-link-active\" href=\"#\">Marketplace</a><a class=\"ds-nav-link\" href=\"#\">Orders</a></nav>",
+      "css": ".ds-nav { display: grid; gap: 4px; font-family: var(--font-outfit); } .ds-nav-link { display: block; padding: 10px 12px; border-radius: 4px; color: var(--color-muted-value); font-size: 14px; font-weight: 700; text-decoration: none; } .ds-nav-link:hover, .ds-nav-link-active { background: rgba(255,255,255,.8); color: var(--color-ink-value); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Modern Public Market",
+    "overview": "Freshmarkets should feel like a well-run public market brought into a premium digital service: local, fresh, direct, and easy to trust. The interface uses Carbon's market-green identity with clear neutral surfaces, purposeful produce imagery, and strong but practical typography. Value is communicated through clarity and confidence, not discount-store decoration.\n\nThe system is soft and layered. Customer surfaces can breathe and use imagery for discovery; admin and delivery surfaces stay denser so operators can scan queues and complete tasks. The same visual family must still be recognizable across both modes through shared tokens, controls, focus treatment, and status language.",
+    "keyCharacteristics": [
+      "Modern public-market character with local, trustworthy warmth.",
+      "Premium convenience without ornamental complexity.",
+      "Soft tonal layering with restrained borders and stateful depth.",
+      "Strong Outfit typography and concise uppercase metadata.",
+      "Customer discovery balanced with operational clarity."
+    ],
+    "rules": [
+      {
+        "name": "The Rarity of Accent Rule",
+        "body": "Lime, coral, and sun should signal meaning. They should not become a full-screen decorative wash when a neutral surface communicates the task more clearly.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Type Voice Rule",
+        "body": "Keep Outfit as the shared family. Create hierarchy through size, weight, line height, and spacing rather than introducing a second display face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Layered Surface Rule",
+        "body": "Use a surface color change or a quiet border before adding a shadow; depth should explain hierarchy, not decorate every container.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use semantic token names and shared UI primitives before adding route-level styles.",
+      "Do make market value visible through clear prices, units, availability, and delivery context.",
+      "Do preserve the difference between customer discovery density and operator task density.",
+      "Do use soft tonal layering and restrained shadows for hierarchy."
+    ],
+    "donts": [
+      "Don't introduce a second brand voice or token family without an explicit product decision.",
+      "Don't turn every section into a rounded floating card or nest cards inside cards.",
+      "Don't use decorative gradients, generic AI dashboard motifs, or unsupported savings claims.",
+      "Don't make operational screens as spacious or promotional as the storefront."
+    ]
+  }
+}
