@@ -1,0 +1,219 @@
+.hero {
+  min-height: 100dvh;
+  background: #050605;
+  color: #f7faee;
+}
+
+.heroFrame {
+  --reveal-x: 50%;
+  --reveal-y: 50%;
+  isolation: isolate;
+  min-height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+.heroImage {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  object-position: center;
+  position: absolute;
+  width: 100%;
+}
+
+.heroHoverImage {
+  clip-path: circle(0 at var(--reveal-x) var(--reveal-y));
+  transition: clip-path 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: clip-path;
+}
+
+.heroFrame:hover .heroHoverImage {
+  clip-path: circle(21vmax at var(--reveal-x) var(--reveal-y));
+}
+
+.heroShade {
+  background:
+    linear-gradient(90deg, rgba(3, 8, 5, 0.8) 0%, rgba(3, 8, 5, 0.48) 34%, rgba(3, 8, 5, 0.02) 72%),
+    linear-gradient(0deg, rgba(3, 8, 5, 0.62), transparent 38%);
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.heroHeader,
+.heroContent,
+.heroHint {
+  position: absolute;
+  z-index: 2;
+}
+
+.heroHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  left: clamp(1.25rem, 4vw, 4rem);
+  right: clamp(1.25rem, 4vw, 4rem);
+  top: clamp(1.25rem, 4vw, 3rem);
+}
+
+.wordmark {
+  align-items: center;
+  color: #f7faee;
+  display: inline-flex;
+  font-size: 1.05rem;
+  font-weight: 700;
+  gap: 0.65rem;
+  letter-spacing: 0.01em;
+}
+
+.wordmarkMark {
+  align-items: center;
+  background: #c6e46b;
+  border-radius: 50%;
+  color: #102117;
+  display: inline-flex;
+  font-size: 0.8rem;
+  height: 1.8rem;
+  justify-content: center;
+  width: 1.8rem;
+}
+
+.headerLink {
+  border-bottom: 1px solid rgba(247, 250, 238, 0.52);
+  color: #f7faee;
+  font-size: 0.8rem;
+  padding-bottom: 0.35rem;
+}
+
+.headerLink span,
+.heroAction span {
+  display: inline-block;
+  margin-left: 0.5rem;
+  transition: transform 180ms ease;
+}
+
+.headerLink:hover span,
+.heroAction:hover span {
+  transform: translate(0.2rem, -0.2rem);
+}
+
+.heroContent {
+  bottom: clamp(5.5rem, 12vh, 8rem);
+  left: clamp(1.25rem, 9vw, 9rem);
+  max-width: 39rem;
+}
+
+.eyebrow {
+  color: #c6e46b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  margin: 0 0 1.25rem;
+  text-transform: uppercase;
+}
+
+.heroContent h1 {
+  color: #f7faee;
+  font-size: clamp(3.5rem, 8vw, 8.5rem);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+  margin: 0;
+  max-width: 9ch;
+}
+
+.heroCopy {
+  color: rgba(247, 250, 238, 0.8);
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  line-height: 1.45;
+  margin: 1.7rem 0 0;
+  max-width: 25rem;
+}
+
+.heroAction {
+  align-items: center;
+  background: #c6e46b;
+  color: #102117;
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  padding: 0.9rem 1.15rem;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.heroAction:hover {
+  background: #d7f18b;
+  transform: translateY(-2px);
+}
+
+.heroHint {
+  bottom: clamp(1.25rem, 3vw, 2.5rem);
+  color: rgba(247, 250, 238, 0.62);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  margin: 0;
+  right: clamp(1.25rem, 4vw, 4rem);
+  text-transform: uppercase;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .heroHoverImage {
+    clip-path: circle(19vmax at 78% 30%);
+  }
+
+  .heroHint {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .heroFrame {
+    min-height: 100svh;
+  }
+
+  .heroImage {
+    object-position: 62% center;
+  }
+
+  .heroShade {
+    background:
+      linear-gradient(0deg, rgba(3, 8, 5, 0.86) 0%, rgba(3, 8, 5, 0.34) 62%, rgba(3, 8, 5, 0.12) 100%),
+      linear-gradient(90deg, rgba(3, 8, 5, 0.45), transparent 75%);
+  }
+
+  .heroHeader {
+    align-items: flex-start;
+  }
+
+  .headerLink {
+    font-size: 0.72rem;
+  }
+
+  .heroContent {
+    bottom: 4.75rem;
+    left: 1.25rem;
+    right: 1.25rem;
+  }
+
+  .heroContent h1 {
+    font-size: clamp(3.25rem, 17vw, 5.8rem);
+    max-width: 8ch;
+  }
+
+  .heroCopy {
+    font-size: 1rem;
+    max-width: 19rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroHoverImage,
+  .headerLink span,
+  .heroAction span,
+  .heroAction {
+    transition: none;
+  }
+}

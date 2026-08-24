@@ -372,12 +372,23 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
 
 ### Root Route Simplification
 
+- **Status:** superseded by the hero reveal iteration below.
+- **Outcome:** `/` briefly served a minimal `Hello world` heading while the new hero assets were
+  prepared; `/shop` remains the public marketplace route.
+
+### Root Hero Reveal
+
 - **Status:** locally complete.
-- **Outcome:** `/` no longer loads or renders the storefront landing composition. It now serves a
-  semantic `Hello world` heading; `/shop` remains the public marketplace route.
-- **Verification:** web lint, typecheck, unit tests (77/77), production build, and the landing-page
-  Playwright check pass across phone, tablet, and desktop with no serious or critical Axe findings
-  and no horizontal overflow.
+- **Outcome:** `/` now uses the user-provided `real` and `real-hover` artwork as a full-viewport
+  hero. The base image is served as `real.webp`; pointer movement reveals the brighter
+  `real-hover.webp` through a soft circular clip. Touch devices receive a static reveal treatment,
+  and reduced-motion users avoid transition animation.
+- **Asset and runtime impact:** the two WebP assets are 225 KB and 264 KB, replacing 1.9 MB and
+  2.4 MB PNGs on the hero path. Motion is isolated to a client leaf and writes CSS custom
+  properties directly, so pointer movement does not re-render the React tree.
+- **Verification:** web lint, typecheck, production build, and the landing-page Playwright check
+  pass on phone, tablet, and desktop with no serious or critical Axe findings and no horizontal
+  overflow. The local desktop screenshot confirms image crop, contrast, and CTA legibility.
 
 ### Completed Admin Console UI Refinement
 
