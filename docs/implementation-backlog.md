@@ -378,7 +378,7 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
 
 ### Root Hero Reveal
 
-- **Status:** locally complete.
+- **Status:** superseded by the FreshMarkets conversion redesign below.
 - **Outcome:** `/` now uses the user-provided `real` and `real-hover` artwork as a full-viewport
   hero. The base image is served as `real.webp`; pointer movement reveals the brighter
   `real-hover.webp` through a soft circular clip. Touch devices receive a static reveal treatment,
@@ -389,6 +389,38 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
 - **Verification:** web lint, typecheck, production build, and the landing-page Playwright check
   pass on phone, tablet, and desktop with no serious or critical Axe findings and no horizontal
   overflow. The local desktop screenshot confirms image crop, contrast, and CTA legibility.
+
+### FreshMarkets Conversion Landing Redesign
+
+- **Status:** locally complete for local development. No staging or production promotion was
+  requested.
+- **Outcome and audience:** `/` now presents FreshMarkets as an easy-to-use, curated, premium
+  grocery-delivery service for middle- to high-income households, with an explicit better-value
+  alternative to supermarket shopping. The page leads with `Good food. Better value.`, puts the
+  market and delivery actions above the fold, and carries the same promise through curation,
+  packing, membership, and closing purchase sections.
+- **Design references:** Sweetgreen web sections inspected through Mobbin immediately before the
+  redesign included the
+  [homepage hero](https://mobbin.com/sites/sections/a7dbacd8-c85d-459f-b06f-635450c43365),
+  [mission section](https://mobbin.com/sites/sections/1e44b0a4-1609-4ecc-baf0-7296db75c194), and
+  [workplace composition](https://mobbin.com/sites/sections/2a896f78-782d-46a5-b553-c528c13699a6).
+  The FreshMarkets copy, branding, layout code, and project-owned imagery remain original.
+- **Behavior and boundaries:** existing `/shop`, `/account`, and subscription destinations remain
+  unchanged. No API contract, server-owned price, authorization, persistence, request, cache,
+  observability, or checkout behavior changed.
+- **Imagery:** the ImageGen skill was loaded, but the built-in generator was unavailable in this
+  session. The repository-approved fallback uses existing local produce, packing, shopper, and
+  delivery assets in new cinematic compositions. The image slots remain replaceable without
+  changing layout code.
+- **Verification:** web lint, typecheck, all 77 web unit tests, optimized production build, and the
+  focused landing Playwright suite pass. Phone, tablet, and desktop checks report no horizontal
+  overflow and no serious or critical Axe accessibility findings. Repository `pnpm check` reaches
+  formatting but remains blocked by pre-existing formatting warnings in unrelated `.agents`,
+  `.impeccable`, hero-reveal, and storefront files; all files changed for this redesign pass
+  Prettier independently.
+- **Resume point:** commit and push this slice after the unrelated working-tree changes are either
+  included intentionally or separated by the user. The local page is available at
+  `http://localhost:3000`.
 
 ### Completed Admin Console UI Refinement
 

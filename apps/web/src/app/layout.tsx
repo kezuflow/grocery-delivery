@@ -12,8 +12,8 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Carbon Food Delivery",
-    template: "%s | Carbon Food Delivery",
+    default: "FreshMarkets",
+    template: "%s | FreshMarkets",
   },
   description:
     "Shop a flexible weekly grocery market with server-confirmed prices and scheduled delivery.",
