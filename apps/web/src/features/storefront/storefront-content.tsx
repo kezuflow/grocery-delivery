@@ -19,23 +19,24 @@ export function StorefrontContent({
   session: SessionSummary | null;
 }>) {
   return (
-    <PublicShell
-      actions={
-        <LinkButton href="/shop" size="sm">
-          Shop this week
-          <ArrowRight aria-hidden="true" size={16} />
-        </LinkButton>
-      }
-      navigation={[
-        { href: "#market", label: "Weekly market" },
-        { href: "#how-it-works", label: "How it works" },
-        { href: "#plans", label: "Weekly plans" },
-      ]}
+    <section
+      aria-label="Freshmarkets landing page"
+      className="border-[6px] border-dashed border-sun bg-paper p-2 sm:p-3"
+      data-impeccable-target="landing-page"
+      id="landing-page"
     >
-      <section
-        aria-label="Freshmarkets landing page"
-        data-impeccable-target="landing-page"
-        id="landing-page"
+      <PublicShell
+        actions={
+          <LinkButton href="/shop" size="sm">
+            Shop this week
+            <ArrowRight aria-hidden="true" size={16} />
+          </LinkButton>
+        }
+        navigation={[
+          { href: "#market", label: "Weekly market" },
+          { href: "#how-it-works", label: "How it works" },
+          { href: "#plans", label: "Weekly plans" },
+        ]}
       >
         <StorefrontHero banner={storefront.banners[0]} session={session} />
         <StorefrontBenefits />
@@ -44,8 +45,8 @@ export function StorefrontContent({
         <StorefrontPlans storefront={storefront} />
         <StorefrontTrial session={session} />
         <StorefrontFooter />
-      </section>
-    </PublicShell>
+      </PublicShell>
+    </section>
   );
 }
 
