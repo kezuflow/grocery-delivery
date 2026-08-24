@@ -631,7 +631,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     badgeClassName: "bg-[#143f31] text-white",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
     imageClassName:
-      "-bottom-[5%] -right-[16%] w-[75%] sm:-right-[1%] sm:bottom-auto sm:top-[-5%] sm:w-[48%] lg:right-[2%] lg:w-[46%]",
+      "-bottom-[6%] right-[12%] w-[92%] sm:right-[10%] sm:w-[78%] lg:-bottom-[12%] lg:right-[16%] lg:w-[72%]",
   },
   {
     id: "build-your-box",
@@ -648,7 +648,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     badgeClassName: "bg-[#f4cf63] text-[#143f31]",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
     imageClassName:
-      "-bottom-[6%] -right-[20%] w-[82%] sm:-right-[4%] sm:bottom-auto sm:top-[-17%] sm:w-[58%] lg:right-[-1%] lg:w-[55%]",
+      "-bottom-[8%] right-[4%] w-[100%] sm:right-[6%] sm:w-[88%] lg:right-[3%] lg:w-[90%]",
   },
   {
     id: "market-fresh",
@@ -665,7 +665,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     badgeClassName: "bg-[#143f31] text-white",
     ctaClassName: "bg-white text-[#163d30]",
     imageClassName:
-      "-bottom-[6%] -right-[17%] w-[73%] sm:-right-[1%] sm:bottom-auto sm:top-[-5%] sm:w-[47%] lg:right-[2%] lg:w-[45%]",
+      "-bottom-[7%] right-[12%] w-[90%] sm:right-[10%] sm:w-[76%] lg:-bottom-[12%] lg:right-[14%] lg:w-[70%]",
   },
   {
     id: "weekend-delivery",
@@ -682,7 +682,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     badgeClassName: "bg-[#143f31] text-white",
     ctaClassName: "bg-white text-[#163d30]",
     imageClassName:
-      "-bottom-[7%] -right-[21%] w-[81%] sm:-right-[2%] sm:bottom-auto sm:top-[-6%] sm:w-[50%] lg:right-[1%] lg:w-[47%]",
+      "-bottom-[7%] right-[7%] w-[96%] sm:right-[7%] sm:w-[84%] lg:-bottom-[12%] lg:right-[10%] lg:w-[76%]",
   },
   {
     id: "free-month",
@@ -699,7 +699,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     badgeClassName: "bg-[#f4cf63] text-[#143f31]",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
     imageClassName:
-      "-bottom-[6%] -right-[17%] w-[76%] sm:-right-[2%] sm:bottom-auto sm:top-[-4%] sm:w-[50%] lg:right-[1%] lg:w-[47%]",
+      "-bottom-[7%] right-[8%] w-[94%] sm:right-[8%] sm:w-[82%] lg:-bottom-[12%] lg:right-[10%] lg:w-[78%]",
   },
 ] as const;
 
@@ -751,6 +751,9 @@ function MerchandisingRail({
 
   const activeCampaign =
     DEFAULT_FEATURED_CAMPAIGNS[activeCampaignIndex] ?? DEFAULT_FEATURED_CAMPAIGNS[0];
+  const secondaryCampaign =
+    DEFAULT_FEATURED_CAMPAIGNS[(activeCampaignIndex + 1) % DEFAULT_FEATURED_CAMPAIGNS.length] ??
+    DEFAULT_FEATURED_CAMPAIGNS[1];
 
   function showPreviousCampaign() {
     setActiveCampaignIndex((current) =>
@@ -769,60 +772,64 @@ function MerchandisingRail({
       className="mb-10 scroll-mt-24"
       id="featured-offers"
     >
-      <a
-        aria-label={`${activeCampaign.headline} ${activeCampaign.subheadline}: ${activeCampaign.ctaLabel}`}
-        className={`group relative isolate flex min-h-[320px] overflow-hidden rounded-[28px] px-6 py-7 shadow-[0_22px_60px_rgba(21,61,48,0.17)] sm:min-h-[330px] sm:items-center sm:px-10 sm:py-9 lg:px-14 ${activeCampaign.backgroundClassName}`}
-        href={activeCampaign.href}
-        key={activeCampaign.id}
-      >
-        <span
-          aria-hidden="true"
-          className="absolute -left-14 -top-20 size-52 rounded-full bg-white/20 blur-sm"
-        />
-        <span
-          aria-hidden="true"
-          className="absolute -bottom-28 left-[37%] size-72 rounded-full bg-white/15"
-        />
-        <span
-          aria-hidden="true"
-          className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-white/20 transition-transform duration-300 group-hover:rotate-12"
-        />
-        <span
-          aria-hidden="true"
-          className={`absolute inset-y-0 left-0 z-[15] w-[72%] bg-gradient-to-r to-transparent sm:hidden ${activeCampaign.mobileVeilClassName}`}
-        />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[activeCampaign, secondaryCampaign].map((campaign, index) => (
+          <a
+            aria-label={`${campaign.headline} ${campaign.subheadline}: ${campaign.ctaLabel}`}
+            className={`group relative isolate min-h-[320px] overflow-hidden rounded-[28px] px-6 py-7 shadow-[0_22px_60px_rgba(21,61,48,0.17)] sm:min-h-[340px] sm:items-center sm:px-10 sm:py-9 lg:min-h-[370px] lg:px-8 ${campaign.backgroundClassName} ${index === 0 ? "flex" : "hidden lg:flex"}`}
+            href={campaign.href}
+            key={campaign.id}
+          >
+            <span
+              aria-hidden="true"
+              className="absolute -left-14 -top-20 size-52 rounded-full bg-white/20 blur-sm"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-28 left-[37%] size-72 rounded-full bg-white/15"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-white/20 transition-transform duration-300 group-hover:rotate-12"
+            />
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-0 left-0 z-[15] w-[76%] bg-gradient-to-r to-transparent ${campaign.mobileVeilClassName}`}
+            />
 
-        <div className="relative z-20 flex w-[63%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[54%]">
-          <span
-            className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] sm:text-xs ${activeCampaign.badgeClassName}`}
-          >
-            {activeCampaign.eyebrow}
-          </span>
-          <h2
-            className={`!m-0 mt-4 flex flex-col font-black tracking-[-0.055em] ${activeCampaign.headlineClassName}`}
-          >
-            <span className="max-w-[9ch] text-[clamp(2.7rem,6.4vw,5.6rem)] leading-[0.82] text-inherit">
-              {activeCampaign.headline}
-            </span>
-            <span className="mt-3 max-w-[11ch] text-[clamp(1.45rem,3.2vw,2.55rem)] leading-[0.92] text-inherit">
-              {activeCampaign.subheadline}
-            </span>
-          </h2>
-          <span
-            className={`mt-6 inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-extrabold shadow-sm transition-transform group-hover:translate-x-1 sm:px-5 sm:text-sm ${activeCampaign.ctaClassName}`}
-          >
-            {activeCampaign.ctaLabel} <ChevronRight size={16} />
-          </span>
-        </div>
+            <div className="relative z-20 flex w-[67%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[59%] lg:w-[68%]">
+              <span
+                className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] sm:text-xs ${campaign.badgeClassName}`}
+              >
+                {campaign.eyebrow}
+              </span>
+              <h2
+                className={`!m-0 mt-4 flex flex-col font-black tracking-[-0.055em] ${campaign.headlineClassName}`}
+              >
+                <span className="max-w-[9ch] text-[clamp(2.7rem,6.4vw,5.6rem)] leading-[0.82] text-inherit lg:text-[clamp(2.7rem,3.6vw,3.65rem)]">
+                  {campaign.headline}
+                </span>
+                <span className="mt-3 max-w-[11ch] text-[clamp(1.45rem,3.2vw,2.55rem)] leading-[0.92] text-inherit lg:text-[clamp(1.35rem,1.9vw,1.8rem)]">
+                  {campaign.subheadline}
+                </span>
+              </h2>
+              <span
+                className={`mt-6 inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-extrabold shadow-sm transition-transform group-hover:translate-x-1 sm:px-5 sm:text-sm ${campaign.ctaClassName}`}
+              >
+                {campaign.ctaLabel} <ChevronRight size={16} />
+              </span>
+            </div>
 
-        <img
-          alt={activeCampaign.imageAlt}
-          className={`pointer-events-none absolute z-10 max-w-[620px] object-contain transition-transform duration-300 group-hover:scale-[1.025] ${activeCampaign.imageClassName}`}
-          height="1024"
-          src={activeCampaign.imageUrl}
-          width="1024"
-        />
-      </a>
+            <img
+              alt={campaign.imageAlt}
+              className={`pointer-events-none absolute z-10 max-w-[620px] object-contain transition-transform duration-300 group-hover:scale-[1.025] ${campaign.imageClassName}`}
+              height="1024"
+              src={campaign.imageUrl}
+              width="1024"
+            />
+          </a>
+        ))}
+      </div>
 
       <div
         className="mt-3 flex items-center justify-center gap-3"
@@ -837,20 +844,24 @@ function MerchandisingRail({
         >
           <ChevronLeft aria-hidden="true" size={17} />
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-0.5">
           {DEFAULT_FEATURED_CAMPAIGNS.map((campaign, index) => (
             <button
               aria-label={`Show featured offer ${index + 1}: ${campaign.headline}`}
               aria-pressed={index === activeCampaignIndex}
-              className={`h-2.5 rounded-full transition-all ${
-                index === activeCampaignIndex
-                  ? "w-8 bg-[#173f33]"
-                  : "w-2.5 bg-[#cbd9d2] hover:bg-[#9eb7aa]"
-              }`}
+              className="group/dot grid size-6 place-items-center rounded-full"
               key={campaign.id}
               onClick={() => setActiveCampaignIndex(index)}
               type="button"
-            />
+            >
+              <span
+                className={`h-2.5 rounded-full transition-all ${
+                  index === activeCampaignIndex
+                    ? "w-8 bg-[#173f33]"
+                    : "w-2.5 bg-[#cbd9d2] group-hover/dot:bg-[#9eb7aa]"
+                }`}
+              />
+            </button>
           ))}
         </div>
         <button

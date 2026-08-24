@@ -106,6 +106,9 @@ test("marketplace converges across phone and desktop layouts", async ({
     },
   ] as const;
   await expect(featuredOffers.getByRole("button", { name: /Show featured offer/ })).toHaveCount(5);
+  await expect(featuredOffers.getByRole("link")).toHaveCount(
+    testInfo.project.name === "desktop" ? 2 : 1,
+  );
   for (const campaign of campaigns) {
     await featuredOffers.getByRole("button", { name: campaign.button }).click();
     const activeOffer = featuredOffers.getByRole("link", { name: campaign.name });
