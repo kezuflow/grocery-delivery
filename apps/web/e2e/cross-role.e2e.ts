@@ -83,9 +83,12 @@ test("marketplace converges across phone and desktop layouts", async ({
     "src",
     "/marketplace/first-order-campaign.webp",
   );
-  await expect(page.getByText("Crave it? Get it.")).toBeVisible();
+  await expect(page.getByText("Crave it? Get it.")).toHaveCount(0);
+  await expect(page.getByPlaceholder("Search for vegetables, healthy food, or a dish")).toHaveCount(
+    0,
+  );
   await expect(
-    page.getByPlaceholder("Search for vegetables, healthy food, or a dish"),
+    page.locator('input[placeholder="Search freshmarkets"]:visible').first(),
   ).toBeVisible();
   if (testInfo.project.name === "phone") {
     await expect(page.getByRole("navigation", { name: "Customer navigation" })).toBeVisible();

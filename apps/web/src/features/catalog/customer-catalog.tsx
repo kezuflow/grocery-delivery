@@ -1,6 +1,5 @@
 "use client";
 
-import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
@@ -10,7 +9,7 @@ import type {
   CatalogSkuResponse,
   SubscriptionResponse,
 } from "@carbon/contracts";
-import { ArrowRight, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Button, EmptyState, ErrorState } from "../../components/ui";
 import { PublicAuthControls } from "../auth";
 import {
@@ -54,7 +53,6 @@ export function CustomerCatalog({
   subscription: SubscriptionResponse["data"] | null;
 }>) {
   const router = useRouter();
-  const [searchInput, setSearchInput] = useState(filters.search);
   const [activeFilters, setActiveFilters] = useState(filters);
   const [lines, setLines] = useState<CartDraftLine[]>(() => cartDraftFromResponse(cart));
   const [savedCart, setSavedCart] = useState(cart);
@@ -83,7 +81,6 @@ export function CustomerCatalog({
         Object.fromEntries(new URLSearchParams(window.location.search)),
       );
       setActiveFilters(restored);
-      setSearchInput(restored.search);
       setSort(restored.sort);
       setMinimumPrice(restored.minPriceCentavos ? String(restored.minPriceCentavos / 100) : "");
       setMaximumPrice(restored.maxPriceCentavos ? String(restored.maxPriceCentavos / 100) : "");
@@ -117,10 +114,6 @@ export function CustomerCatalog({
     setActiveFilters(normalized);
     setSort(normalized.sort);
     router.refresh();
-  }
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    updateUrl({ ...activeFilters, search: searchInput.trim() });
   }
   function applyPriceFilter() {
     const minimum = Number(minimumPrice);
@@ -240,39 +233,6 @@ export function CustomerCatalog({
           showTriggers={false}
         />
       ) : null}
-      <section aria-labelledby="freshmarkets-prompt" className="mb-8 max-w-2xl">
-        <h2
-          className="!m-0 text-[28px] font-extrabold leading-tight tracking-normal sm:text-[34px]"
-          id="freshmarkets-prompt"
-        >
-          Crave it? Get it.
-        </h2>
-        <form
-          className="mt-5 flex items-center gap-3 border-b-2 border-market-ink pb-2"
-          onSubmit={submitSearch}
-          role="search"
-        >
-          <Search className="shrink-0 text-market-muted" size={19} />
-          <label className="sr-only" htmlFor="freshmarkets-search">
-            Search freshmarkets
-          </label>
-          <input
-            className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-market-muted"
-            id="freshmarkets-search"
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search for vegetables, healthy food, or a dish"
-            value={searchInput}
-          />
-          <button
-            aria-label="Search freshmarkets"
-            className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-base-surface"
-            title="Search freshmarkets"
-            type="submit"
-          >
-            <ArrowRight size={18} />
-          </button>
-        </form>
-      </section>
       <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-base-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           {categoryShortcuts(catalog.categories).map((category) => (
@@ -373,7 +333,6 @@ export function CustomerCatalog({
             hasFilters ? (
               <Button
                 onClick={() => {
-                  setSearchInput("");
                   updateUrl({ search: "", category: "", sort: "popular" });
                 }}
                 size="sm"

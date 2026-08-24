@@ -699,6 +699,14 @@ authentication and promotion remain deferred.
   serious/critical checks and the asset/offer assertions, and `pnpm check` passes all 55 Turbo
   tasks. The change adds no request, persistence, latency, or observability boundary.
 
+- **Marketplace search simplification:** the duplicate in-content `Crave it? Get it.` heading and
+  secondary search form are removed from `/shop`, so category filters and the featured campaign now
+  follow the shared marketplace header directly. The responsive header search remains the single
+  server-backed search entry point. Focused marketplace Playwright passes 3/3 across phone, tablet,
+  and desktop with explicit removed-content and visible-header-search assertions, Axe checks, and
+  overflow checks; `pnpm check` passes all 55 Turbo tasks. No API, persistence, latency, or
+  observability boundary changed.
+
 - **Status:** locally complete. The local browser audit hardened storefront CTA contrast, corrected
   the protected-route expectation for the intentionally public `/shop` route, added deterministic
   guest responses for optional cart/subscription reads, and refreshed six responsive visual
