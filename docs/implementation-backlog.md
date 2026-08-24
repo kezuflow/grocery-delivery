@@ -712,6 +712,13 @@ authentication and promotion remain deferred.
   overflow checks; `pnpm check` passes all 55 Turbo tasks. No API, persistence, latency, or
   observability boundary changed.
 
+- **Produce catalog planning:** `docs/marketplace-produce-master-list.md` records the complete 142
+  vegetable/root-crop and 83 fruit entries from the current PSA OpenSTAT crop tables, plus the
+  requested Japanese cucumber retail variant. Aggregate products and named varieties such as
+  Banana, Cavendish, Lakatan, Latundan, and Saba remain separate candidates. The checklist is a
+  planning artifact for future server-owned catalog records and consistent product-image
+  generation; it does not publish new SKUs, change pricing, or add runtime requests.
+
 - **Status:** locally complete. The local browser audit hardened storefront CTA contrast, corrected
   the protected-route expectation for the intentionally public `/shop` route, added deterministic
   guest responses for optional cart/subscription reads, and refreshed six responsive visual
