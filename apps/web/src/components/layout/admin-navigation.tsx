@@ -30,7 +30,7 @@ export function AdminNavigation({ items }: Readonly<{ items: readonly Navigation
         if (!groupItems.length) return null;
         return (
           <div className="mb-5 last:mb-0" key={group}>
-            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a7a7a]">
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-admin-text-muted">
               {group}
             </p>
             <ul className="grid gap-0.5">
@@ -42,10 +42,10 @@ export function AdminNavigation({ items }: Readonly<{ items: readonly Navigation
                     <a
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex min-h-8 items-center gap-2 rounded-md px-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600",
+                        "flex min-h-9 items-center gap-2 rounded-md border border-transparent px-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-accent",
                         active
-                          ? "bg-[#ededed] text-[#171717]"
-                          : "text-[#5f5f5f] hover:bg-[#f1f1f1] hover:text-[#171717]",
+                          ? "border-admin-border bg-admin-surface-hover text-admin-text-primary shadow-[0_1px_0_rgb(29_36_33/4%)]"
+                          : "text-admin-text-secondary hover:bg-admin-surface-hover hover:text-admin-text-primary",
                       )}
                       href={item.href}
                     >

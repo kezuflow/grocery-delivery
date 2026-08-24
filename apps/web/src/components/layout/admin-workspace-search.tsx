@@ -27,7 +27,7 @@ export function AdminWorkspaceSearch({ items }: Readonly<{ items: readonly Navig
     <div className="relative hidden w-full max-w-[420px] md:block">
       <Search
         aria-hidden="true"
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#888]"
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted"
         size={14}
       />
       <label className="sr-only" htmlFor="admin-workspace-search">
@@ -35,7 +35,7 @@ export function AdminWorkspaceSearch({ items }: Readonly<{ items: readonly Navig
       </label>
       <input
         autoComplete="off"
-        className="h-8 w-full rounded-md border border-[#d6d6d6] bg-[#f8f8f8] pl-9 pr-14 text-xs text-[#222] outline-none transition focus:border-[#8d8d8d] focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
+        className="h-9 w-full rounded-md border border-admin-border bg-admin-surface-subtle pl-9 pr-14 text-xs text-admin-text-primary outline-none transition placeholder:text-admin-text-muted focus:border-admin-border-strong focus:bg-admin-surface focus:ring-2 focus:ring-admin-accent/15"
         id="admin-workspace-search"
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search workspaces"
@@ -43,15 +43,15 @@ export function AdminWorkspaceSearch({ items }: Readonly<{ items: readonly Navig
         type="search"
         value={query}
       />
-      <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-[#d6d6d6] bg-white px-1.5 py-0.5 text-[9px] text-[#777]">
+      <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-admin-border bg-admin-surface px-1.5 py-0.5 text-[9px] text-admin-text-muted">
         Ctrl K
       </kbd>
       {query.trim() ? (
-        <div className="absolute left-0 right-0 top-10 z-30 overflow-hidden rounded-md border border-[#d6d6d6] bg-white p-1 shadow-xl">
+        <div className="absolute left-0 right-0 top-11 z-30 overflow-hidden rounded-md border border-admin-border bg-admin-surface p-1 shadow-[0_12px_32px_rgb(25_35_29/16%)]">
           {results.length ? (
             results.map((item) => (
               <a
-                className="block rounded px-3 py-2 text-xs font-medium text-[#333] hover:bg-[#f1f1f1]"
+                className="block rounded px-3 py-2 text-xs font-medium text-admin-text-primary hover:bg-admin-surface-hover"
                 href={item.href}
                 key={item.href}
               >
@@ -59,7 +59,7 @@ export function AdminWorkspaceSearch({ items }: Readonly<{ items: readonly Navig
               </a>
             ))
           ) : (
-            <p className="px-3 py-2 text-xs text-[#777]">No workspaces found.</p>
+            <p className="px-3 py-2 text-xs text-admin-text-muted">No workspaces found.</p>
           )}
         </div>
       ) : null}

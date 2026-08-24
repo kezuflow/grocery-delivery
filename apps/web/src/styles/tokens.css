@@ -29,6 +29,21 @@
   --color-market-soft-value: #f6f6f6;
   --color-market-banner-value: #dcfce7;
 
+  /* Admin-only operational shell tokens. */
+  --color-admin-canvas-value: #f7f7f5;
+  --color-admin-surface-value: #ffffff;
+  --color-admin-surface-subtle-value: #f2f3f1;
+  --color-admin-surface-hover-value: #eceeeb;
+  --color-admin-text-primary-value: #1d2421;
+  --color-admin-text-secondary-value: #52605a;
+  --color-admin-text-muted-value: #737d78;
+  --color-admin-border-value: #dfe4df;
+  --color-admin-border-strong-value: #c6cec8;
+  --color-admin-accent-value: #527018;
+  --color-admin-accent-hover-value: #3f5912;
+  --color-admin-accent-soft-value: #edf3dc;
+  --color-admin-success-soft-value: #e8f5ed;
+
   /* Legacy aliases remain temporarily while route styles migrate to utilities. */
   --ink: var(--color-ink-value);
   --muted: var(--color-muted-value);

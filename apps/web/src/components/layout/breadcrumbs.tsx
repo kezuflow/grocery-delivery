@@ -1,9 +1,14 @@
+import { cn } from "../ui/cn";
+
 export type Breadcrumb = Readonly<{ href?: string; label: string }>;
 
-export function Breadcrumbs({ items }: Readonly<{ items: readonly Breadcrumb[] }>) {
+export function Breadcrumbs({
+  items,
+  className,
+}: Readonly<{ items: readonly Breadcrumb[]; className?: string }>) {
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-2 text-sm text-muted">
+      <ol className={cn("flex flex-wrap items-center gap-2 text-sm text-muted", className)}>
         {items.map((item, index) => (
           <li className="flex items-center gap-2" key={`${item.label}-${index}`}>
             {index > 0 ? <span aria-hidden="true">/</span> : null}

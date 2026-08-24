@@ -29,6 +29,19 @@
   --color-market-paper: var(--color-market-paper-value);
   --color-market-soft: var(--color-market-soft-value);
   --color-market-banner: var(--color-market-banner-value);
+  --color-admin-canvas: var(--color-admin-canvas-value);
+  --color-admin-surface: var(--color-admin-surface-value);
+  --color-admin-surface-subtle: var(--color-admin-surface-subtle-value);
+  --color-admin-surface-hover: var(--color-admin-surface-hover-value);
+  --color-admin-text-primary: var(--color-admin-text-primary-value);
+  --color-admin-text-secondary: var(--color-admin-text-secondary-value);
+  --color-admin-text-muted: var(--color-admin-text-muted-value);
+  --color-admin-border: var(--color-admin-border-value);
+  --color-admin-border-strong: var(--color-admin-border-strong-value);
+  --color-admin-accent: var(--color-admin-accent-value);
+  --color-admin-accent-hover: var(--color-admin-accent-hover-value);
+  --color-admin-accent-soft: var(--color-admin-accent-soft-value);
+  --color-admin-success-soft: var(--color-admin-success-soft-value);
 }
 
 * {

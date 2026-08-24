@@ -32,13 +32,13 @@ export function AppShell({
 
   if (session.role === "admin") {
     return (
-      <main className="min-h-screen bg-[#f7f7f7] text-[#1f1f1f]">
+      <main className="min-h-screen bg-admin-canvas text-admin-text-primary">
         <OnlineStatus />
         <div className="min-h-screen lg:grid lg:grid-cols-[48px_216px_minmax(0,1fr)]">
-          <aside className="hidden border-r border-[#dedede] bg-[#f2f2f2] lg:flex lg:flex-col lg:items-center">
+          <aside className="hidden border-r border-admin-border bg-admin-surface-subtle lg:flex lg:flex-col lg:items-center">
             <a
               aria-label="Carbon operations home"
-              className="grid size-12 place-items-center border-b border-[#dedede] text-emerald-700 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500"
+              className="grid size-12 place-items-center border-b border-admin-border text-admin-accent outline-none transition-colors hover:bg-admin-surface-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-admin-accent"
               href="/admin"
             >
               <Leaf aria-hidden="true" size={19} strokeWidth={2.2} />
@@ -49,7 +49,7 @@ export function AppShell({
             >
               <a
                 aria-label="Storefront"
-                className="grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#e5e5e5] hover:text-[#222]"
+                className="grid size-8 place-items-center rounded-md text-admin-text-muted transition-colors hover:bg-admin-surface-hover hover:text-admin-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-accent"
                 href="/"
                 title="Storefront"
               >
@@ -57,7 +57,7 @@ export function AppShell({
               </a>
               <a
                 aria-label="Operations guide"
-                className="grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#e5e5e5] hover:text-[#222]"
+                className="grid size-8 place-items-center rounded-md text-admin-text-muted transition-colors hover:bg-admin-surface-hover hover:text-admin-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-accent"
                 href="/admin/reporting"
                 title="Reporting"
               >
@@ -66,7 +66,7 @@ export function AppShell({
             </nav>
             <a
               aria-label="Support"
-              className="mb-3 grid size-8 place-items-center rounded-md text-[#777] hover:bg-[#e5e5e5] hover:text-[#222]"
+              className="mb-3 grid size-8 place-items-center rounded-md text-admin-text-muted transition-colors hover:bg-admin-surface-hover hover:text-admin-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-accent"
               href="/admin/support"
               title="Support"
             >
@@ -74,29 +74,36 @@ export function AppShell({
             </a>
           </aside>
 
-          <aside className="hidden min-h-screen border-r border-[#dedede] bg-[#fafafa] lg:block">
-            <div className="flex h-12 items-center border-b border-[#dedede] px-4">
-              <a className="flex min-w-0 items-center gap-2 text-xs font-semibold" href="/admin">
-                <span className="grid size-5 shrink-0 place-items-center rounded bg-emerald-600 text-[10px] font-bold text-white">
+          <aside className="hidden min-h-screen border-r border-admin-border bg-admin-surface lg:block">
+            <div className="flex h-12 items-center border-b border-admin-border px-4">
+              <a
+                className="flex min-w-0 items-center gap-2 text-xs font-semibold text-admin-text-primary"
+                href="/admin"
+              >
+                <span className="grid size-5 shrink-0 place-items-center rounded bg-admin-accent text-[10px] font-bold text-white">
                   C
                 </span>
                 <span className="truncate">Carbon operations</span>
-                <ChevronDown aria-hidden="true" className="ml-auto text-[#888]" size={13} />
+                <ChevronDown
+                  aria-hidden="true"
+                  className="ml-auto text-admin-text-muted"
+                  size={13}
+                />
               </a>
             </div>
             <AdminNavigation items={navigation} />
           </aside>
 
           <section className="min-w-0">
-            <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-[#dedede] bg-white/95 px-4 backdrop-blur sm:px-5">
+            <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-admin-border bg-admin-surface/95 px-4 backdrop-blur sm:px-5">
               <div className="lg:hidden">
                 <MobileNavigation items={navigation} />
               </div>
-              <div className="hidden shrink-0 items-center gap-1.5 text-xs text-[#777] sm:flex">
-                <span>Carbon</span>
+              <div className="hidden shrink-0 items-center gap-1.5 text-xs text-admin-text-muted sm:flex">
+                <span className="font-semibold text-admin-text-primary">Carbon</span>
                 <span aria-hidden="true">/</span>
-                <span className="font-medium text-[#222]">Operations</span>
-                <span className="ml-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                <span className="font-medium text-admin-text-secondary">Operations</span>
+                <span className="ml-1 rounded border border-admin-border bg-admin-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-admin-accent">
                   Local
                 </span>
               </div>
@@ -107,17 +114,17 @@ export function AppShell({
             </header>
 
             <div className="mx-auto max-w-[1380px] px-4 py-5 sm:px-6 sm:py-6 xl:px-8">
-              <Breadcrumbs items={breadcrumbs} />
-              <header className="mt-4 flex flex-col gap-3 border-b border-[#dedede] pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <Breadcrumbs items={breadcrumbs} className="text-admin-text-muted" />
+              <header className="mt-4 flex flex-col gap-3 border-b border-admin-border pb-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#777]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-admin-text-muted">
                     {eyebrow}
                   </p>
-                  <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-[#181818]">
+                  <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-admin-text-primary">
                     {title}
                   </h1>
                   {description ? (
-                    <p className="mt-1.5 max-w-3xl text-[13px] leading-5 text-[#6c6c6c]">
+                    <p className="mt-1.5 max-w-3xl text-[13px] leading-5 text-admin-text-secondary">
                       {description}
                     </p>
                   ) : null}

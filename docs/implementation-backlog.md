@@ -115,6 +115,24 @@ offline, and success states where applicable.
 - **Next resume point:** begin a separately scoped admin implementation slice by selecting the page
   archetype and components from the new authority; do not perform a broad frontend refactor.
 
+## Completed Admin Shell Design-System Slice
+
+- **Status:** locally complete for the authenticated admin shell only.
+- **Outcome:** applied the admin authority to the three-zone desktop shell, grouped navigation,
+  active navigation states, sticky utility header, workspace search, role badge, sign-out control,
+  breadcrumbs, and responsive mobile navigation. Added admin-scoped semantic tokens without
+  changing customer-facing global button behavior or page layouts.
+- **Affected role:** authenticated administrator/superadmin shell at `/admin` and its nested admin
+  routes; customer, delivery-staff, landing, and marketplace surfaces are out of scope.
+- **Verification:** web lint, typecheck, and 77 web tests pass. Local browser verification passes
+  at the default desktop viewport and 390x844: shell hierarchy, active Overview state, grouped
+  mobile navigation, keyboard-visible controls, and no document overflow. `pnpm check` remains
+  blocked at the same repository-wide Prettier gate by 18 pre-existing unrelated files under
+  `.agents/skills`, `.impeccable`, and existing landing/storefront work.
+- **Next resume point:** apply the documented admin tokens and component rules to one independently
+  reviewable admin page archetype, starting with the overview or catalog list; do not broaden this
+  into a cross-surface frontend refactor.
+
 ## Admin Dashboard Recovery Program
 
 **Status:** active. This program supersedes the prior direction that treated the launch
