@@ -7,6 +7,8 @@ import {
   catalogAdminStatusRequestSchema,
   catalogAdminStatusResponseSchema,
   catalogAdminCategoryResponseSchema,
+  catalogAdminCategoryItemsRequestSchema,
+  catalogAdminCategoryItemsResponseSchema,
   catalogAdminCategoryUpsertRequestSchema,
   catalogAdminListResponseSchema,
   catalogAdminSkuResponseSchema,
@@ -90,6 +92,7 @@ import {
   type CatalogItemResponse,
   type CatalogAdminStatusResponse,
   type CatalogAdminCategoryResponse,
+  type CatalogAdminCategoryItemsResponse,
   type CatalogAdminListResponse,
   type CatalogAdminSkuResponse,
   type CatalogAdminImageResponse,
@@ -248,6 +251,24 @@ export function createApiClient(baseTransport: ApiTransport) {
         payload,
         catalogAdminCategoryResponseSchema,
         id ? "PUT" : "POST",
+        { ...init, headers },
+      );
+    },
+    assignAdminCatalogCategoryItems(
+      categoryId: string,
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CatalogAdminCategoryItemsResponse> {
+      const payload = catalogAdminCategoryItemsRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        `/api/v1/admin/catalog/categories/${encodeURIComponent(categoryId)}/items`,
+        payload,
+        catalogAdminCategoryItemsResponseSchema,
+        "POST",
         { ...init, headers },
       );
     },

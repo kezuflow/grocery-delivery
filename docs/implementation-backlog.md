@@ -234,6 +234,31 @@ batch launch/import process with a complete-data preview and strong confirmation
   and metadata editing remain optional AD-03B follow-ups. The next planned admin recovery slice is
   AD-01 unless those library-management follow-ups are requested first.
 
+### AD-03C Category Product Workspace
+
+- **Outcome:** Category cards now open a focused workspace with the category status, product count,
+  search, responsive product rows, and separate edit action. Administrators can create a product
+  with the open category preselected or use a searchable multi-select dialog to attach existing
+  products while preserving their current categories. The category list count and workspace update
+  immediately after successful changes.
+- **API and persistence:** `POST /api/v1/admin/catalog/categories/:id/items` accepts 1-100 unique
+  server-validated product IDs, requires catalog permission and an idempotency key, rejects missing
+  categories or products, preserves the primary category, and caps each product at 20 categories.
+  D1 applies all new join-table links, one cache revision, one audit event, and the replay response in
+  one batch. The endpoint is additive and requires no migration or runtime dependency.
+- **Verification:** Contract and application tests cover input bounds, de-duplication, category
+  assignment, and replay. Focused API and Miniflare tests prove authorization-path composition,
+  replay status, returned category links, and D1 persistence. The catalog Playwright journey passes
+  on phone, tablet, and desktop, including category creation, workspace navigation, preselected new
+  product category, searchable existing-product assignment, immediate row visibility, and updated
+  counts. Live local browser inspection confirms the workspace actions and dialog semantics, the
+  selected category in the product sheet, and no horizontal overflow at 1329 px. Repository
+  `pnpm check` passes all 55 Turbo tasks.
+- **Scope boundary and resume point:** This is a local-only workflow slice; no staging migration,
+  deployment, or remote data change was performed. Removing a product from one category remains
+  available through product editing; a dedicated quick-remove action with a last-category guard is
+  a possible follow-up if operators need it.
+
 ### Slice Acceptance Baseline
 
 Every admin slice must include explicit loading, empty, unavailable, forbidden, validation,

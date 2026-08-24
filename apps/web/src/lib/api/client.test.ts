@@ -70,6 +70,49 @@ describe("web API client", () => {
     await expect(client.listPlans()).rejects.toThrow();
   });
 
+  it("assigns existing products to a category with an idempotency key", async () => {
+    const client = createApiClient(
+      transport(
+        {
+          data: {
+            categoryId: "specials",
+            items: [
+              {
+                id: "sku-apples",
+                categoryId: "produce",
+                categoryIds: ["produce", "specials"],
+                name: "Apples",
+                slug: "apples",
+                description: "Crisp apples",
+                unit: "kilogram",
+                imageUrl: null,
+                price: { centavos: 12_000, currency: "PHP" },
+                active: true,
+                procurementCostCentavos: 10_000,
+                markupBasisPoints: 2_000,
+                status: "active",
+              },
+            ],
+            replayed: false,
+          },
+          meta,
+        },
+        201,
+        (init) => {
+          expect(init?.method).toBe("POST");
+          expect(new Headers(init?.headers).get("idempotency-key")).toBe("assign-1");
+          expect(JSON.parse(init?.body as string)).toEqual({ itemIds: ["sku-apples"] });
+        },
+      ),
+    );
+
+    await expect(
+      client.assignAdminCatalogCategoryItems("specials", { itemIds: ["sku-apples"] }, "assign-1"),
+    ).resolves.toMatchObject({
+      data: { categoryId: "specials", replayed: false },
+    });
+  });
+
   it("validates the server-owned current-session response", async () => {
     const client = createApiClient(
       transport({

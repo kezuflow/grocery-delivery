@@ -50,6 +50,8 @@ import {
   catalogAdminStatusRequestSchema,
   catalogAdminStatusResponseSchema,
   catalogAdminCategoryResponseSchema,
+  catalogAdminCategoryItemsRequestSchema,
+  catalogAdminCategoryItemsResponseSchema,
   catalogAdminCategoryUpsertRequestSchema,
   catalogAdminListResponseSchema,
   catalogAdminSkuResponseSchema,
@@ -65,6 +67,7 @@ import {
   type CatalogListResponse,
   type CatalogItemResponse,
   type CatalogAdminCategoryResponse,
+  type CatalogAdminCategoryItemsResponse,
   type CatalogAdminListResponse,
   type CatalogAdminSkuResponse,
   type CatalogAdminImageResponse,
@@ -5758,6 +5761,74 @@ export function createApi(options: ApiOptions = {}): ApiApp {
 
   app.put("/api/v1/admin/catalog/categories/:id", async (context) => {
     return upsertAdminCategory(context, context.req.param("id"));
+  });
+
+  app.post("/api/v1/admin/catalog/categories/:id/items", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "catalog")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "catalog administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key");
+    if (!idempotencyKey) {
+      return context.json(
+        errorResponse(
+          "IDEMPOTENCY_KEY_REQUIRED",
+          "idempotency-key header is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = catalogAdminCategoryItemsRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_CATALOG_CATEGORY_ITEMS",
+          "select one or more existing catalog products",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const service = getCatalogAdminService(context.env ?? {});
+    if (!service) {
+      return context.json(
+        errorResponse(
+          "CATALOG_ADMIN_UNAVAILABLE",
+          "catalog administration is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    try {
+      const result = await service.assignCategoryItems(
+        {
+          actorUserId: session.userId,
+          correlationId: context.get("correlationId"),
+          idempotencyKey,
+          appliedAt: now().toISOString(),
+        },
+        { categoryId: context.req.param("id"), itemIds: input.data.itemIds },
+      );
+      const body: CatalogAdminCategoryItemsResponse = {
+        data: { ...result, items: [...result.items] },
+        meta: { correlationId: context.get("correlationId") },
+      };
+      catalogAdminCategoryItemsResponseSchema.parse(body);
+      return context.json(body, result.replayed ? 200 : 201);
+    } catch (error) {
+      return catalogAdminFailure(context, error);
+    }
   });
 
   app.post("/api/v1/admin/catalog/items", async (context) => {

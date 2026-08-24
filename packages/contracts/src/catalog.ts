@@ -156,6 +156,12 @@ export const catalogAdminSkuUpsertRequestSchema = z
   })
   .strict();
 
+export const catalogAdminCategoryItemsRequestSchema = z
+  .object({
+    itemIds: z.array(z.string().trim().min(1).max(128)).min(1).max(100).readonly(),
+  })
+  .strict();
+
 export const catalogAdminImageUploadRequestSchema = z
   .object({
     fileName: z.string().trim().min(1).max(255),
@@ -200,6 +206,15 @@ export const catalogAdminSkuResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const catalogAdminCategoryItemsResponseSchema = z.object({
+  data: z.object({
+    categoryId: z.string().min(1),
+    items: z.array(catalogAdminItemSchema),
+    replayed: z.boolean(),
+  }),
+  meta: responseMetaSchema,
+});
+
 export type CatalogCategoryResponse = z.infer<typeof catalogCategorySchema>;
 export type CatalogUnit = z.infer<typeof catalogUnitSchema>;
 export type CatalogSkuResponse = z.infer<typeof catalogSkuSchema>;
@@ -216,8 +231,14 @@ export type CatalogAdminCategoryUpsertRequest = z.infer<
   typeof catalogAdminCategoryUpsertRequestSchema
 >;
 export type CatalogAdminSkuUpsertRequest = z.infer<typeof catalogAdminSkuUpsertRequestSchema>;
+export type CatalogAdminCategoryItemsRequest = z.infer<
+  typeof catalogAdminCategoryItemsRequestSchema
+>;
 export type CatalogAdminCategoryResponse = z.infer<typeof catalogAdminCategoryResponseSchema>;
 export type CatalogAdminSkuResponse = z.infer<typeof catalogAdminSkuResponseSchema>;
+export type CatalogAdminCategoryItemsResponse = z.infer<
+  typeof catalogAdminCategoryItemsResponseSchema
+>;
 export type CatalogAdminImage = z.infer<typeof catalogAdminImageSchema>;
 export type CatalogAdminImageUploadRequest = z.infer<typeof catalogAdminImageUploadRequestSchema>;
 export type CatalogAdminImageUploadResponse = z.infer<typeof catalogAdminImageUploadResponseSchema>;

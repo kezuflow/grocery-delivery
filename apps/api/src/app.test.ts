@@ -7,6 +7,7 @@ import {
   catalogItemResponseSchema,
   catalogAdminStatusResponseSchema,
   catalogAdminCategoryResponseSchema,
+  catalogAdminCategoryItemsResponseSchema,
   catalogAdminListResponseSchema,
   catalogAdminSkuResponseSchema,
   catalogAdminImageUploadResponseSchema,
@@ -706,11 +707,53 @@ describe("API worker", () => {
     expect(productResponse.status).toBe(201);
     expect(product.data.item.price.centavos).toBe(12_500);
 
+    const specialsResponse = await adminApp.request("/api/v1/admin/catalog/categories", {
+      ...categoryRequest,
+      headers: { ...categoryRequest.headers, "idempotency-key": "category-command-2" },
+      body: JSON.stringify({ name: "Weekly Specials", active: true }),
+    });
+    const specials = catalogAdminCategoryResponseSchema.parse(await specialsResponse.json());
+    const assignmentRequest = {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "category-items-command-1",
+      },
+      body: JSON.stringify({ itemIds: [product.data.item.id] }),
+    } as const;
+    const assignmentResponse = await adminApp.request(
+      `/api/v1/admin/catalog/categories/${specials.data.category.id}/items`,
+      assignmentRequest,
+    );
+    const assignment = catalogAdminCategoryItemsResponseSchema.parse(
+      await assignmentResponse.json(),
+    );
+    const assignmentReplayResponse = await adminApp.request(
+      `/api/v1/admin/catalog/categories/${specials.data.category.id}/items`,
+      assignmentRequest,
+    );
+    const assignmentReplay = catalogAdminCategoryItemsResponseSchema.parse(
+      await assignmentReplayResponse.json(),
+    );
+
+    expect(assignmentResponse.status).toBe(201);
+    expect(assignment.data.items[0]?.categoryIds).toEqual([
+      category.data.category.id,
+      specials.data.category.id,
+    ]);
+    expect(assignmentReplay.data.replayed).toBe(true);
+
     const listResponse = await adminApp.request("/api/v1/admin/catalog");
     const list = catalogAdminListResponseSchema.parse(await listResponse.json());
     expect(list.data).toMatchObject({
-      categories: [{ name: "Fresh Produce" }],
-      items: [{ name: "Roma Tomatoes", status: "active" }],
+      categories: [{ name: "Fresh Produce" }, { name: "Weekly Specials" }],
+      items: [
+        {
+          name: "Roma Tomatoes",
+          status: "active",
+          categoryIds: [category.data.category.id, specials.data.category.id],
+        },
+      ],
     });
   });
 
@@ -741,6 +784,18 @@ describe("API worker", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
+
+    const assignmentResponse = await adminApp.request(
+      "/api/v1/admin/catalog/categories/category-1/items",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ itemIds: ["sku-1"] }),
+      },
+    );
+    const assignmentBody = apiErrorResponseSchema.parse(await assignmentResponse.json());
+    expect(assignmentResponse.status).toBe(400);
+    expect(assignmentBody.error.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
   });
 
   it("creates reusable catalog image upload metadata", async () => {
@@ -817,6 +872,18 @@ describe("API worker", () => {
             "idempotency-key": "pricing-category-command",
           },
           body: JSON.stringify({ name: "Restricted category", active: true }),
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await pricingApp.request("/api/v1/admin/catalog/categories/category-1/items", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": "pricing-category-items-command",
+          },
+          body: JSON.stringify({ itemIds: ["sku-1"] }),
         })
       ).status,
     ).toBe(403);

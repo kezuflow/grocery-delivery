@@ -41,6 +41,11 @@ export type CatalogAdminSnapshot = Readonly<{
 
 export type CatalogAdminCommandResult =
   | Readonly<{ kind: "category"; category: CatalogCategory }>
+  | Readonly<{
+      kind: "categoryItems";
+      categoryId: string;
+      items: readonly CatalogAdminItem[];
+    }>
   | Readonly<{ kind: "sku"; item: CatalogAdminItem }>
   | Readonly<{ kind: "image"; image: CatalogAdminImage }>;
 
@@ -60,6 +65,7 @@ export interface CatalogAdminCommandRepository {
   findSkuBySlug(slug: string): Promise<CatalogAdminItem | null>;
   findImageById(id: string): Promise<CatalogAdminImage | null>;
   applyCategory(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
+  applyCategoryItems(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
   applySku(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
   applyImage(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
   markImageReady(id: string, updatedAt: string): Promise<CatalogAdminImage | null>;
@@ -246,6 +252,70 @@ export class CatalogAdminService {
     return { item, replayed: false };
   }
 
+  async assignCategoryItems(
+    context: CommandContext,
+    input: Readonly<{ categoryId: string; itemIds: readonly string[] }>,
+  ): Promise<
+    Readonly<{
+      categoryId: string;
+      items: readonly CatalogAdminItem[];
+      replayed: boolean;
+    }>
+  > {
+    const normalized = normalizeContext(context);
+    const categoryId = normalizeRequiredText(input.categoryId, "category", 128);
+    const itemIds = [
+      ...new Set(input.itemIds.map((itemId) => normalizeRequiredText(itemId, "product", 128))),
+    ];
+    if (itemIds.length === 0 || itemIds.length > 100) {
+      throw new CatalogAdminValidationError("select between 1 and 100 catalog products");
+    }
+    const fingerprint = JSON.stringify({ action: "category.items.assign", categoryId, itemIds });
+    const replay = await this.replay(normalized.idempotencyKey, fingerprint, "categoryItems");
+    if (replay?.kind === "categoryItems") {
+      return {
+        categoryId: replay.categoryId,
+        items: replay.items,
+        replayed: true,
+      };
+    }
+    const category = await this.repository.findCategoryById(categoryId);
+    if (!category) throw new CatalogAdminNotFoundError("catalog category was not found");
+    const existingItems = await Promise.all(
+      itemIds.map((itemId) => this.repository.findSkuById(itemId)),
+    );
+    if (existingItems.some((item) => !item)) {
+      throw new CatalogAdminNotFoundError("one or more catalog products were not found");
+    }
+    const items = existingItems.map((item) => {
+      const existing = item!;
+      if (existing.categoryIds.includes(categoryId)) return existing;
+      if (existing.categoryIds.length >= 20) {
+        throw new CatalogAdminValidationError(
+          `${existing.name} already belongs to the maximum of 20 categories`,
+        );
+      }
+      return Object.freeze({
+        ...existing,
+        categoryIds: Object.freeze([...existing.categoryIds, categoryId]),
+      });
+    });
+    const command: CatalogAdminCommand = {
+      idempotencyKey: normalized.idempotencyKey,
+      fingerprint,
+      result: { kind: "categoryItems", categoryId, items },
+      appliedAt: normalized.appliedAt,
+    };
+    const audit = this.createAudit(
+      normalized,
+      "category",
+      categoryId,
+      "catalog.category.items-assigned",
+    );
+    await this.applyWithRace(command, () => this.repository.applyCategoryItems(command, audit));
+    return { categoryId, items, replayed: false };
+  }
+
   async createImage(
     context: CommandContext,
     input: Readonly<{
@@ -333,11 +403,12 @@ export class CatalogAdminService {
     context: CommandContext,
     targetType: "category" | "sku" | "image",
     targetId: string,
+    action = `catalog.${targetType}.upserted`,
   ): AuditEvent {
     return createAuditEvent({
       id: this.generateId(),
       actorUserId: context.actorUserId,
-      action: `catalog.${targetType}.upserted`,
+      action,
       targetType: `catalog-${targetType}`,
       targetId,
       occurredAt: context.appliedAt,
@@ -396,6 +467,16 @@ export class InMemoryCatalogAdminCommandRepository implements CatalogAdminComman
   applyCategory(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void> {
     if (command.result.kind !== "category") throw new Error("category result is required");
     this.categories.set(command.result.category.id, command.result.category);
+    this.commands.set(command.idempotencyKey, command);
+    this.audits.push(auditEvent);
+    return Promise.resolve();
+  }
+
+  applyCategoryItems(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void> {
+    if (command.result.kind !== "categoryItems") {
+      throw new Error("category items result is required");
+    }
+    for (const item of command.result.items) this.items.set(item.id, item);
     this.commands.set(command.idempotencyKey, command);
     this.audits.push(auditEvent);
     return Promise.resolve();

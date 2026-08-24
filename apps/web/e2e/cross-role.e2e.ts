@@ -69,7 +69,9 @@ test("catalog administrators can create a product without leaving the catalog", 
   await expect(editor.getByRole("heading", { name: "Media" })).toBeVisible();
   await expect(editor.getByRole("heading", { name: "Pricing" })).toBeVisible();
 
-  const productName = `Catalog test ${testInfo.project.name} ${Date.now()}`;
+  const scenarioSuffix = `${testInfo.project.name} ${Date.now()}`;
+  const productName = `Catalog test ${scenarioSuffix}`;
+  const categoryName = `Catalog category ${scenarioSuffix}`;
   await editor.getByLabel("Product name").fill(productName);
   await editor.getByLabel("Description").fill("A locally verified catalog product.");
   await editor.getByLabel("Fresh produce").check();
@@ -110,6 +112,38 @@ test("catalog administrators can create a product without leaving the catalog", 
   } else {
     await expect(page.getByRole("row").filter({ hasText: productName })).toBeVisible();
   }
+
+  await page.getByRole("button", { name: "Category", exact: true }).click();
+  const categoryEditor = page.getByRole("dialog", { name: "Add category" });
+  await categoryEditor.getByLabel("Category name").fill(categoryName);
+  await categoryEditor.getByRole("button", { name: "Save category" }).click();
+  await expect(page.getByText("Category created.")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Categories" }).click();
+  await page.getByRole("button", { name: `Open ${categoryName}` }).click();
+  await expect(page.getByRole("heading", { level: 2, name: categoryName })).toBeVisible();
+  await expect(page.getByText(/\d+ products?/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Add product" }).click();
+  const categoryProductEditor = page.getByRole("dialog", { name: "Add product" });
+  await expect(categoryProductEditor.getByLabel(categoryName)).toBeChecked();
+  await categoryProductEditor.getByRole("button", { name: "Cancel" }).click();
+
+  await page.getByRole("button", { name: "Add existing" }).click();
+  const existingProducts = page.getByRole("dialog", { name: "Add existing products" });
+  await existingProducts.getByLabel("Search products").fill(productName);
+  await existingProducts.getByRole("checkbox", { name: new RegExp(productName) }).check();
+  await existingProducts.getByRole("button", { name: "Add 1 product" }).click();
+  await expect(page.getByText(`1 product added to ${categoryName}.`)).toBeVisible();
+  if (testInfo.project.name === "phone") {
+    await expect(page.getByRole("button", { name: `Edit ${productName}` })).toBeVisible();
+  } else {
+    await expect(page.getByRole("row").filter({ hasText: productName })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "All categories" }).click();
+  await expect(page.getByRole("button", { name: `Open ${categoryName}` })).toContainText(
+    /\d+ products?/,
+  );
   await page.getByRole("tab", { name: "Images" }).click();
   await expect(page.getByLabel("Image file")).toBeVisible();
   await expect(page.getByLabel("Image description")).toBeVisible();

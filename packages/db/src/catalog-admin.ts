@@ -127,6 +127,25 @@ export class D1CatalogAdminCommandRepository implements CatalogAdminCommandRepos
     ]);
   }
 
+  async applyCategoryItems(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void> {
+    if (command.result.kind !== "categoryItems") {
+      throw new Error("category items command result is required");
+    }
+    const { categoryId, items } = command.result;
+    await this.database.batch([
+      ...items.map((item) =>
+        this.database
+          .prepare(
+            `INSERT OR IGNORE INTO catalog_sku_categories (
+               sku_id, category_id, position, created_at
+             ) VALUES (?, ?, ?, ?)`,
+          )
+          .bind(item.id, categoryId, item.categoryIds.indexOf(categoryId), command.appliedAt),
+      ),
+      ...this.sharedStatements(command, auditEvent),
+    ]);
+  }
+
   async applyImage(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void> {
     if (command.result.kind !== "image") throw new Error("image command result is required");
     const image = command.result.image;

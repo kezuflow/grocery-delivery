@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  catalogAdminCategoryItemsRequestSchema,
   catalogAdminImageUploadRequestSchema,
   catalogAdminSkuUpsertRequestSchema,
   catalogListResponseSchema,
@@ -72,5 +73,12 @@ describe("catalog contracts", () => {
         sizeBytes: 100_000,
       }),
     ).toBeDefined();
+  });
+
+  it("accepts a bounded selection of existing products for a category", () => {
+    expect(
+      catalogAdminCategoryItemsRequestSchema.parse({ itemIds: ["sku-apples", "sku-oats"] }),
+    ).toEqual({ itemIds: ["sku-apples", "sku-oats"] });
+    expect(() => catalogAdminCategoryItemsRequestSchema.parse({ itemIds: [] })).toThrow();
   });
 });

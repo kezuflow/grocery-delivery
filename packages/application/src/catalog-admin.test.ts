@@ -61,6 +61,14 @@ class InMemoryCatalogAdminRepository implements CatalogAdminCommandRepository {
     return Promise.resolve();
   }
 
+  applyCategoryItems(command: CatalogAdminCommand, auditEvent: AuditEvent) {
+    if (command.result.kind !== "categoryItems") throw new Error("category items result required");
+    for (const item of command.result.items) this.items.set(item.id, item);
+    this.commands.set(command.idempotencyKey, command);
+    this.audits.push(auditEvent);
+    return Promise.resolve();
+  }
+
   applySku(command: CatalogAdminCommand, auditEvent: AuditEvent) {
     if (command.result.kind !== "sku") throw new Error("SKU result required");
     this.items.set(command.result.item.id, command.result.item);
@@ -183,11 +191,55 @@ describe("CatalogAdminService", () => {
     expect(replayed).toMatchObject({ replayed: true, image: created.image });
   });
 
+  it("assigns existing products to a category and replays the batch safely", async () => {
+    const repository = new InMemoryCatalogAdminRepository();
+    let generatedId = 0;
+    const service = new CatalogAdminService(repository, () => `generated-${++generatedId}`);
+    const produce = await service.upsertCategory(context, { name: "Produce", active: true });
+    const specials = await service.upsertCategory(
+      { ...context, idempotencyKey: "category-specials" },
+      { name: "Specials", active: true },
+    );
+    const product = await service.upsertSku(
+      { ...context, idempotencyKey: "product-tomatoes" },
+      {
+        categoryIds: [produce.category.id],
+        name: "Tomatoes",
+        description: "Fresh tomatoes",
+        unit: "kilogram",
+        imageUrl: null,
+        procurementCostCentavos: 10_000,
+        markupBasisPoints: 2_000,
+        status: "active",
+      },
+    );
+    const assignmentContext = { ...context, idempotencyKey: "assign-specials" };
+
+    const assigned = await service.assignCategoryItems(assignmentContext, {
+      categoryId: specials.category.id,
+      itemIds: [product.item.id, product.item.id],
+    });
+    const replayed = await service.assignCategoryItems(assignmentContext, {
+      categoryId: specials.category.id,
+      itemIds: [product.item.id, product.item.id],
+    });
+
+    expect(assigned).toMatchObject({
+      replayed: false,
+      items: [{ categoryIds: [produce.category.id, specials.category.id] }],
+    });
+    expect(replayed).toMatchObject({ replayed: true, items: assigned.items });
+    expect(repository.audits.at(-1)?.action).toBe("catalog.category.items-assigned");
+  });
+
   it("rejects updates for missing catalog records", async () => {
     const service = new CatalogAdminService(new InMemoryCatalogAdminRepository());
 
     await expect(
       service.upsertCategory(context, { id: "missing", name: "Missing", active: true }),
+    ).rejects.toBeInstanceOf(CatalogAdminNotFoundError);
+    await expect(
+      service.assignCategoryItems(context, { categoryId: "missing", itemIds: ["sku-missing"] }),
     ).rejects.toBeInstanceOf(CatalogAdminNotFoundError);
   });
 });

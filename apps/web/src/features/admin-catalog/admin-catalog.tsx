@@ -8,6 +8,7 @@ import type {
 } from "@carbon/contracts";
 import {
   Archive,
+  ArrowLeft,
   Boxes,
   Check,
   Image as ImageIcon,
@@ -16,7 +17,7 @@ import {
   Plus,
   Upload,
 } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -102,7 +103,13 @@ export function AdminCatalog({
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [categories, setCategories] = useState(catalog?.categories ?? []);
+  const [catalogItems, setCatalogItems] = useState(catalog?.items ?? []);
   const [catalogImages, setCatalogImages] = useState(catalog?.images ?? []);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [categoryProductQuery, setCategoryProductQuery] = useState("");
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachQuery, setAttachQuery] = useState("");
+  const [selectedAttachIds, setSelectedAttachIds] = useState<readonly string[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadAltText, setUploadAltText] = useState("");
   const [editor, setEditor] = useState<"product" | "category" | null>(null);
@@ -122,7 +129,7 @@ export function AdminCatalog({
   const categoryNames = new Map(categories.map((item) => [item.id, item.name]));
   const items = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return (catalog?.items ?? []).filter((item) => {
+    return catalogItems.filter((item) => {
       const matchesQuery =
         !normalized ||
         `${item.name} ${item.slug} ${item.description}`.toLowerCase().includes(normalized);
@@ -130,7 +137,28 @@ export function AdminCatalog({
         matchesQuery && (categoryFilter === "all" || item.categoryIds.includes(categoryFilter))
       );
     });
-  }, [catalog?.items, categoryFilter, query]);
+  }, [catalogItems, categoryFilter, query]);
+  const selectedCategory = categories.find((item) => item.id === selectedCategoryId) ?? null;
+  const categoryProducts = useMemo(() => {
+    const normalized = categoryProductQuery.trim().toLowerCase();
+    if (!selectedCategoryId) return [];
+    return catalogItems.filter(
+      (item) =>
+        item.categoryIds.includes(selectedCategoryId) &&
+        (!normalized ||
+          `${item.name} ${item.slug} ${item.description}`.toLowerCase().includes(normalized)),
+    );
+  }, [catalogItems, categoryProductQuery, selectedCategoryId]);
+  const attachableProducts = useMemo(() => {
+    const normalized = attachQuery.trim().toLowerCase();
+    if (!selectedCategoryId) return [];
+    return catalogItems.filter(
+      (item) =>
+        !item.categoryIds.includes(selectedCategoryId) &&
+        (!normalized ||
+          `${item.name} ${item.slug} ${item.description}`.toLowerCase().includes(normalized)),
+    );
+  }, [attachQuery, catalogItems, selectedCategoryId]);
   const allImages = [
     ...catalogImages
       .filter((image) => image.status === "ready")
@@ -146,6 +174,12 @@ export function AdminCatalog({
   );
   const estimatedPrice = calculatePreviewPrice(productDraft);
 
+  useEffect(() => {
+    setCategories(catalog?.categories ?? []);
+    setCatalogItems(catalog?.items ?? []);
+    setCatalogImages(catalog?.images ?? []);
+  }, [catalog]);
+
   return (
     <div className="grid min-w-0 gap-5">
       <section className="min-w-0">
@@ -154,14 +188,14 @@ export function AdminCatalog({
             <div className="flex items-center gap-2">
               <CardTitle>Catalog</CardTitle>
               <span className="rounded bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-muted">
-                {catalog?.items.length ?? 0} products
+                {catalogItems.length} products
               </span>
             </div>
             <CardDescription className="mt-1">
               Create products, organize categories, and reuse product images in one place.
             </CardDescription>
           </div>
-          {canManage ? (
+          {canManage && !(view === "categories" && selectedCategory) ? (
             <div className="flex gap-2">
               <Button onClick={() => openCategoryEditor()} size="sm" tone="secondary">
                 <Plus aria-hidden="true" size={14} /> Category
@@ -170,9 +204,9 @@ export function AdminCatalog({
                 <Plus aria-hidden="true" size={14} /> Add product
               </Button>
             </div>
-          ) : (
+          ) : !canManage ? (
             <StatusPill status="read only" />
-          )}
+          ) : null}
         </div>
 
         <div
@@ -187,7 +221,10 @@ export function AdminCatalog({
                 view === tab ? "border-deep text-deep" : "border-transparent text-muted"
               }`}
               key={tab}
-              onClick={() => setView(tab)}
+              onClick={() => {
+                setView(tab);
+                if (tab !== "categories") setSelectedCategoryId(null);
+              }}
               role="tab"
               type="button"
             >
@@ -250,29 +287,120 @@ export function AdminCatalog({
             )}
           </>
         ) : view === "categories" ? (
-          <div className="grid gap-3 py-4 sm:grid-cols-2 xl:grid-cols-3">
-            {categories.map((item) => {
-              const count =
-                catalog?.items.filter((product) => product.categoryIds.includes(item.id)).length ??
-                0;
-              return (
-                <button
-                  className="rounded-lg border border-line p-4 text-left hover:border-deep hover:bg-accent/10"
-                  key={item.id}
-                  onClick={() => openCategoryEditor(item.id)}
-                  type="button"
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span>
-                      <strong className="block text-sm text-ink">{item.name}</strong>
-                      <span className="mt-1 block text-xs text-muted">{count} products</span>
-                    </span>
-                    <StatusPill status={item.active ? "active" : "paused"} />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          selectedCategory ? (
+            <div className="grid gap-4 py-4">
+              <button
+                className="flex w-fit items-center gap-2 text-xs font-bold text-muted hover:text-deep"
+                onClick={() => {
+                  setSelectedCategoryId(null);
+                  setCategoryProductQuery("");
+                }}
+                type="button"
+              >
+                <ArrowLeft aria-hidden="true" size={14} /> All categories
+              </button>
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-ink">{selectedCategory.name}</h2>
+                    <StatusPill status={selectedCategory.active ? "active" : "paused"} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    {categoryProducts.length}{" "}
+                    {categoryProducts.length === 1 ? "product" : "products"}
+                  </p>
+                </div>
+                {canManage ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => openCategoryEditor(selectedCategory.id)}
+                      size="sm"
+                      tone="ghost"
+                    >
+                      <Pencil aria-hidden="true" size={14} /> Edit category
+                    </Button>
+                    <Button onClick={openAttachProducts} size="sm" tone="secondary">
+                      <Plus aria-hidden="true" size={14} /> Add existing
+                    </Button>
+                    <Button
+                      onClick={() => openProductEditor(undefined, selectedCategory.id)}
+                      size="sm"
+                    >
+                      <Plus aria-hidden="true" size={14} /> Add product
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+              <Input
+                aria-label={`Search products in ${selectedCategory.name}`}
+                onChange={(event) => setCategoryProductQuery(event.target.value)}
+                placeholder={`Search ${selectedCategory.name}`}
+                type="search"
+                value={categoryProductQuery}
+              />
+              {categoryProducts.length ? (
+                <ProductTable
+                  canManage={canManage}
+                  categoryNames={categoryNames}
+                  items={categoryProducts}
+                  onEdit={openProductEditor}
+                  onStatus={updateStatus}
+                  openMenuId={openMenuId}
+                  setOpenMenuId={setOpenMenuId}
+                />
+              ) : (
+                <EmptyState
+                  description={
+                    categoryProductQuery
+                      ? "Try a different search."
+                      : "Create a new product here or add one that already exists."
+                  }
+                  title={
+                    categoryProductQuery ? "No matching products" : "No products in this category"
+                  }
+                />
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-3 py-4 sm:grid-cols-2 xl:grid-cols-3">
+              {categories.map((item) => {
+                const count = catalogItems.filter((product) =>
+                  product.categoryIds.includes(item.id),
+                ).length;
+                return (
+                  <article className="relative rounded-lg border border-line" key={item.id}>
+                    <button
+                      aria-label={`Open ${item.name}`}
+                      className="w-full rounded-lg p-4 pr-12 text-left hover:bg-accent/10"
+                      onClick={() => {
+                        setSelectedCategoryId(item.id);
+                        setCategoryProductQuery("");
+                      }}
+                      type="button"
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span>
+                          <strong className="block text-sm text-ink">{item.name}</strong>
+                          <span className="mt-1 block text-xs text-muted">{count} products</span>
+                        </span>
+                        <StatusPill status={item.active ? "active" : "paused"} />
+                      </span>
+                    </button>
+                    {canManage ? (
+                      <button
+                        aria-label={`Edit ${item.name} category`}
+                        className="absolute bottom-2 right-2 grid size-8 place-items-center rounded text-muted hover:bg-black/5 hover:text-ink"
+                        onClick={() => openCategoryEditor(item.id)}
+                        type="button"
+                      >
+                        <Pencil aria-hidden="true" size={14} />
+                      </button>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          )
         ) : (
           <div className="grid gap-5 py-4">
             {canManage ? (
@@ -370,7 +498,7 @@ export function AdminCatalog({
                 </p>
                 <div className="grid max-h-36 gap-2 overflow-y-auto">
                   {categories
-                    .filter((item) => item.active)
+                    .filter((item) => item.active || productDraft.categoryIds.includes(item.id))
                     .map((item) => (
                       <label className="flex items-center gap-2 text-sm text-ink" key={item.id}>
                         <input
@@ -540,6 +668,69 @@ export function AdminCatalog({
       </Sheet>
 
       <Dialog
+        description={
+          selectedCategory
+            ? `Choose products to also show in ${selectedCategory.name}. Their current categories stay unchanged.`
+            : "Choose products to add to this category."
+        }
+        onClose={closeAttachProducts}
+        open={attachOpen}
+        title="Add existing products"
+      >
+        <Input
+          label="Search products"
+          onChange={(event) => setAttachQuery(event.target.value)}
+          placeholder="Search by product name"
+          type="search"
+          value={attachQuery}
+        />
+        {attachableProducts.length ? (
+          <div className="grid max-h-[45vh] gap-2 overflow-y-auto pr-1">
+            {attachableProducts.map((item) => (
+              <label
+                className="flex cursor-pointer items-center gap-3 rounded border border-line p-3 hover:border-deep"
+                key={item.id}
+              >
+                <input
+                  checked={selectedAttachIds.includes(item.id)}
+                  onChange={() => toggleAttachProduct(item.id)}
+                  type="checkbox"
+                />
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm text-ink">{item.name}</strong>
+                  <span className="block truncate text-xs text-muted">
+                    {formatCategoryNames(item.categoryIds, categoryNames)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded bg-black/[0.03] px-3 py-4 text-sm text-muted">
+            {attachQuery
+              ? "No available products match this search."
+              : "Every product already belongs to this category."}
+          </p>
+        )}
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
+          <Button onClick={closeAttachProducts} size="sm" tone="ghost" type="button">
+            Cancel
+          </Button>
+          <Button
+            disabled={selectedAttachIds.length === 0}
+            loading={saving}
+            onClick={() => void attachProducts()}
+            size="sm"
+            type="button"
+          >
+            {selectedAttachIds.length
+              ? `Add ${selectedAttachIds.length} ${selectedAttachIds.length === 1 ? "product" : "products"}`
+              : "Add selected products"}
+          </Button>
+        </div>
+      </Dialog>
+
+      <Dialog
         description="Search and select an existing product image."
         onClose={() => setLibraryOpen(false)}
         open={libraryOpen}
@@ -587,10 +778,10 @@ export function AdminCatalog({
     </div>
   );
 
-  function openProductEditor(id?: string) {
-    const item = id ? catalog?.items.find((candidate) => candidate.id === id) : null;
+  function openProductEditor(id?: string, categoryId?: string) {
+    const item = id ? catalogItems.find((candidate) => candidate.id === id) : null;
     setEditingId(item?.id ?? null);
-    setProductDraft(item ? draftFromItem(item) : emptyProductDraft(categories));
+    setProductDraft(item ? draftFromItem(item) : emptyProductDraft(categories, categoryId));
     setInlineCategoryName("");
     setEditor("product");
     setOpenMenuId(null);
@@ -622,6 +813,48 @@ export function AdminCatalog({
     }));
   }
 
+  function openAttachProducts() {
+    setAttachQuery("");
+    setSelectedAttachIds([]);
+    setAttachOpen(true);
+  }
+
+  function closeAttachProducts() {
+    setAttachOpen(false);
+    setAttachQuery("");
+    setSelectedAttachIds([]);
+  }
+
+  function toggleAttachProduct(itemId: string) {
+    setSelectedAttachIds((current) =>
+      current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId],
+    );
+  }
+
+  async function attachProducts() {
+    if (!selectedCategory || selectedAttachIds.length === 0) return;
+    setSaving(true);
+    setActionMessage(null);
+    try {
+      const response = await client.assignAdminCatalogCategoryItems(
+        selectedCategory.id,
+        { itemIds: selectedAttachIds },
+        crypto.randomUUID(),
+      );
+      const assignedItems = new Map(response.data.items.map((item) => [item.id, item]));
+      setCatalogItems((current) => current.map((item) => assignedItems.get(item.id) ?? item));
+      setActionMessage(
+        `${response.data.items.length} ${response.data.items.length === 1 ? "product" : "products"} added to ${selectedCategory.name}.`,
+      );
+      closeAttachProducts();
+      router.refresh();
+    } catch (error) {
+      setActionMessage(formatApiError(error, "The selected products could not be added."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const procurementCostCentavos = pesosToCentavos(productDraft.procurementCostPesos);
@@ -637,7 +870,7 @@ export function AdminCatalog({
     setSaving(true);
     setActionMessage(null);
     try {
-      await client.upsertAdminCatalogItem(
+      const response = await client.upsertAdminCatalogItem(
         editingId,
         {
           name: productDraft.name,
@@ -650,6 +883,11 @@ export function AdminCatalog({
           markupBasisPoints,
         },
         crypto.randomUUID(),
+      );
+      setCatalogItems((current) =>
+        [...current.filter((item) => item.id !== response.data.item.id), response.data.item].sort(
+          (left, right) => left.name.localeCompare(right.name),
+        ),
       );
       setActionMessage(editingId ? "Product changes saved." : "Product created.");
       closeEditor();
@@ -969,13 +1207,14 @@ function Notice({
 
 function emptyProductDraft(
   categories: CatalogAdminListResponse["data"]["categories"],
+  categoryId?: string,
 ): ProductDraft {
+  const preferredCategory =
+    categories.find((item) => item.id === categoryId) ?? categories.find((item) => item.active);
   return {
     name: "",
     description: "",
-    categoryIds: categories.find((item) => item.active)?.id
-      ? [categories.find((item) => item.active)!.id]
-      : [],
+    categoryIds: preferredCategory ? [preferredCategory.id] : [],
     unit: "piece",
     imageUrl: null,
     procurementCostPesos: "",

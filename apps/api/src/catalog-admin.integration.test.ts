@@ -76,6 +76,10 @@ describe("D1 catalog administration integration", () => {
       { ...baseContext, idempotencyKey: "category-specials" },
       { name: "Weekly Specials", active: true },
     );
+    const pantry = await service.upsertCategory(
+      { ...baseContext, idempotencyKey: "category-pantry" },
+      { name: "Pantry", active: true },
+    );
     const product = await service.upsertSku(
       { ...baseContext, idempotencyKey: "sku-tomatoes" },
       {
@@ -98,6 +102,10 @@ describe("D1 catalog administration integration", () => {
         sizeBytes: 12_000,
       },
     );
+    await service.assignCategoryItems(
+      { ...baseContext, idempotencyKey: "assign-pantry" },
+      { categoryId: pantry.category.id, itemIds: [product.item.id] },
+    );
     await service.markImageReady(image.image.id, "2026-08-24T05:01:00.000Z");
 
     const snapshot = await service.list();
@@ -106,7 +114,11 @@ describe("D1 catalog administration integration", () => {
       limit: 20,
     });
 
-    expect(snapshot.items[0]?.categoryIds).toEqual([produce.category.id, specials.category.id]);
+    expect(snapshot.items[0]?.categoryIds).toEqual([
+      produce.category.id,
+      specials.category.id,
+      pantry.category.id,
+    ]);
     expect(snapshot.images[0]).toMatchObject({
       id: image.image.id,
       status: "ready",

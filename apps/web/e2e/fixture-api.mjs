@@ -359,6 +359,23 @@ function routeResponse(method, url, role, scenario, body) {
         images: catalog.images,
       }),
     );
+  const catalogCategoryItemsMatch = /^\/api\/v1\/admin\/catalog\/categories\/([^/]+)\/items$/.exec(
+    url.pathname,
+  );
+  if (catalogCategoryItemsMatch && method === "POST")
+    return requireRole(role, "admin", () => {
+      const categoryId = decodeURIComponent(catalogCategoryItemsMatch[1]);
+      const category = catalog.categories.find((item) => item.id === categoryId);
+      if (!category) return error(404, "CATALOG_ITEM_NOT_FOUND", "catalog category was not found");
+      const selectedIds = new Set(body.itemIds);
+      const selectedItems = catalog.items.filter((item) => selectedIds.has(item.id));
+      if (selectedItems.length !== selectedIds.size)
+        return error(404, "CATALOG_ITEM_NOT_FOUND", "one or more catalog products were not found");
+      for (const item of selectedItems) {
+        if (!item.categoryIds.includes(categoryId)) item.categoryIds.push(categoryId);
+      }
+      return ok({ categoryId, items: selectedItems.map(toAdminCatalogItem), replayed: false });
+    });
   const catalogCategoryMatch = /^\/api\/v1\/admin\/catalog\/categories(?:\/([^/]+))?$/.exec(
     url.pathname,
   );

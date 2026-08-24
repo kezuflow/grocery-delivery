@@ -188,6 +188,11 @@ export const openApiDocument: OpenApiDocument = {
       "Update an idempotent catalog category",
       "put",
     ),
+    "/api/v1/admin/catalog/categories/{id}/items": protectedOperation(
+      "Assign existing products to a catalog category idempotently",
+      "post",
+      "201",
+    ),
     "/api/v1/admin/catalog/items": protectedOperation(
       "Create an idempotent catalog product",
       "post",
