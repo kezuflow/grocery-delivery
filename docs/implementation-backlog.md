@@ -688,16 +688,18 @@ authentication and promotion remain deferred.
   pushed to `origin/main`. The remaining unstaged files are unrelated pre-existing fixture,
   generated typing, Playwright, and asset changes.
 
-- **Featured-promotion visual refinement:** the empty-banner fallback on `/shop` is now one wide,
-  responsive pink campaign card with prominent first-order copy, a crisp HTML CTA, and an original
-  Carbon sprout mascot and shopper cutout. The generated transparent artwork is stored as an
-  optimized 1024-by-1024 WebP at `apps/web/public/marketplace/first-order-campaign.webp`; no external
-  logo, mascot, packaging, or runtime dependency was introduced. Active server-returned promotion
-  banners still take precedence, and the fallback states that eligibility and savings are confirmed
-  at checkout. Live local browser checks at 1280-by-720 and 390-by-844 show no document overflow;
-  focused marketplace Playwright passes 3/3 across phone, tablet, and desktop with Axe
-  serious/critical checks and the asset/offer assertions, and `pnpm check` passes all 55 Turbo
-  tasks. The change adds no request, persistence, latency, or observability boundary.
+- **Featured-promotion visual refinement:** the empty-banner fallback on `/shop` is now a five-slide,
+  manually controlled campaign carousel with oversized HTML copy, previous/next controls, and five
+  direct-select indicators. The first-order artwork replaces the former mascot and shopping bags
+  with a sturdy produce delivery box, and the former welcome/eligibility paragraph is removed. Four
+  additional original, text-free box campaigns cover build-your-own selection, weekly market
+  freshness, weekend delivery, and the membership trial. All five ImageGen cutouts are optimized
+  1024-by-1024 transparent WebPs under `apps/web/public/marketplace`; active server-returned
+  promotion banners still take precedence. Live local browser review covers all five desktop slides
+  plus the 390-by-844 phone composition. Focused marketplace Playwright passes 3/3 across phone,
+  tablet, and desktop with all five selector/asset assertions, serious/critical Axe checks, and
+  overflow checks; `pnpm check` passes all 55 Turbo tasks. The change adds no request, persistence,
+  latency, runtime dependency, or observability boundary.
 
 - **Marketplace search simplification:** the duplicate in-content `Crave it? Get it.` heading and
   secondary search form are removed from `/shop`, so category filters and the featured campaign now

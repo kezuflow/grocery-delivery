@@ -615,11 +615,101 @@ function selectCollection(id: string) {
   window.location.assign(`/shop#${id}`);
 }
 
+const DEFAULT_FEATURED_CAMPAIGNS = [
+  {
+    id: "first-order",
+    eyebrow: "First order only",
+    headline: "40% off",
+    subheadline: "your first order",
+    ctaLabel: "Shop the offer",
+    href: "/shop?sort=popular",
+    imageUrl: "/marketplace/first-order-campaign.webp",
+    imageAlt: "A cheerful shopper presenting a box of fresh produce",
+    backgroundClassName: "bg-[#ff3f8f] text-white",
+    headlineClassName: "text-[#161616]",
+    mobileVeilClassName: "from-[#ff3f8f] via-[#ff3f8f]/95",
+    badgeClassName: "bg-[#143f31] text-white",
+    ctaClassName: "bg-[#fff8ed] text-[#163d30]",
+    imageClassName:
+      "-bottom-[5%] -right-[16%] w-[75%] sm:-right-[1%] sm:bottom-auto sm:top-[-5%] sm:w-[48%] lg:right-[2%] lg:w-[46%]",
+  },
+  {
+    id: "build-your-box",
+    eyebrow: "Pick every item",
+    headline: "Build your box",
+    subheadline: "your way",
+    ctaLabel: "Start choosing",
+    href: "/shop?sort=popular",
+    imageUrl: "/marketplace/build-your-box-campaign.webp",
+    imageAlt: "Hands packing a fresh produce box",
+    backgroundClassName: "bg-[#174b3a] text-white",
+    headlineClassName: "text-white",
+    mobileVeilClassName: "from-[#174b3a] via-[#174b3a]/95",
+    badgeClassName: "bg-[#f4cf63] text-[#143f31]",
+    ctaClassName: "bg-[#fff8ed] text-[#163d30]",
+    imageClassName:
+      "-bottom-[6%] -right-[20%] w-[82%] sm:-right-[4%] sm:bottom-auto sm:top-[-17%] sm:w-[58%] lg:right-[-1%] lg:w-[55%]",
+  },
+  {
+    id: "market-fresh",
+    eyebrow: "Farm-to-door favorites",
+    headline: "Market fresh",
+    subheadline: "every week",
+    ctaLabel: "See what's fresh",
+    href: "/shop?sort=newest",
+    imageUrl: "/marketplace/market-fresh-campaign.webp",
+    imageAlt: "A market grower holding a box of fresh produce",
+    backgroundClassName: "bg-[#ffad52] text-[#143f31]",
+    headlineClassName: "text-[#161616]",
+    mobileVeilClassName: "from-[#ffad52] via-[#ffad52]/95",
+    badgeClassName: "bg-[#143f31] text-white",
+    ctaClassName: "bg-white text-[#163d30]",
+    imageClassName:
+      "-bottom-[6%] -right-[17%] w-[73%] sm:-right-[1%] sm:bottom-auto sm:top-[-5%] sm:w-[47%] lg:right-[2%] lg:w-[45%]",
+  },
+  {
+    id: "weekend-delivery",
+    eyebrow: "Plan your weekend",
+    headline: "Weekend drops",
+    subheadline: "right on time",
+    ctaLabel: "Browse the market",
+    href: "/shop?sort=popular",
+    imageUrl: "/marketplace/weekend-delivery-campaign.webp",
+    imageAlt: "A bicycle courier carrying a produce delivery box",
+    backgroundClassName: "bg-[#9cd9eb] text-[#143f31]",
+    headlineClassName: "text-[#161616]",
+    mobileVeilClassName: "from-[#9cd9eb] via-[#9cd9eb]/95",
+    badgeClassName: "bg-[#143f31] text-white",
+    ctaClassName: "bg-white text-[#163d30]",
+    imageClassName:
+      "-bottom-[7%] -right-[21%] w-[81%] sm:-right-[2%] sm:bottom-auto sm:top-[-6%] sm:w-[50%] lg:right-[1%] lg:w-[47%]",
+  },
+  {
+    id: "free-month",
+    eyebrow: "New member trial",
+    headline: "One month free",
+    subheadline: "to get started",
+    ctaLabel: "Try a membership",
+    href: "/account/subscribe?returnTo=%2Fshop",
+    imageUrl: "/marketplace/free-month-campaign.webp",
+    imageAlt: "A couple happily unpacking a box of fresh produce",
+    backgroundClassName: "bg-[#7446a8] text-white",
+    headlineClassName: "text-white",
+    mobileVeilClassName: "from-[#7446a8] via-[#7446a8]/95",
+    badgeClassName: "bg-[#f4cf63] text-[#143f31]",
+    ctaClassName: "bg-[#fff8ed] text-[#163d30]",
+    imageClassName:
+      "-bottom-[6%] -right-[17%] w-[76%] sm:-right-[2%] sm:bottom-auto sm:top-[-4%] sm:w-[50%] lg:right-[1%] lg:w-[47%]",
+  },
+] as const;
+
 function MerchandisingRail({
   banners,
 }: Readonly<{
   banners: ActivePromotionBannersResponse["data"]["banners"];
 }>) {
+  const [activeCampaignIndex, setActiveCampaignIndex] = useState(0);
+
   if (banners.length) {
     return (
       <section
@@ -659,58 +749,119 @@ function MerchandisingRail({
     );
   }
 
+  const activeCampaign =
+    DEFAULT_FEATURED_CAMPAIGNS[activeCampaignIndex] ?? DEFAULT_FEATURED_CAMPAIGNS[0];
+
+  function showPreviousCampaign() {
+    setActiveCampaignIndex((current) =>
+      current === 0 ? DEFAULT_FEATURED_CAMPAIGNS.length - 1 : current - 1,
+    );
+  }
+
+  function showNextCampaign() {
+    setActiveCampaignIndex((current) => (current + 1) % DEFAULT_FEATURED_CAMPAIGNS.length);
+  }
+
   return (
-    <section aria-label="Featured offers" className="mb-10 scroll-mt-24" id="featured-offers">
+    <section
+      aria-label="Featured offers"
+      aria-roledescription="carousel"
+      className="mb-10 scroll-mt-24"
+      id="featured-offers"
+    >
       <a
-        className="group relative isolate flex min-h-[320px] overflow-hidden rounded-[28px] bg-[#ff3f8f] px-6 py-7 text-white shadow-[0_22px_60px_rgba(139,19,71,0.18)] sm:min-h-[330px] sm:items-center sm:px-10 sm:py-9 lg:px-14"
-        href="/shop?sort=popular"
+        aria-label={`${activeCampaign.headline} ${activeCampaign.subheadline}: ${activeCampaign.ctaLabel}`}
+        className={`group relative isolate flex min-h-[320px] overflow-hidden rounded-[28px] px-6 py-7 shadow-[0_22px_60px_rgba(21,61,48,0.17)] sm:min-h-[330px] sm:items-center sm:px-10 sm:py-9 lg:px-14 ${activeCampaign.backgroundClassName}`}
+        href={activeCampaign.href}
+        key={activeCampaign.id}
       >
         <span
           aria-hidden="true"
-          className="absolute -left-14 -top-20 size-52 rounded-full bg-[#ff87b8]/70 blur-sm"
+          className="absolute -left-14 -top-20 size-52 rounded-full bg-white/20 blur-sm"
         />
         <span
           aria-hidden="true"
-          className="absolute -bottom-28 left-[37%] size-72 rounded-full bg-[#ffc6dc]/55"
+          className="absolute -bottom-28 left-[37%] size-72 rounded-full bg-white/15"
         />
         <span
           aria-hidden="true"
-          className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-[#ffb5d2]/55 transition-transform duration-300 group-hover:rotate-12"
+          className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-white/20 transition-transform duration-300 group-hover:rotate-12"
         />
         <span
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 z-[15] w-[68%] bg-gradient-to-r from-[#ff3f8f] via-[#ff3f8f]/95 to-transparent sm:hidden"
+          className={`absolute inset-y-0 left-0 z-[15] w-[72%] bg-gradient-to-r to-transparent sm:hidden ${activeCampaign.mobileVeilClassName}`}
         />
 
-        <div className="relative z-20 flex w-[61%] max-w-[520px] flex-col items-start sm:w-[52%]">
-          <span className="inline-flex rounded-full bg-[#143f31] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white sm:text-xs">
-            First order only
+        <div className="relative z-20 flex w-[63%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[54%]">
+          <span
+            className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] sm:text-xs ${activeCampaign.badgeClassName}`}
+          >
+            {activeCampaign.eyebrow}
           </span>
-          <h2 className="!m-0 mt-4 flex flex-col font-black tracking-[-0.055em] text-white">
-            <span className="text-[clamp(3.15rem,7vw,5.75rem)] leading-[0.82]">40% off</span>
-            <span className="mt-3 max-w-[10ch] text-[clamp(1.55rem,3.4vw,2.6rem)] leading-[0.92]">
-              your first
-              <br />
-              order
+          <h2
+            className={`!m-0 mt-4 flex flex-col font-black tracking-[-0.055em] ${activeCampaign.headlineClassName}`}
+          >
+            <span className="max-w-[9ch] text-[clamp(2.7rem,6.4vw,5.6rem)] leading-[0.82] text-inherit">
+              {activeCampaign.headline}
+            </span>
+            <span className="mt-3 max-w-[11ch] text-[clamp(1.45rem,3.2vw,2.55rem)] leading-[0.92] text-inherit">
+              {activeCampaign.subheadline}
             </span>
           </h2>
-          <p className="mt-4 max-w-[21ch] text-xs font-bold leading-5 text-[#102c24] sm:max-w-[32ch] sm:text-sm">
-            A bright welcome to the weekly market. Eligibility and savings are confirmed at
-            checkout.
-          </p>
-          <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#fff8ed] px-4 py-2.5 text-xs font-extrabold text-[#163d30] shadow-sm transition-transform group-hover:translate-x-1 sm:px-5 sm:text-sm">
-            Shop the offer <ChevronRight size={16} />
+          <span
+            className={`mt-6 inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-extrabold shadow-sm transition-transform group-hover:translate-x-1 sm:px-5 sm:text-sm ${activeCampaign.ctaClassName}`}
+          >
+            {activeCampaign.ctaLabel} <ChevronRight size={16} />
           </span>
         </div>
 
         <img
-          alt="A cheerful shopper holding fresh groceries beside Carbon's sprout mascot"
-          className="pointer-events-none absolute -bottom-[6%] -right-[15%] z-10 w-[74%] max-w-[570px] object-contain transition-transform duration-300 group-hover:scale-[1.025] sm:-right-[2%] sm:bottom-auto sm:top-[-5%] sm:w-[44%] lg:right-[2%] lg:w-[45%]"
+          alt={activeCampaign.imageAlt}
+          className={`pointer-events-none absolute z-10 max-w-[620px] object-contain transition-transform duration-300 group-hover:scale-[1.025] ${activeCampaign.imageClassName}`}
           height="1024"
-          src="/marketplace/first-order-campaign.webp"
+          src={activeCampaign.imageUrl}
           width="1024"
         />
       </a>
+
+      <div
+        className="mt-3 flex items-center justify-center gap-3"
+        role="group"
+        aria-label="Featured offer controls"
+      >
+        <button
+          aria-label="Previous featured offer"
+          className="grid size-9 place-items-center rounded-full border border-[#dce7e1] bg-white text-[#173f33] shadow-sm transition hover:border-[#9eb7aa] hover:bg-[#f5f8f6]"
+          onClick={showPreviousCampaign}
+          type="button"
+        >
+          <ChevronLeft aria-hidden="true" size={17} />
+        </button>
+        <div className="flex items-center gap-2">
+          {DEFAULT_FEATURED_CAMPAIGNS.map((campaign, index) => (
+            <button
+              aria-label={`Show featured offer ${index + 1}: ${campaign.headline}`}
+              aria-pressed={index === activeCampaignIndex}
+              className={`h-2.5 rounded-full transition-all ${
+                index === activeCampaignIndex
+                  ? "w-8 bg-[#173f33]"
+                  : "w-2.5 bg-[#cbd9d2] hover:bg-[#9eb7aa]"
+              }`}
+              key={campaign.id}
+              onClick={() => setActiveCampaignIndex(index)}
+              type="button"
+            />
+          ))}
+        </div>
+        <button
+          aria-label="Next featured offer"
+          className="grid size-9 place-items-center rounded-full border border-[#dce7e1] bg-white text-[#173f33] shadow-sm transition hover:border-[#9eb7aa] hover:bg-[#f5f8f6]"
+          onClick={showNextCampaign}
+          type="button"
+        >
+          <ChevronRight aria-hidden="true" size={17} />
+        </button>
+      </div>
     </section>
   );
 }

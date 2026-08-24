@@ -76,13 +76,43 @@ test("marketplace converges across phone and desktop layouts", async ({
   await expect(page.getByRole("dialog", { name: "Cart orders" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Cart orders" })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "Featured offers" })).toBeVisible();
-  const firstOrderOffer = page.getByRole("link", { name: /40% off your first order/ });
-  await expect(firstOrderOffer).toBeVisible();
-  await expect(firstOrderOffer.getByRole("img")).toHaveAttribute(
-    "src",
-    "/marketplace/first-order-campaign.webp",
-  );
+  const featuredOffers = page.getByRole("region", { name: "Featured offers" });
+  await expect(featuredOffers).toBeVisible();
+  const campaigns = [
+    {
+      button: "Show featured offer 1: 40% off",
+      name: /40% off your first order/,
+      image: "/marketplace/first-order-campaign.webp",
+    },
+    {
+      button: "Show featured offer 2: Build your box",
+      name: /Build your box your way/,
+      image: "/marketplace/build-your-box-campaign.webp",
+    },
+    {
+      button: "Show featured offer 3: Market fresh",
+      name: /Market fresh every week/,
+      image: "/marketplace/market-fresh-campaign.webp",
+    },
+    {
+      button: "Show featured offer 4: Weekend drops",
+      name: /Weekend drops right on time/,
+      image: "/marketplace/weekend-delivery-campaign.webp",
+    },
+    {
+      button: "Show featured offer 5: One month free",
+      name: /One month free to get started/,
+      image: "/marketplace/free-month-campaign.webp",
+    },
+  ] as const;
+  await expect(featuredOffers.getByRole("button", { name: /Show featured offer/ })).toHaveCount(5);
+  for (const campaign of campaigns) {
+    await featuredOffers.getByRole("button", { name: campaign.button }).click();
+    const activeOffer = featuredOffers.getByRole("link", { name: campaign.name });
+    await expect(activeOffer).toBeVisible();
+    await expect(activeOffer.getByRole("img")).toHaveAttribute("src", campaign.image);
+  }
+  await expect(page.getByText("A bright welcome to the weekly market.")).toHaveCount(0);
   await expect(page.getByText("Crave it? Get it.")).toHaveCount(0);
   await expect(page.getByPlaceholder("Search for vegetables, healthy food, or a dish")).toHaveCount(
     0,
