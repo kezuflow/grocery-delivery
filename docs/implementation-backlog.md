@@ -90,6 +90,31 @@ offline, and success states where applicable.
 - **Next resume point:** use the documented system as authority for a scoped Impeccable critique,
   extraction, refinement, or live-mode setup rather than beginning an unbounded visual rewrite.
 
+## Completed Admin Design-System Extraction
+
+- **Status:** locally complete as an admin-only research and documentation slice.
+- **Outcome:** sampled authenticated Customer.io application screens through the Mobbin MCP across
+  shell/navigation, people tables, detail activity, campaigns, analytics, integrations, settings,
+  workflow editors, inspectors, destructive confirmation, and empty states. The resulting canonical
+  admin authority is `docs/design/admin/DESIGN.md`, with reusable component rules in
+  `docs/design/admin/COMPONENTS.md`, research evidence and Mobbin links in
+  `docs/design/admin/REFERENCES.md`, and a documentation-only semantic token contract in
+  `docs/design/admin/TOKENS.css`.
+- **Repository audit:** existing admin shell, grouped navigation, breadcrumbs, tables, tabs,
+  permission-aware states, and route boundaries are marked to keep. Raw admin hex utilities,
+  global pill buttons, card-heavy compositions, and duplicated feature-local recipes are recorded
+  as future modify/replace candidates; no runtime UI was redesigned in this slice.
+- **Scope and impact:** admin documentation and instruction routing only. No landing, marketplace,
+  customer, delivery, API, authorization, persistence, request, latency, bundle, or observability
+  behavior changed.
+- **Verification:** project-guidance validation passes; targeted Prettier checks pass for all new
+  admin documents and touched instruction/backlog files; `git diff --check` passes. Repository
+  `pnpm check` remains blocked at the global format gate by 18 pre-existing unrelated files under
+  `.agents/skills`, `.impeccable`, and existing landing/storefront work; none were modified by this
+  slice.
+- **Next resume point:** begin a separately scoped admin implementation slice by selecting the page
+  archetype and components from the new authority; do not perform a broad frontend refactor.
+
 ## Admin Dashboard Recovery Program
 
 **Status:** active. This program supersedes the prior direction that treated the launch

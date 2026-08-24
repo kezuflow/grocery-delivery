@@ -29,3 +29,23 @@ Before changing frontend structure or styling, read `../../docs/frontend-standar
   builds, and the repository `pnpm check` for every slice.
 - Use local API/D1 data and deterministic fixtures while iterating. Do not require or invoke a
   deployed staging workflow unless the user explicitly starts a staging phase.
+
+## Admin Dashboard Design Authority
+
+For work inside `src/app/admin`, admin layout components, or `src/features/admin-*`, follow this
+order after product requirements and repository-wide brand rules:
+
+1. `../../docs/design/admin/DESIGN.md`
+2. existing semantic design tokens
+3. existing reusable admin components
+4. `../../docs/design/admin/COMPONENTS.md`
+5. `../../docs/design/admin/REFERENCES.md`
+6. fresh Mobbin references when a new problem is not covered
+
+Customer.io/Mobbin controls UX and structural inspiration for the admin dashboard.
+`../../docs/design/admin/DESIGN.md` controls Carbon's admin visual identity and implementation
+rules. Customer.io-derived rules apply only to the admin dashboard and must not be propagated to
+the landing page or customer marketplace.
+
+Before creating a new admin screen, identify the established page archetype and reusable components
+that should generate it. Do not design admin pages independently.

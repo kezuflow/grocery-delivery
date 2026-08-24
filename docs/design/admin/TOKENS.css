@@ -1,0 +1,61 @@
+/*
+ * Proposed semantic token contract for the Carbon admin dashboard.
+ * Documentation-only: not wired into runtime styles by the design-system extraction task.
+ * Implement only the tokens proven reusable, and keep them scoped to admin primitives/layouts.
+ */
+:root {
+  --admin-canvas: #f7f7f5;
+  --admin-surface: #ffffff;
+  --admin-surface-subtle: #f2f3f1;
+  --admin-surface-hover: #eceeeb;
+
+  --admin-text-primary: #1d2421;
+  --admin-text-secondary: #52605a;
+  --admin-text-muted: #737d78;
+  --admin-text-inverse: #ffffff;
+
+  --admin-border: #dfe4df;
+  --admin-border-strong: #c6cec8;
+  --admin-focus: #527018;
+
+  --admin-accent: #527018;
+  --admin-accent-hover: #3f5912;
+  --admin-accent-soft: #edf3dc;
+  --admin-success: #087443;
+  --admin-success-soft: #e8f5ed;
+  --admin-warning: #9a6414;
+  --admin-warning-soft: #fff4d9;
+  --admin-danger: #b33b2d;
+  --admin-danger-soft: #fcebea;
+  --admin-info: #176b78;
+  --admin-info-soft: #e7f3f5;
+
+  --admin-space-1: 4px;
+  --admin-space-2: 8px;
+  --admin-space-3: 12px;
+  --admin-space-4: 16px;
+  --admin-space-5: 20px;
+  --admin-space-6: 24px;
+  --admin-space-7: 32px;
+  --admin-space-8: 40px;
+  --admin-space-9: 48px;
+  --admin-space-10: 64px;
+
+  --admin-radius-control: 5px;
+  --admin-radius-panel: 7px;
+  --admin-radius-overlay: 9px;
+  --admin-radius-pill: 999px;
+  --admin-shadow-overlay: 0 12px 32px rgb(25 35 29 / 16%);
+
+  --admin-sidebar-utility-width: 48px;
+  --admin-sidebar-width: 216px;
+  --admin-content-max-width: 1380px;
+  --admin-header-height: 48px;
+
+  --admin-control-height-sm: 36px;
+  --admin-control-height-md: 40px;
+  --admin-control-height-lg: 44px;
+  --admin-table-header-height: 40px;
+  --admin-table-row-height: 44px;
+  --admin-table-row-height-rich: 52px;
+}
