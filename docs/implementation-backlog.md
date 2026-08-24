@@ -322,11 +322,12 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
 
 - **Status:** locally complete as a user-requested public landing-page visual, content, and
   conversion refinement. No staging or production promotion was requested.
-- **Outcome and affected role:** public visitors now enter through a cinematic, Cebu-market-led
-  editorial hero with one primary weekly-shopping action, a secondary plan path, an accessible
-  trial announcement, live promotion context, concise trust signals, direct server-priced product
-  links, a legible three-step weekly flow, clearer plan value, and a stronger trial close. Existing
-  catalog, plan, promotion, authentication, and checkout behavior remains authoritative.
+- **Outcome and affected role:** public visitors now enter through the compact `freshmarkets`
+  header wordmark and a cinematic, Cebu-market-led editorial hero with one primary weekly-shopping
+  action, a secondary plan path, an accessible trial announcement, live promotion context, concise
+  trust signals, direct server-priced product links, a legible three-step weekly flow, clearer plan
+  value, and a stronger trial close. Existing catalog, plan, promotion, authentication, and checkout
+  behavior remains authoritative.
 - **Design references:** Mobbin web sections inspected on 2026-08-24 included
   [Blue Apron hero composition](https://mobbin.com/sites/sections/034ae094-4059-4b93-8055-af18da44b565),
   [Zipline three-step hierarchy](https://mobbin.com/sites/sections/7b0ca7a7-caf2-42a6-b315-53b86c8cd190),

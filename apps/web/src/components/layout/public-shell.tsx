@@ -51,7 +51,7 @@ export function PublicShell({
 function PublicBrandLink() {
   return (
     <a
-      aria-label="Carbon Food Delivery home"
+      aria-label="Freshmarkets home"
       className="inline-flex min-w-0 items-center gap-3 font-bold text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
       href="/"
     >
@@ -61,13 +61,7 @@ function PublicBrandLink() {
       >
         <Leaf size={17} strokeWidth={2.25} />
       </span>
-      <span className="grid leading-tight">
-        <span className="sm:hidden">Carbon</span>
-        <span className="hidden truncate sm:inline">Carbon Food Delivery</span>
-        <span className="hidden text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-muted sm:block">
-          Weekly market delivery
-        </span>
-      </span>
+      <span className="truncate text-lg tracking-[-0.02em]">freshmarkets</span>
     </a>
   );
 }
