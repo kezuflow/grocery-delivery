@@ -32,13 +32,15 @@ export function StorefrontContent({
         { href: "#plans", label: "Weekly plans" },
       ]}
     >
-      <StorefrontHero banner={storefront.banners[0]} session={session} />
-      <StorefrontBenefits />
-      <StorefrontCatalog storefront={storefront} />
-      <StorefrontProcess />
-      <StorefrontPlans storefront={storefront} />
-      <StorefrontTrial session={session} />
-      <StorefrontFooter />
+      <div data-impeccable-target="landing-page" id="landing-page">
+        <StorefrontHero banner={storefront.banners[0]} session={session} />
+        <StorefrontBenefits />
+        <StorefrontCatalog storefront={storefront} />
+        <StorefrontProcess />
+        <StorefrontPlans storefront={storefront} />
+        <StorefrontTrial session={session} />
+        <StorefrontFooter />
+      </div>
     </PublicShell>
   );
 }
