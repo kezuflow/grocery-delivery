@@ -21,6 +21,7 @@ export const catalogCategorySchema = z.object({
 export const catalogSkuSchema = z.object({
   id: z.string().min(1),
   categoryId: z.string().min(1),
+  categoryIds: z.array(z.string().min(1)).min(1).max(20).readonly(),
   name: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   description: z.string(),
@@ -28,8 +29,11 @@ export const catalogSkuSchema = z.object({
   imageUrl: z
     .string()
     .refine(
-      (value) => value.startsWith("/marketplace/") || z.string().url().safeParse(value).success,
-      "imageUrl must be an absolute URL or a marketplace asset path",
+      (value) =>
+        value.startsWith("/marketplace/") ||
+        value.startsWith("/api/v1/catalog/images/") ||
+        z.string().url().safeParse(value).success,
+      "imageUrl must be an absolute URL, a catalog image path, or a marketplace asset path",
     )
     .nullable(),
   price: z.object({
@@ -95,10 +99,26 @@ export const catalogAdminItemSchema = catalogSkuSchema.extend({
   status: catalogAdminLifecycleSchema,
 });
 
+export const catalogAdminImageSchema = z.object({
+  id: z.string().min(1),
+  fileName: z.string().min(1).max(255),
+  altText: z.string().min(1).max(160),
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(5 * 1024 * 1024),
+  status: z.enum(["pending", "ready"]),
+  url: z.string().startsWith("/api/v1/catalog/images/"),
+  createdAt: z.string().datetime(),
+});
+
 export const catalogAdminListResponseSchema = z.object({
   data: z.object({
     categories: z.array(catalogCategorySchema),
     items: z.array(catalogAdminItemSchema),
+    images: z.array(catalogAdminImageSchema),
   }),
   meta: responseMetaSchema,
 });
@@ -108,8 +128,11 @@ const catalogImageUrlSchema = z
   .trim()
   .max(2_048)
   .refine(
-    (value) => value.startsWith("/marketplace/") || z.string().url().safeParse(value).success,
-    "imageUrl must be an absolute URL or a marketplace asset path",
+    (value) =>
+      value.startsWith("/marketplace/") ||
+      value.startsWith("/api/v1/catalog/images/") ||
+      z.string().url().safeParse(value).success,
+    "imageUrl must be an absolute URL, a catalog image path, or a marketplace asset path",
   )
   .nullable();
 
@@ -122,7 +145,7 @@ export const catalogAdminCategoryUpsertRequestSchema = z
 
 export const catalogAdminSkuUpsertRequestSchema = z
   .object({
-    categoryId: z.string().trim().min(1).max(128),
+    categoryIds: z.array(z.string().trim().min(1).max(128)).min(1).max(20).readonly(),
     name: z.string().trim().min(1).max(160),
     description: z.string().trim().min(1).max(1_000),
     unit: catalogUnitSchema,
@@ -132,6 +155,34 @@ export const catalogAdminSkuUpsertRequestSchema = z
     status: catalogAdminLifecycleSchema,
   })
   .strict();
+
+export const catalogAdminImageUploadRequestSchema = z
+  .object({
+    fileName: z.string().trim().min(1).max(255),
+    altText: z.string().trim().min(1).max(160),
+    contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    sizeBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(5 * 1024 * 1024),
+  })
+  .strict();
+
+export const catalogAdminImageUploadResponseSchema = z.object({
+  data: z.object({
+    image: catalogAdminImageSchema,
+    uploadUrl: z.string().url(),
+    uploadUrlExpiresAt: z.string().datetime(),
+    replayed: z.boolean(),
+  }),
+  meta: responseMetaSchema,
+});
+
+export const catalogAdminImageResponseSchema = z.object({
+  data: z.object({ image: catalogAdminImageSchema }),
+  meta: responseMetaSchema,
+});
 
 export const catalogAdminCategoryResponseSchema = z.object({
   data: z.object({
@@ -167,3 +218,7 @@ export type CatalogAdminCategoryUpsertRequest = z.infer<
 export type CatalogAdminSkuUpsertRequest = z.infer<typeof catalogAdminSkuUpsertRequestSchema>;
 export type CatalogAdminCategoryResponse = z.infer<typeof catalogAdminCategoryResponseSchema>;
 export type CatalogAdminSkuResponse = z.infer<typeof catalogAdminSkuResponseSchema>;
+export type CatalogAdminImage = z.infer<typeof catalogAdminImageSchema>;
+export type CatalogAdminImageUploadRequest = z.infer<typeof catalogAdminImageUploadRequestSchema>;
+export type CatalogAdminImageUploadResponse = z.infer<typeof catalogAdminImageUploadResponseSchema>;
+export type CatalogAdminImageResponse = z.infer<typeof catalogAdminImageResponseSchema>;

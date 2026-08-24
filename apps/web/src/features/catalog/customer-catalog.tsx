@@ -200,7 +200,7 @@ export function CustomerCatalog({
   const aisleSections = catalog.categories
     .map((category) => ({
       category,
-      items: visibleItems.filter((item) => item.categoryId === category.id),
+      items: visibleItems.filter((item) => item.categoryIds.includes(category.id)),
     }))
     .filter((section) => section.items.length);
   const featured = visibleItems.slice(0, 10);

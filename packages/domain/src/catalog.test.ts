@@ -8,6 +8,7 @@ describe("catalog entities", () => {
   const validSku = {
     id: "sku-tomatoes",
     categoryId: "fresh-produce",
+    categoryIds: ["fresh-produce"],
     name: "Roma tomatoes",
     slug: "roma-tomatoes",
     description: "Firm tomatoes for the week ahead.",
@@ -23,6 +24,7 @@ describe("catalog entities", () => {
     expect(sku).toEqual(validSku);
     expect(Object.isFrozen(sku)).toBe(true);
     expect(Object.isFrozen(sku.price)).toBe(true);
+    expect(Object.isFrozen(sku.categoryIds)).toBe(true);
   });
 
   it("rejects invalid slugs, units, and image URLs", () => {

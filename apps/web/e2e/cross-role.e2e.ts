@@ -72,7 +72,8 @@ test("catalog administrators can create a product without leaving the catalog", 
   const productName = `Catalog test ${testInfo.project.name} ${Date.now()}`;
   await editor.getByLabel("Product name").fill(productName);
   await editor.getByLabel("Description").fill("A locally verified catalog product.");
-  await editor.getByLabel("Category", { exact: true }).selectOption({ label: "Fresh produce" });
+  await editor.getByLabel("Fresh produce").check();
+  await editor.getByLabel("Pantry").check();
   await editor.getByLabel("Sold by").selectOption("pack");
   const chooseImage = editor.getByRole("button", { name: /Choose image/ });
   if (testInfo.project.name === "phone") {
@@ -109,6 +110,9 @@ test("catalog administrators can create a product without leaving the catalog", 
   } else {
     await expect(page.getByRole("row").filter({ hasText: productName })).toBeVisible();
   }
+  await page.getByRole("tab", { name: "Images" }).click();
+  await expect(page.getByLabel("Image file")).toBeVisible();
+  await expect(page.getByLabel("Image description")).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 

@@ -9,11 +9,13 @@ import {
   type CatalogAdminCommand,
   type CatalogAdminCommandRepository,
   type CatalogAdminItem,
+  type CatalogAdminImage,
 } from "./catalog-admin.js";
 
 class InMemoryCatalogAdminRepository implements CatalogAdminCommandRepository {
   readonly categories = new Map<string, CatalogCategory>();
   readonly items = new Map<string, CatalogAdminItem>();
+  readonly images = new Map<string, CatalogAdminImage>();
   readonly commands = new Map<string, CatalogAdminCommand>();
   readonly audits: AuditEvent[] = [];
 
@@ -21,6 +23,7 @@ class InMemoryCatalogAdminRepository implements CatalogAdminCommandRepository {
     return Promise.resolve({
       categories: [...this.categories.values()],
       items: [...this.items.values()],
+      images: [...this.images.values()],
     });
   }
 
@@ -46,6 +49,10 @@ class InMemoryCatalogAdminRepository implements CatalogAdminCommandRepository {
     return Promise.resolve([...this.items.values()].find((item) => item.slug === slug) ?? null);
   }
 
+  findImageById(id: string) {
+    return Promise.resolve(this.images.get(id) ?? null);
+  }
+
   applyCategory(command: CatalogAdminCommand, auditEvent: AuditEvent) {
     if (command.result.kind !== "category") throw new Error("category result required");
     this.categories.set(command.result.category.id, command.result.category);
@@ -60,6 +67,22 @@ class InMemoryCatalogAdminRepository implements CatalogAdminCommandRepository {
     this.commands.set(command.idempotencyKey, command);
     this.audits.push(auditEvent);
     return Promise.resolve();
+  }
+
+  applyImage(command: CatalogAdminCommand, auditEvent: AuditEvent) {
+    if (command.result.kind !== "image") throw new Error("image result required");
+    this.images.set(command.result.image.id, command.result.image);
+    this.commands.set(command.idempotencyKey, command);
+    this.audits.push(auditEvent);
+    return Promise.resolve();
+  }
+
+  markImageReady(id: string) {
+    const image = this.images.get(id);
+    if (!image) return Promise.resolve(null);
+    const ready = { ...image, status: "ready" as const };
+    this.images.set(id, ready);
+    return Promise.resolve(ready);
   }
 }
 
@@ -101,16 +124,21 @@ describe("CatalogAdminService", () => {
 
   it("derives the selling price on the server and stores the lifecycle status", async () => {
     const repository = new InMemoryCatalogAdminRepository();
-    const service = new CatalogAdminService(repository, () => "generated-1");
+    let generatedId = 0;
+    const service = new CatalogAdminService(repository, () => `generated-${++generatedId}`);
     const category = await service.upsertCategory(context, {
       name: "Fresh Produce",
       active: true,
     });
+    const secondCategory = await service.upsertCategory(
+      { ...context, idempotencyKey: "catalog-command-category-2" },
+      { name: "Weekly Specials", active: true },
+    );
 
     const result = await service.upsertSku(
       { ...context, idempotencyKey: "catalog-command-2" },
       {
-        categoryId: category.category.id,
+        categoryIds: [category.category.id, secondCategory.category.id],
         name: "Roma Tomatoes",
         description: "Fresh local tomatoes.",
         unit: "kilogram",
@@ -126,7 +154,33 @@ describe("CatalogAdminService", () => {
       status: "paused",
       active: false,
       slug: "roma-tomatoes",
+      categoryIds: [category.category.id, secondCategory.category.id],
     });
+  });
+
+  it("creates idempotent catalog image metadata for an R2 upload", async () => {
+    const repository = new InMemoryCatalogAdminRepository();
+    const service = new CatalogAdminService(repository, () => "generated-image");
+    const input = {
+      fileName: "tomatoes.webp",
+      altText: "Roma tomatoes",
+      contentType: "image/webp" as const,
+      sizeBytes: 12_000,
+    };
+
+    const created = await service.createImage(context, input);
+    const replayed = await service.createImage(context, input);
+
+    expect(created).toMatchObject({
+      replayed: false,
+      image: {
+        id: "image-generated-image",
+        objectKey: "catalog/image-generated-image.webp",
+        status: "pending",
+        url: "/api/v1/catalog/images/image-generated-image",
+      },
+    });
+    expect(replayed).toMatchObject({ replayed: true, image: created.image });
   });
 
   it("rejects updates for missing catalog records", async () => {

@@ -197,6 +197,25 @@ export const openApiDocument: OpenApiDocument = {
       "Update an idempotent catalog product",
       "put",
     ),
+    "/api/v1/admin/catalog/images/uploads": protectedOperation(
+      "Request an idempotent catalog image upload",
+      "post",
+      "201",
+    ),
+    "/api/v1/admin/catalog/images/{id}/complete": protectedOperation(
+      "Complete a catalog image upload",
+      "post",
+    ),
+    "/api/v1/catalog/images/{id}": {
+      get: {
+        tags: ["catalog"],
+        summary: "Read a published catalog image",
+        responses: {
+          "200": { description: "Catalog image bytes" },
+          "404": jsonResponse("Not found"),
+        },
+      },
+    },
     "/api/v1/admin/catalog/{id}/status": protectedOperation(
       "Update catalog product lifecycle status",
       "patch",

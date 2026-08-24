@@ -99,7 +99,7 @@ export class InMemoryCatalogReader implements CatalogReader, CatalogCheckoutRead
     const search = query.search?.toLowerCase();
     const categoryItems = this.items.filter((item) => {
       if (!query.includeInactive && !item.active) return false;
-      if (category && item.categoryId !== category.id) return false;
+      if (category && !item.categoryIds.includes(category.id)) return false;
       if (query.minPriceCentavos !== undefined && item.price.centavos < query.minPriceCentavos)
         return false;
       if (query.maxPriceCentavos !== undefined && item.price.centavos > query.maxPriceCentavos)
@@ -175,22 +175,34 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
     const useOffset = query.offset !== undefined;
     const cursorClause = useOffset ? "" : "AND (? IS NULL OR s.id > ?)";
     const itemSql = query.categorySlug
-      ? `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
+      ? `SELECT s.id, s.category_id,
+                COALESCE((SELECT json_group_array(category_id)
+                          FROM catalog_sku_categories WHERE sku_id = s.id),
+                         json_array(s.category_id)) AS category_ids_json,
+                s.name, s.slug, s.description, s.unit,
                 s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
-         INNER JOIN catalog_categories c ON c.id = s.category_id
-         WHERE ${query.includeInactive ? "1 = 1" : "s.active = 1 AND c.active = 1"} AND c.slug = ?
+         WHERE ${query.includeInactive ? "1 = 1" : "s.active = 1"}
+           AND EXISTS (
+             SELECT 1 FROM catalog_sku_categories sc
+             INNER JOIN catalog_categories c ON c.id = sc.category_id
+             WHERE sc.sku_id = s.id AND c.slug = ?
+               ${query.includeInactive ? "" : "AND c.active = 1"}
+           )
            AND (? IS NULL OR lower(s.name || ' ' || s.description || ' ' || s.slug) LIKE '%' || ? || '%')
            AND (? IS NULL OR s.current_price_centavos >= ?)
            AND (? IS NULL OR s.current_price_centavos <= ?)
            ${cursorClause}
          ORDER BY ${orderBy}
          LIMIT ?${useOffset ? " OFFSET ?" : ""}`
-      : `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
+      : `SELECT s.id, s.category_id,
+                COALESCE((SELECT json_group_array(category_id)
+                          FROM catalog_sku_categories WHERE sku_id = s.id),
+                         json_array(s.category_id)) AS category_ids_json,
+                s.name, s.slug, s.description, s.unit,
          s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
-         INNER JOIN catalog_categories c ON c.id = s.category_id
-         WHERE ${query.includeInactive ? "1 = 1" : "s.active = 1 AND c.active = 1"}
+         WHERE ${query.includeInactive ? "1 = 1" : "s.active = 1 AND EXISTS (SELECT 1 FROM catalog_sku_categories sc INNER JOIN catalog_categories c ON c.id = sc.category_id WHERE sc.sku_id = s.id AND c.active = 1)"}
            AND (? IS NULL OR lower(s.name || ' ' || s.description || ' ' || s.slug) LIKE '%' || ? || '%')
            AND (? IS NULL OR s.current_price_centavos >= ?)
            AND (? IS NULL OR s.current_price_centavos <= ?)
@@ -243,11 +255,17 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
   async findPublicBySlug(slug: string): Promise<CatalogSku | null> {
     const rows = await this.database
       .prepare(
-        `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
+        `SELECT s.id, s.category_id,
+                COALESCE((SELECT json_group_array(category_id)
+                          FROM catalog_sku_categories WHERE sku_id = s.id),
+                         json_array(s.category_id)) AS category_ids_json,
+                s.name, s.slug, s.description, s.unit,
                 s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
-         INNER JOIN catalog_categories c ON c.id = s.category_id
-         WHERE s.active = 1 AND c.active = 1 AND s.slug = ?
+         WHERE s.active = 1 AND s.slug = ?
+           AND EXISTS (SELECT 1 FROM catalog_sku_categories sc
+                       INNER JOIN catalog_categories c ON c.id = sc.category_id
+                       WHERE sc.sku_id = s.id AND c.active = 1)
          LIMIT 1`,
       )
       .bind(slug)
@@ -262,11 +280,17 @@ export class D1CatalogReader implements CatalogReader, CatalogCheckoutReader {
     const placeholders = skuIds.map(() => "?").join(", ");
     const rows = await this.database
       .prepare(
-        `SELECT s.id, s.category_id, s.name, s.slug, s.description, s.unit,
+        `SELECT s.id, s.category_id,
+                COALESCE((SELECT json_group_array(category_id)
+                          FROM catalog_sku_categories WHERE sku_id = s.id),
+                         json_array(s.category_id)) AS category_ids_json,
+                s.name, s.slug, s.description, s.unit,
                 s.image_url, s.current_price_centavos, s.active
          FROM catalog_skus s
-         INNER JOIN catalog_categories c ON c.id = s.category_id
-         WHERE s.active = 1 AND c.active = 1 AND s.id IN (${placeholders})`,
+         WHERE s.active = 1 AND s.id IN (${placeholders})
+           AND EXISTS (SELECT 1 FROM catalog_sku_categories sc
+                       INNER JOIN catalog_categories c ON c.id = sc.category_id
+                       WHERE sc.sku_id = s.id AND c.active = 1)`,
       )
       .bind(...skuIds)
       .all<CatalogSkuRow>();
@@ -391,6 +415,7 @@ type CatalogCategoryRow = Record<string, unknown> & {
 type CatalogSkuRow = Record<string, unknown> & {
   id: string;
   category_id: string;
+  category_ids_json: string;
   name: string;
   slug: string;
   description: string;
@@ -424,6 +449,7 @@ function mapSku(row: CatalogSkuRow): CatalogSku {
   return createCatalogSku({
     id: row.id,
     categoryId: row.category_id,
+    categoryIds: parseCategoryIds(row.category_ids_json, row.category_id),
     name: row.name,
     slug: row.slug,
     description: row.description,
@@ -432,6 +458,22 @@ function mapSku(row: CatalogSkuRow): CatalogSku {
     price: { centavos: row.current_price_centavos, currency: "PHP" },
     active: row.active === 1,
   });
+}
+
+function parseCategoryIds(value: string, fallback: string): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (
+      Array.isArray(parsed) &&
+      parsed.every((item) => typeof item === "string") &&
+      parsed.length
+    ) {
+      return [fallback, ...parsed.filter((categoryId) => categoryId !== fallback)];
+    }
+  } catch {
+    // Fall back to the legacy primary category while older local databases migrate.
+  }
+  return [fallback];
 }
 
 export function createDefaultCatalogReader(): InMemoryCatalogReader {

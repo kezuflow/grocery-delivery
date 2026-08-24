@@ -203,6 +203,37 @@ batch launch/import process with a complete-data preview and strong confirmation
   responsive security setup screen. Repository `pnpm check` passes all 55 Turbo tasks. No remote
   state, deployment, or new dependency was added.
 
+### AD-03B Catalog Classification And Image Library
+
+- **Outcome:** Products can now belong to up to 20 categories. The product sheet uses an accessible
+  checkbox group, list filters and category counts recognize every assignment, and compact/desktop
+  product rows display all assigned category names. Catalog navigation now has Products, Categories,
+  and Images as equal tabs; Images provides a concise upload form, empty state, pending/ready state,
+  file details, and a reusable picker shared by product create/edit.
+- **Persistence and storage:** Forward-only migration `0042` backfills the existing primary category
+  into `catalog_sku_categories` and adds ordered many-to-many links. It also adds `catalog_images` for
+  searchable metadata, ownership, declared file bounds, stable catalog URLs, and upload state. Image
+  bytes remain in the existing private R2 media bucket; D1 does not store binary files. Admin uploads
+  use short-lived HMAC URLs, accept JPEG/PNG/WebP up to 5 MB, verify the R2 object size before marking
+  metadata ready, and serve ready images through cacheable, content-type-safe catalog URLs.
+- **Authorization and reliability:** Catalog image creation requires catalog permission and an
+  idempotency key. Product IDs, primary category, category links, image object keys, status, pricing,
+  audit events, and cache revision remain server-owned. Staging and production require the existing
+  `MEDIA_BUCKET` plus a configured `MEDIA_SIGNING_SECRET`; local development may reuse the local auth
+  secret only for signed local media requests.
+- **Verification:** Contract and application tests cover multi-category validation, price derivation,
+  and replay-safe image metadata. A Miniflare D1 integration applies migrations `0001`, `0007`,
+  `0041`, and `0042`, then proves multi-category persistence, secondary-category public filtering,
+  image readiness, and stable object metadata. API tests cover protected upload issuance. Focused
+  Playwright product creation passes on phone, tablet, and desktop with two selected categories and
+  verifies the Images tab fields. Live local browser inspection confirms the three-tab layout,
+  accessible category group, and no document overflow at 1329 px. Repository `pnpm check` passes all
+  workspace formatting, lint, typecheck, unit, API, and D1 integration tasks.
+- **Scope boundary and resume point:** Migration `0042` was applied only to local D1; no staging
+  migration, upload, or deployment was performed. Image deletion with product-usage guards, folders,
+  and metadata editing remain optional AD-03B follow-ups. The next planned admin recovery slice is
+  AD-01 unless those library-management follow-ups are requested first.
+
 ### Slice Acceptance Baseline
 
 Every admin slice must include explicit loading, empty, unavailable, forbidden, validation,
@@ -233,8 +264,9 @@ operational policy management, not catalog editing; weekly scheduled delivery is
 delivery is visible only as a disabled future option; and guests may build a cart but must sign in
 or create an account before payment and order creation.
 
-Implement only the next independently reviewable slice. AD-00 and AD-03A are complete; continue
-AD-03B with the persistent product-media library before returning to AD-01. Trace route,
+Implement only the next independently reviewable slice. AD-00, AD-03A, and the AD-03B persistent
+product-media foundation are complete; continue AD-01 unless image deletion, usage guards, folders,
+or metadata editing are requested first. Trace route,
 contract, API, application/domain, repository/migration, UI states, and tests before editing. Add
 focused tests, run pnpm check, inspect git diff --check and the staged diff, update this backlog
 with local evidence and the next resume point, commit with a conventional commit, and push to the

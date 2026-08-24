@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Upload,
 } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -73,7 +74,7 @@ const units: readonly CatalogUnit[] = ["piece", "gram", "kilogram", "milliliter"
 type ProductDraft = Readonly<{
   name: string;
   description: string;
-  categoryId: string;
+  categoryIds: readonly string[];
   unit: CatalogUnit;
   imageUrl: string | null;
   procurementCostPesos: string;
@@ -97,10 +98,13 @@ export function AdminCatalog({
   const canManage =
     state.status !== "forbidden" &&
     (permissions.includes("catalog") || permissions.includes("superadmin"));
-  const [view, setView] = useState<"products" | "categories">("products");
+  const [view, setView] = useState<"products" | "categories" | "images">("products");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [categories, setCategories] = useState(catalog?.categories ?? []);
+  const [catalogImages, setCatalogImages] = useState(catalog?.images ?? []);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadAltText, setUploadAltText] = useState("");
   const [editor, setEditor] = useState<"product" | "category" | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productDraft, setProductDraft] = useState<ProductDraft>(() =>
@@ -122,11 +126,23 @@ export function AdminCatalog({
       const matchesQuery =
         !normalized ||
         `${item.name} ${item.slug} ${item.description}`.toLowerCase().includes(normalized);
-      return matchesQuery && (categoryFilter === "all" || item.categoryId === categoryFilter);
+      return (
+        matchesQuery && (categoryFilter === "all" || item.categoryIds.includes(categoryFilter))
+      );
     });
   }, [catalog?.items, categoryFilter, query]);
-  const visibleImages = imageLibrary.filter(([, label]) =>
-    label.toLowerCase().includes(libraryQuery.trim().toLowerCase()),
+  const allImages = [
+    ...catalogImages
+      .filter((image) => image.status === "ready")
+      .map((image) => ({ id: image.id, url: image.url, label: image.altText })),
+    ...imageLibrary.map(([file, label]) => ({
+      id: `built-in:${file}`,
+      url: `/marketplace/${file}`,
+      label,
+    })),
+  ];
+  const visibleImages = allImages.filter((image) =>
+    image.label.toLowerCase().includes(libraryQuery.trim().toLowerCase()),
   );
   const estimatedPrice = calculatePreviewPrice(productDraft);
 
@@ -164,7 +180,7 @@ export function AdminCatalog({
           className="flex gap-1 border-b border-line pt-3"
           role="tablist"
         >
-          {(["products", "categories"] as const).map((tab) => (
+          {(["products", "categories", "images"] as const).map((tab) => (
             <button
               aria-selected={view === tab}
               className={`border-b-2 px-3 py-2 text-sm font-bold capitalize ${
@@ -178,13 +194,6 @@ export function AdminCatalog({
               {tab}
             </button>
           ))}
-          <button
-            className="ml-auto inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-muted hover:text-ink"
-            onClick={() => setLibraryOpen(true)}
-            type="button"
-          >
-            <ImageIcon aria-hidden="true" size={14} /> Image library
-          </button>
         </div>
 
         {state.status === "forbidden" ? (
@@ -240,11 +249,12 @@ export function AdminCatalog({
               />
             )}
           </>
-        ) : (
+        ) : view === "categories" ? (
           <div className="grid gap-3 py-4 sm:grid-cols-2 xl:grid-cols-3">
             {categories.map((item) => {
               const count =
-                catalog?.items.filter((product) => product.categoryId === item.id).length ?? 0;
+                catalog?.items.filter((product) => product.categoryIds.includes(item.id)).length ??
+                0;
               return (
                 <button
                   className="rounded-lg border border-line p-4 text-left hover:border-deep hover:bg-accent/10"
@@ -262,6 +272,70 @@ export function AdminCatalog({
                 </button>
               );
             })}
+          </div>
+        ) : (
+          <div className="grid gap-5 py-4">
+            {canManage ? (
+              <form
+                className="grid gap-3 rounded-lg border border-dashed border-line bg-black/[0.02] p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
+                onSubmit={(event) => void uploadCatalogImage(event)}
+              >
+                <Input
+                  accept="image/jpeg,image/png,image/webp"
+                  label="Image file"
+                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                  required
+                  type="file"
+                />
+                <Input
+                  label="Image description"
+                  maxLength={160}
+                  onChange={(event) => setUploadAltText(event.target.value)}
+                  placeholder="e.g. Roma tomatoes on white background"
+                  required
+                  value={uploadAltText}
+                />
+                <Button loading={saving} size="sm" type="submit">
+                  <Upload aria-hidden="true" size={14} /> Upload image
+                </Button>
+                <p className="text-xs text-muted md:col-span-3">
+                  JPEG, PNG, or WebP up to 5 MB. Files are stored in media storage; searchable
+                  metadata is stored with the catalog.
+                </p>
+              </form>
+            ) : null}
+            {catalogImages.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {catalogImages.map((image) => (
+                  <article className="overflow-hidden rounded-lg border border-line" key={image.id}>
+                    <span className="grid aspect-square place-items-center bg-black/[0.03] text-muted">
+                      {image.status === "ready" ? (
+                        <img
+                          alt={image.altText}
+                          className="size-full object-cover"
+                          src={image.url}
+                        />
+                      ) : (
+                        <ImageIcon aria-hidden="true" size={24} />
+                      )}
+                    </span>
+                    <div className="grid gap-1 p-3">
+                      <strong className="truncate text-sm text-ink">{image.altText}</strong>
+                      <span className="truncate text-xs text-muted">{image.fileName}</span>
+                      <span className="flex items-center justify-between gap-2 pt-1 text-xs text-muted">
+                        {formatFileSize(image.sizeBytes)}
+                        <StatusPill status={image.status} />
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                description="Upload a product photo once, then reuse it across catalog items."
+                title="No uploaded images"
+              />
+            )}
           </div>
         )}
       </section>
@@ -289,23 +363,26 @@ export function AdminCatalog({
               value={productDraft.description}
             />
             <div className="grid gap-3 sm:grid-cols-2">
-              <Select
-                label="Category"
-                onChange={(event) => patchProduct({ categoryId: event.target.value })}
-                required
-                value={productDraft.categoryId}
-              >
-                <option disabled value="">
-                  Select a category
-                </option>
-                {categories
-                  .filter((item) => item.active)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-              </Select>
+              <fieldset className="grid gap-2 rounded border border-line p-3">
+                <legend className="px-1 text-xs font-bold text-ink">Categories</legend>
+                <p className="text-xs text-muted">
+                  Choose every section where this product belongs.
+                </p>
+                <div className="grid max-h-36 gap-2 overflow-y-auto">
+                  {categories
+                    .filter((item) => item.active)
+                    .map((item) => (
+                      <label className="flex items-center gap-2 text-sm text-ink" key={item.id}>
+                        <input
+                          checked={productDraft.categoryIds.includes(item.id)}
+                          onChange={() => toggleProductCategory(item.id)}
+                          type="checkbox"
+                        />
+                        {item.name}
+                      </label>
+                    ))}
+                </div>
+              </fieldset>
               <Select
                 label="Sold by"
                 onChange={(event) => patchProduct({ unit: event.target.value as CatalogUnit })}
@@ -476,24 +553,23 @@ export function AdminCatalog({
           value={libraryQuery}
         />
         <div className="grid max-h-[55vh] grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
-          {visibleImages.map(([file, label]) => {
-            const path = `/marketplace/${file}`;
-            const selected = productDraft.imageUrl === path;
+          {visibleImages.map((image) => {
+            const selected = productDraft.imageUrl === image.url;
             return (
               <button
                 aria-pressed={selected}
                 className={`group overflow-hidden rounded border text-left ${
                   selected ? "border-deep ring-2 ring-accent" : "border-line hover:border-deep"
                 }`}
-                key={file}
+                key={image.id}
                 onClick={() => {
-                  patchProduct({ imageUrl: path });
+                  patchProduct({ imageUrl: image.url });
                   setLibraryOpen(false);
                 }}
                 type="button"
               >
                 <span className="relative block aspect-square bg-black/[0.03]">
-                  <img alt="" className="size-full object-cover" src={path} />
+                  <img alt="" className="size-full object-cover" src={image.url} />
                   {selected ? (
                     <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-deep text-white">
                       <Check aria-hidden="true" size={12} />
@@ -501,7 +577,7 @@ export function AdminCatalog({
                   ) : null}
                 </span>
                 <span className="block truncate px-2 py-1.5 text-[10px] font-medium text-muted">
-                  {label}
+                  {image.label}
                 </span>
               </button>
             );
@@ -537,12 +613,25 @@ export function AdminCatalog({
     setProductDraft((current) => ({ ...current, ...patch }));
   }
 
+  function toggleProductCategory(categoryId: string) {
+    setProductDraft((current) => ({
+      ...current,
+      categoryIds: current.categoryIds.includes(categoryId)
+        ? current.categoryIds.filter((id) => id !== categoryId)
+        : [...current.categoryIds, categoryId],
+    }));
+  }
+
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const procurementCostCentavos = pesosToCentavos(productDraft.procurementCostPesos);
     const markupBasisPoints = percentToBasisPoints(productDraft.markupPercent);
     if (procurementCostCentavos === null || markupBasisPoints === null) {
       setActionMessage("Enter a valid procurement cost and markup.");
+      return;
+    }
+    if (productDraft.categoryIds.length === 0) {
+      setActionMessage("Select at least one category.");
       return;
     }
     setSaving(true);
@@ -553,7 +642,7 @@ export function AdminCatalog({
         {
           name: productDraft.name,
           description: productDraft.description,
-          categoryId: productDraft.categoryId,
+          categoryIds: productDraft.categoryIds,
           unit: productDraft.unit,
           imageUrl: productDraft.imageUrl,
           status: productDraft.status,
@@ -611,7 +700,7 @@ export function AdminCatalog({
       setCategories((current) =>
         [...current, created].sort((left, right) => left.name.localeCompare(right.name)),
       );
-      patchProduct({ categoryId: created.id });
+      patchProduct({ categoryIds: [...productDraft.categoryIds, created.id] });
       setInlineCategoryName("");
       setActionMessage(`${created.name} created and selected.`);
     } catch (error) {
@@ -631,6 +720,43 @@ export function AdminCatalog({
       router.refresh();
     } catch (error) {
       setActionMessage(formatApiError(error, "The catalog status could not be updated."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadCatalogImage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!uploadFile) return;
+    setSaving(true);
+    setActionMessage(null);
+    try {
+      const created = await client.createAdminCatalogImageUpload(
+        {
+          fileName: uploadFile.name,
+          altText: uploadAltText,
+          contentType: uploadFile.type,
+          sizeBytes: uploadFile.size,
+        },
+        crypto.randomUUID(),
+      );
+      const uploaded = await fetch(created.data.uploadUrl, {
+        method: "PUT",
+        headers: { "content-type": uploadFile.type },
+        body: uploadFile,
+      });
+      if (!uploaded.ok) throw new Error("The image bytes could not be uploaded.");
+      const completed = await client.completeAdminCatalogImage(created.data.image.id);
+      setCatalogImages((current) => [
+        completed.data.image,
+        ...current.filter((image) => image.id !== completed.data.image.id),
+      ]);
+      setUploadFile(null);
+      setUploadAltText("");
+      setActionMessage("Image uploaded and ready to use.");
+      router.refresh();
+    } catch (error) {
+      setActionMessage(formatApiError(error, "The image could not be uploaded."));
     } finally {
       setSaving(false);
     }
@@ -677,7 +803,7 @@ function ProductTable({
               <span className="min-w-0">
                 <strong className="block truncate text-sm text-ink">{item.name}</strong>
                 <span className="mt-1 block truncate text-xs text-muted">
-                  {categoryNames.get(item.categoryId) ?? "Uncategorized"} · {item.unit}
+                  {formatCategoryNames(item.categoryIds, categoryNames)} · {item.unit}
                 </span>
                 <span className="mt-1 block text-sm font-bold text-ink">
                   {formatPhp(item.price.centavos)}
@@ -724,7 +850,7 @@ function ProductTable({
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>{categoryNames.get(item.categoryId) ?? "Uncategorized"}</TableCell>
+                <TableCell>{formatCategoryNames(item.categoryIds, categoryNames)}</TableCell>
                 <TableCell className="font-semibold">{formatPhp(item.price.centavos)}</TableCell>
                 <TableCell>
                   <StatusPill status={item.status} />
@@ -847,7 +973,9 @@ function emptyProductDraft(
   return {
     name: "",
     description: "",
-    categoryId: categories.find((item) => item.active)?.id ?? "",
+    categoryIds: categories.find((item) => item.active)?.id
+      ? [categories.find((item) => item.active)!.id]
+      : [],
     unit: "piece",
     imageUrl: null,
     procurementCostPesos: "",
@@ -860,13 +988,30 @@ function draftFromItem(item: CatalogAdminItem): ProductDraft {
   return {
     name: item.name,
     description: item.description,
-    categoryId: item.categoryId,
+    categoryIds: item.categoryIds,
     unit: item.unit,
     imageUrl: item.imageUrl,
     procurementCostPesos: (item.procurementCostCentavos / 100).toFixed(2),
     markupPercent: (item.markupBasisPoints / 100).toFixed(2),
     status: item.status,
   };
+}
+
+function formatCategoryNames(
+  categoryIds: readonly string[],
+  categoryNames: ReadonlyMap<string, string>,
+): string {
+  const names = categoryIds.flatMap((id) => {
+    const name = categoryNames.get(id);
+    return name ? [name] : [];
+  });
+  return names.length ? names.join(", ") : "Uncategorized";
+}
+
+function formatFileSize(sizeBytes: number): string {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${Math.round(sizeBytes / 1024)} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function pesosToCentavos(value: string): number | null {

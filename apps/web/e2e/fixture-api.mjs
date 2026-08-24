@@ -58,6 +58,7 @@ const catalog = {
     {
       id: "sku-tomato",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Roma tomatoes",
       slug: "roma-tomatoes",
       description: "Ripe tomatoes for salads and sauces.",
@@ -69,6 +70,7 @@ const catalog = {
     {
       id: "sku-oats",
       categoryId: "pantry",
+      categoryIds: ["pantry"],
       name: "Rolled oats",
       slug: "rolled-oats",
       description: "A practical breakfast staple.",
@@ -80,6 +82,7 @@ const catalog = {
     {
       id: "sku-apples",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Apples",
       slug: "apples",
       description: "Crisp apples for snacks and salads.",
@@ -91,6 +94,7 @@ const catalog = {
     {
       id: "sku-basil",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Fresh basil",
       slug: "fresh-basil",
       description: "Fragrant basil for sauces and salads.",
@@ -102,6 +106,7 @@ const catalog = {
     {
       id: "sku-broccoli",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Broccoli",
       slug: "broccoli",
       description: "Fresh broccoli florets.",
@@ -113,6 +118,7 @@ const catalog = {
     {
       id: "sku-carrots",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Carrots",
       slug: "carrots",
       description: "Crunchy carrots for roasting and snacking.",
@@ -124,6 +130,7 @@ const catalog = {
     {
       id: "sku-cabbage",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Cabbage",
       slug: "cabbage",
       description: "Crisp cabbage for slaws and stir-fries.",
@@ -135,6 +142,7 @@ const catalog = {
     {
       id: "sku-cucumber",
       categoryId: "fresh",
+      categoryIds: ["fresh"],
       name: "Cucumber",
       slug: "cucumber",
       description: "Cool, crisp cucumbers.",
@@ -144,6 +152,7 @@ const catalog = {
       active: true,
     },
   ],
+  images: [],
   nextCursor: null,
 };
 
@@ -347,6 +356,7 @@ function routeResponse(method, url, role, scenario, body) {
       ok({
         categories: catalog.categories,
         items: catalog.items.map(toAdminCatalogItem),
+        images: catalog.images,
       }),
     );
   const catalogCategoryMatch = /^\/api\/v1\/admin\/catalog\/categories(?:\/([^/]+))?$/.exec(
@@ -382,7 +392,8 @@ function routeResponse(method, url, role, scenario, body) {
       );
       const item = {
         id: existing?.id ?? `sku-${slugify(body.name)}`,
-        categoryId: body.categoryId,
+        categoryId: body.categoryIds[0],
+        categoryIds: body.categoryIds,
         name: body.name,
         slug: existing?.slug ?? slugify(body.name),
         description: body.description,

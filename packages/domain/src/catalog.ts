@@ -15,6 +15,7 @@ export type CatalogCategory = Readonly<{
 export type CatalogSku = Readonly<{
   id: string;
   categoryId: string;
+  categoryIds: readonly string[];
   name: string;
   slug: string;
   description: string;
@@ -48,9 +49,24 @@ export function createCatalogCategory(input: CatalogCategory): CatalogCategory {
   return Object.freeze({ ...input });
 }
 
-export function createCatalogSku(input: CatalogSku): CatalogSku {
+export function createCatalogSku(
+  input: Omit<CatalogSku, "categoryIds"> & Readonly<{ categoryIds?: readonly string[] }>,
+): CatalogSku {
   assertText(input.id, "sku id");
   assertText(input.categoryId, "sku category id");
+  const categoryIds = [...new Set(input.categoryIds ?? [input.categoryId])];
+  if (categoryIds.length === 0 || categoryIds.some((categoryId) => !categoryId.trim())) {
+    throw new DomainValidationError(
+      "INVALID_CATALOG_CATEGORY",
+      "catalog SKU must have at least one category",
+    );
+  }
+  if (!categoryIds.includes(input.categoryId)) {
+    throw new DomainValidationError(
+      "INVALID_CATALOG_CATEGORY",
+      "primary catalog category must be included in categoryIds",
+    );
+  }
   assertText(input.name, "sku name");
   assertSlug(input.slug, "sku slug");
   assertText(input.description, "sku description");
@@ -67,7 +83,9 @@ export function createCatalogSku(input: CatalogSku): CatalogSku {
     );
   }
   if (input.imageUrl !== null) {
-    const isMarketplaceAsset = input.imageUrl.startsWith("/marketplace/");
+    const isMarketplaceAsset =
+      input.imageUrl.startsWith("/marketplace/") ||
+      input.imageUrl.startsWith("/api/v1/catalog/images/");
     if (!isMarketplaceAsset) {
       try {
         new URL(input.imageUrl);
@@ -80,7 +98,11 @@ export function createCatalogSku(input: CatalogSku): CatalogSku {
     }
   }
 
-  return Object.freeze({ ...input, price: Object.freeze({ ...input.price }) });
+  return Object.freeze({
+    ...input,
+    categoryIds: Object.freeze(categoryIds),
+    price: Object.freeze({ ...input.price }),
+  });
 }
 
 export function createCatalogMarkupRule(input: CatalogMarkupRule): CatalogMarkupRule {

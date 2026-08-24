@@ -11,6 +11,9 @@ import {
   catalogAdminListResponseSchema,
   catalogAdminSkuResponseSchema,
   catalogAdminSkuUpsertRequestSchema,
+  catalogAdminImageResponseSchema,
+  catalogAdminImageUploadRequestSchema,
+  catalogAdminImageUploadResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
@@ -89,6 +92,8 @@ import {
   type CatalogAdminCategoryResponse,
   type CatalogAdminListResponse,
   type CatalogAdminSkuResponse,
+  type CatalogAdminImageResponse,
+  type CatalogAdminImageUploadResponse,
   type CatalogSort,
   type CurrentSessionResponse,
   type DeliveryAddressInput,
@@ -264,6 +269,33 @@ export function createApiClient(baseTransport: ApiTransport) {
         catalogAdminSkuResponseSchema,
         id ? "PUT" : "POST",
         { ...init, headers },
+      );
+    },
+    createAdminCatalogImageUpload(
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CatalogAdminImageUploadResponse> {
+      const payload = catalogAdminImageUploadRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        "/api/v1/admin/catalog/images/uploads",
+        payload,
+        catalogAdminImageUploadResponseSchema,
+        "POST",
+        { ...init, headers },
+      );
+    },
+    completeAdminCatalogImage(id: string, init?: RequestInit): Promise<CatalogAdminImageResponse> {
+      return sendJson(
+        transport,
+        `/api/v1/admin/catalog/images/${encodeURIComponent(id)}/complete`,
+        {},
+        catalogAdminImageResponseSchema,
+        "POST",
+        init,
       );
     },
     getActivePromotionBanners(

@@ -33,6 +33,7 @@ describe("marketplace chrome data", () => {
                 {
                   id: "sku-1",
                   categoryId: "fresh",
+                  categoryIds: ["fresh"],
                   name: "Tomatoes",
                   slug: "tomatoes",
                   description: "Fresh tomatoes",

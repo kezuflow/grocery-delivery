@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { catalogListResponseSchema } from "./catalog.js";
+import {
+  catalogAdminImageUploadRequestSchema,
+  catalogAdminSkuUpsertRequestSchema,
+  catalogListResponseSchema,
+} from "./catalog.js";
 
 describe("catalog contracts", () => {
   const response = {
@@ -10,6 +14,7 @@ describe("catalog contracts", () => {
         {
           id: "sku-apples",
           categoryId: "produce",
+          categoryIds: ["produce"],
           name: "Apples",
           slug: "apples",
           description: "Crisp apples",
@@ -44,5 +49,28 @@ describe("catalog contracts", () => {
         },
       }),
     ).toThrow();
+  });
+
+  it("accepts multiple product categories and bounded catalog images", () => {
+    expect(
+      catalogAdminSkuUpsertRequestSchema.parse({
+        categoryIds: ["produce", "specials"],
+        name: "Apples",
+        description: "Crisp apples",
+        unit: "kilogram",
+        imageUrl: "/api/v1/catalog/images/image-1",
+        procurementCostCentavos: 10_000,
+        markupBasisPoints: 2_500,
+        status: "active",
+      }).categoryIds,
+    ).toEqual(["produce", "specials"]);
+    expect(
+      catalogAdminImageUploadRequestSchema.parse({
+        fileName: "apples.webp",
+        altText: "Red apples",
+        contentType: "image/webp",
+        sizeBytes: 100_000,
+      }),
+    ).toBeDefined();
   });
 });

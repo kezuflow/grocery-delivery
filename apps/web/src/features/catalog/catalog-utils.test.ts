@@ -20,6 +20,7 @@ const items = [
   {
     id: "sku-tomato",
     categoryId: "fresh",
+    categoryIds: ["fresh"] as string[],
     name: "Roma tomatoes",
     slug: "roma-tomatoes",
     description: "Ripe and ready for salads.",
@@ -31,6 +32,7 @@ const items = [
   {
     id: "sku-oats",
     categoryId: "pantry",
+    categoryIds: ["pantry"] as string[],
     name: "Rolled oats",
     slug: "rolled-oats",
     description: "A practical breakfast staple.",

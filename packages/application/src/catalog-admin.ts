@@ -20,14 +20,29 @@ export type CatalogAdminItem = CatalogSku &
     status: CatalogAdminLifecycle;
   }>;
 
+export type CatalogAdminImage = Readonly<{
+  id: string;
+  fileName: string;
+  altText: string;
+  objectKey: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp";
+  sizeBytes: number;
+  status: "pending" | "ready";
+  url: string;
+  createdByUserId: string;
+  createdAt: string;
+}>;
+
 export type CatalogAdminSnapshot = Readonly<{
   categories: readonly CatalogCategory[];
   items: readonly CatalogAdminItem[];
+  images: readonly CatalogAdminImage[];
 }>;
 
 export type CatalogAdminCommandResult =
   | Readonly<{ kind: "category"; category: CatalogCategory }>
-  | Readonly<{ kind: "sku"; item: CatalogAdminItem }>;
+  | Readonly<{ kind: "sku"; item: CatalogAdminItem }>
+  | Readonly<{ kind: "image"; image: CatalogAdminImage }>;
 
 export type CatalogAdminCommand = Readonly<{
   idempotencyKey: string;
@@ -43,8 +58,11 @@ export interface CatalogAdminCommandRepository {
   findCategoryBySlug(slug: string): Promise<CatalogCategory | null>;
   findSkuById(id: string): Promise<CatalogAdminItem | null>;
   findSkuBySlug(slug: string): Promise<CatalogAdminItem | null>;
+  findImageById(id: string): Promise<CatalogAdminImage | null>;
   applyCategory(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
   applySku(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
+  applyImage(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void>;
+  markImageReady(id: string, updatedAt: string): Promise<CatalogAdminImage | null>;
 }
 
 export class CatalogAdminValidationError extends Error {
@@ -83,6 +101,10 @@ export class CatalogAdminService {
 
   list(): Promise<CatalogAdminSnapshot> {
     return this.repository.list();
+  }
+
+  findImage(id: string): Promise<CatalogAdminImage | null> {
+    return this.repository.findImageById(normalizeRequiredText(id, "image id", 128));
   }
 
   async upsertCategory(
@@ -128,7 +150,7 @@ export class CatalogAdminService {
     context: CommandContext,
     input: Readonly<{
       id?: string;
-      categoryId: string;
+      categoryIds: readonly string[];
       name: string;
       description: string;
       unit: CatalogUnit;
@@ -139,13 +161,21 @@ export class CatalogAdminService {
     }>,
   ): Promise<Readonly<{ item: CatalogAdminItem; replayed: boolean }>> {
     const normalized = normalizeContext(context);
-    const categoryId = normalizeRequiredText(input.categoryId, "category", 128);
+    const categoryIds = [
+      ...new Set(
+        input.categoryIds.map((categoryId) => normalizeRequiredText(categoryId, "category", 128)),
+      ),
+    ];
+    if (categoryIds.length === 0 || categoryIds.length > 20) {
+      throw new CatalogAdminValidationError("select between 1 and 20 catalog categories");
+    }
+    const categoryId = categoryIds[0]!;
     const name = normalizeRequiredText(input.name, "product name", 160);
     const description = normalizeRequiredText(input.description, "description", 1_000);
     const fingerprint = JSON.stringify({
       action: "sku.upsert",
       id: input.id ?? null,
-      categoryId,
+      categoryIds,
       name,
       description,
       unit: input.unit,
@@ -156,8 +186,11 @@ export class CatalogAdminService {
     });
     const replay = await this.replay(normalized.idempotencyKey, fingerprint, "sku");
     if (replay?.kind === "sku") return { item: replay.item, replayed: true };
-    if (!(await this.repository.findCategoryById(categoryId))) {
-      throw new CatalogAdminValidationError("select an existing catalog category");
+    const categories = await Promise.all(
+      categoryIds.map((candidate) => this.repository.findCategoryById(candidate)),
+    );
+    if (categories.some((category) => !category)) {
+      throw new CatalogAdminValidationError("select existing catalog categories");
     }
     const existing = input.id
       ? await this.repository.findSkuById(input.id)
@@ -187,6 +220,7 @@ export class CatalogAdminService {
     const sku = createCatalogSku({
       id,
       categoryId,
+      categoryIds,
       name,
       slug: existing?.slug ?? slugify(name),
       description,
@@ -210,6 +244,63 @@ export class CatalogAdminService {
     const audit = this.createAudit(normalized, "sku", item.id);
     await this.applyWithRace(command, () => this.repository.applySku(command, audit));
     return { item, replayed: false };
+  }
+
+  async createImage(
+    context: CommandContext,
+    input: Readonly<{
+      fileName: string;
+      altText: string;
+      contentType: CatalogAdminImage["contentType"];
+      sizeBytes: number;
+    }>,
+  ): Promise<Readonly<{ image: CatalogAdminImage; replayed: boolean }>> {
+    const normalized = normalizeContext(context);
+    const fileName = normalizeRequiredText(input.fileName, "image file name", 255);
+    const altText = normalizeRequiredText(input.altText, "image description", 160);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(input.contentType)) {
+      throw new CatalogAdminValidationError("catalog images must be JPEG, PNG, or WebP");
+    }
+    if (
+      !Number.isSafeInteger(input.sizeBytes) ||
+      input.sizeBytes <= 0 ||
+      input.sizeBytes > 5 * 1024 * 1024
+    ) {
+      throw new CatalogAdminValidationError("catalog images must be between 1 byte and 5 MB");
+    }
+    const fingerprint = JSON.stringify({ action: "image.create", ...input, fileName, altText });
+    const replay = await this.replay(normalized.idempotencyKey, fingerprint, "image");
+    if (replay?.kind === "image") return { image: replay.image, replayed: true };
+    const id = `image-${this.generateId()}`;
+    const extension = input.contentType === "image/jpeg" ? "jpg" : input.contentType.split("/")[1];
+    const image: CatalogAdminImage = Object.freeze({
+      id,
+      fileName,
+      altText,
+      objectKey: `catalog/${id}.${extension}`,
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+      status: "pending",
+      url: `/api/v1/catalog/images/${encodeURIComponent(id)}`,
+      createdByUserId: normalized.actorUserId,
+      createdAt: normalized.appliedAt,
+    });
+    const command: CatalogAdminCommand = {
+      idempotencyKey: normalized.idempotencyKey,
+      fingerprint,
+      result: { kind: "image", image },
+      appliedAt: normalized.appliedAt,
+    };
+    const audit = this.createAudit(normalized, "image", image.id);
+    await this.applyWithRace(command, () => this.repository.applyImage(command, audit));
+    return { image, replayed: false };
+  }
+
+  markImageReady(id: string, updatedAt: string): Promise<CatalogAdminImage | null> {
+    return this.repository.markImageReady(
+      normalizeRequiredText(id, "image id", 128),
+      new Date(updatedAt).toISOString(),
+    );
   }
 
   private async replay(
@@ -240,7 +331,7 @@ export class CatalogAdminService {
 
   private createAudit(
     context: CommandContext,
-    targetType: "category" | "sku",
+    targetType: "category" | "sku" | "image",
     targetId: string,
   ): AuditEvent {
     return createAuditEvent({
@@ -259,17 +350,20 @@ export class InMemoryCatalogAdminCommandRepository implements CatalogAdminComman
   private readonly commands = new Map<string, CatalogAdminCommand>();
   private readonly categories = new Map<string, CatalogCategory>();
   private readonly items = new Map<string, CatalogAdminItem>();
+  private readonly images = new Map<string, CatalogAdminImage>();
   readonly audits: AuditEvent[] = [];
 
-  constructor(seed: CatalogAdminSnapshot = { categories: [], items: [] }) {
+  constructor(seed: CatalogAdminSnapshot = { categories: [], items: [], images: [] }) {
     for (const category of seed.categories) this.categories.set(category.id, category);
     for (const item of seed.items) this.items.set(item.id, item);
+    for (const image of seed.images) this.images.set(image.id, image);
   }
 
   list(): Promise<CatalogAdminSnapshot> {
     return Promise.resolve({
       categories: [...this.categories.values()],
       items: [...this.items.values()],
+      images: [...this.images.values()],
     });
   }
 
@@ -295,6 +389,10 @@ export class InMemoryCatalogAdminCommandRepository implements CatalogAdminComman
     return Promise.resolve([...this.items.values()].find((item) => item.slug === slug) ?? null);
   }
 
+  findImageById(id: string): Promise<CatalogAdminImage | null> {
+    return Promise.resolve(this.images.get(id) ?? null);
+  }
+
   applyCategory(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void> {
     if (command.result.kind !== "category") throw new Error("category result is required");
     this.categories.set(command.result.category.id, command.result.category);
@@ -309,6 +407,22 @@ export class InMemoryCatalogAdminCommandRepository implements CatalogAdminComman
     this.commands.set(command.idempotencyKey, command);
     this.audits.push(auditEvent);
     return Promise.resolve();
+  }
+
+  applyImage(command: CatalogAdminCommand, auditEvent: AuditEvent): Promise<void> {
+    if (command.result.kind !== "image") throw new Error("image result is required");
+    this.images.set(command.result.image.id, command.result.image);
+    this.commands.set(command.idempotencyKey, command);
+    this.audits.push(auditEvent);
+    return Promise.resolve();
+  }
+
+  markImageReady(id: string): Promise<CatalogAdminImage | null> {
+    const image = this.images.get(id);
+    if (!image) return Promise.resolve(null);
+    const ready = Object.freeze({ ...image, status: "ready" as const });
+    this.images.set(id, ready);
+    return Promise.resolve(ready);
   }
 }
 

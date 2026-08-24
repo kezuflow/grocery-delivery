@@ -9,6 +9,7 @@ import {
   catalogAdminCategoryResponseSchema,
   catalogAdminListResponseSchema,
   catalogAdminSkuResponseSchema,
+  catalogAdminImageUploadResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
   deliveryAddressesResponseSchema,
@@ -72,6 +73,7 @@ import {
   createSubscription,
   assignWeeklyCycle,
 } from "@carbon/domain";
+import { DeterministicMediaSigner } from "@carbon/storage";
 import {
   createDefaultCatalogReader,
   InMemoryCartRepository,
@@ -690,7 +692,7 @@ describe("API worker", () => {
         "idempotency-key": "product-command-1",
       },
       body: JSON.stringify({
-        categoryId: category.data.category.id,
+        categoryIds: [category.data.category.id],
         name: "Roma Tomatoes",
         description: "Fresh local tomatoes.",
         unit: "kilogram",
@@ -739,6 +741,51 @@ describe("API worker", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
+  });
+
+  it("creates reusable catalog image upload metadata", async () => {
+    const repository = new InMemoryCatalogAdminCommandRepository();
+    const adminApp = createApi({
+      now: () => new Date("2026-08-24T03:00:00.000Z"),
+      catalogAdminCommandRepository: repository,
+      mediaSigner: new DeterministicMediaSigner("https://media.example.com"),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-catalog-admin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["catalog"],
+              customerId: null,
+              expiresAt: "2099-08-24T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    const response = await adminApp.request("/api/v1/admin/catalog/images/uploads", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "image-command-1",
+      },
+      body: JSON.stringify({
+        fileName: "tomatoes.webp",
+        altText: "Roma tomatoes",
+        contentType: "image/webp",
+        sizeBytes: 12_000,
+      }),
+    });
+    const body = catalogAdminImageUploadResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(201);
+    expect(body.data.image).toMatchObject({
+      altText: "Roma tomatoes",
+      status: "pending",
+    });
+    expect(body.data.uploadUrl).toContain("catalog%2Fimage-");
   });
 
   it("allows pricing administrators to read catalog details without granting catalog writes", async () => {

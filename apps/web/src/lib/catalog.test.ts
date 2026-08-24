@@ -34,6 +34,7 @@ describe("customer catalog hydration", () => {
               {
                 id: "sku-1",
                 categoryId: "fresh",
+                categoryIds: ["fresh"],
                 name: "Tomatoes",
                 slug: "tomatoes",
                 description: "Fresh tomatoes",
@@ -88,6 +89,7 @@ describe("customer catalog hydration", () => {
               {
                 id: "sku-guest",
                 categoryId: "fresh",
+                categoryIds: ["fresh"],
                 name: "Guest tomatoes",
                 slug: "guest-tomatoes",
                 description: "Fresh tomatoes",

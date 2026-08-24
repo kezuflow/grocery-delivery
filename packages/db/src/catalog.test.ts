@@ -29,6 +29,7 @@ describe("catalog repositories", () => {
         {
           id: "sku-a",
           categoryId: "produce",
+          categoryIds: ["produce"],
           name: "Apples",
           slug: "apples",
           description: "Crisp apples",

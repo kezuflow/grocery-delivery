@@ -56,7 +56,8 @@ export function filterCatalogItems(
 
   return items.filter((item) => {
     if (!item.active) return false;
-    const matchesCategory = !filters.category || categoryIds.has(item.categoryId);
+    const matchesCategory =
+      !filters.category || item.categoryIds.some((categoryId) => categoryIds.has(categoryId));
     const searchableText = `${item.name} ${item.description} ${item.slug}`.toLowerCase();
     return matchesCategory && (!search || searchableText.includes(search));
   });

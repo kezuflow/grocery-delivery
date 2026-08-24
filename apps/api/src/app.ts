@@ -36,6 +36,7 @@ import {
   CatalogAdminNotFoundError,
   CatalogAdminService,
   CatalogAdminValidationError,
+  type CatalogAdminImage,
   type CatalogAdminCommandRepository,
 } from "@carbon/application";
 import {
@@ -53,6 +54,9 @@ import {
   catalogAdminListResponseSchema,
   catalogAdminSkuResponseSchema,
   catalogAdminSkuUpsertRequestSchema,
+  catalogAdminImageResponseSchema,
+  catalogAdminImageUploadRequestSchema,
+  catalogAdminImageUploadResponseSchema,
   catalogQuerySchema,
   cartResponseSchema,
   cartUpdateRequestSchema,
@@ -63,6 +67,8 @@ import {
   type CatalogAdminCategoryResponse,
   type CatalogAdminListResponse,
   type CatalogAdminSkuResponse,
+  type CatalogAdminImageResponse,
+  type CatalogAdminImageUploadResponse,
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
@@ -260,6 +266,7 @@ import type { NotificationSender } from "@carbon/notifications";
 import {
   DeterministicMediaSigner,
   DeterministicPromotionMediaSigner,
+  HmacDeliveryMediaSigner,
   verifyMediaRequest,
   type DeliveryMediaSigner,
   type PromotionMediaSigner,
@@ -4156,11 +4163,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   app.put("/api/v1/media/upload", async (context) => {
     const bindings = context.env ?? {};
     const signedRequest = readSignedMediaRequest(context, true);
+    const signingSecret = resolveMediaSigningSecret(bindings);
     if (
       !bindings.MEDIA_BUCKET ||
-      !bindings.MEDIA_SIGNING_SECRET ||
+      !signingSecret ||
       !signedRequest ||
-      !(await verifyMediaRequest(bindings.MEDIA_SIGNING_SECRET, signedRequest))
+      !(await verifyMediaRequest(signingSecret, signedRequest))
     ) {
       return context.json(
         errorResponse(
@@ -4203,11 +4211,12 @@ export function createApi(options: ApiOptions = {}): ApiApp {
   app.get("/api/v1/media/download", async (context) => {
     const bindings = context.env ?? {};
     const signedRequest = readSignedMediaRequest(context, false);
+    const signingSecret = resolveMediaSigningSecret(bindings);
     if (
       !bindings.MEDIA_BUCKET ||
-      !bindings.MEDIA_SIGNING_SECRET ||
+      !signingSecret ||
       !signedRequest ||
-      !(await verifyMediaRequest(bindings.MEDIA_SIGNING_SECRET, signedRequest))
+      !(await verifyMediaRequest(signingSecret, signedRequest))
     ) {
       return context.json(
         errorResponse(
@@ -5627,6 +5636,49 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     return context.json(body, 200);
   });
 
+  app.get("/api/v1/catalog/images/:id", async (context) => {
+    const bindings = context.env ?? {};
+    const service = getCatalogAdminService(bindings);
+    if (!service || !bindings.MEDIA_BUCKET) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGES_UNAVAILABLE",
+          "catalog images are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const image = await service.findImage(context.req.param("id"));
+    if (!image || image.status !== "ready") {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGE_NOT_FOUND",
+          "catalog image was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const object = await bindings.MEDIA_BUCKET.get(image.objectKey);
+    if (!object) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGE_NOT_FOUND",
+          "catalog image was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const headers = new Headers({ "cache-control": "public, max-age=3600, s-maxage=86400" });
+    object.writeHttpMetadata(headers);
+    headers.set("content-type", image.contentType);
+    headers.set("etag", object.httpEtag);
+    headers.set("x-content-type-options", "nosniff");
+    return new Response(object.body, { headers });
+  });
+
   app.get("/api/v1/catalog/:slug", async (context) => {
     const slug = context.req.param("slug");
     const bindings: ApiBindings = context.env ?? {};
@@ -5689,7 +5741,11 @@ export function createApi(options: ApiOptions = {}): ApiApp {
     }
     const snapshot = await service.list();
     const body: CatalogAdminListResponse = {
-      data: { categories: [...snapshot.categories], items: [...snapshot.items] },
+      data: {
+        categories: [...snapshot.categories],
+        items: [...snapshot.items],
+        images: snapshot.images.map(toCatalogAdminImageData),
+      },
       meta: { correlationId: context.get("correlationId") },
     };
     catalogAdminListResponseSchema.parse(body);
@@ -5710,6 +5766,152 @@ export function createApi(options: ApiOptions = {}): ApiApp {
 
   app.put("/api/v1/admin/catalog/items/:id", async (context) => {
     return upsertAdminSku(context, context.req.param("id"));
+  });
+
+  app.post("/api/v1/admin/catalog/images/uploads", async (context) => {
+    const bindings = context.env ?? {};
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "catalog")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "catalog administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const idempotencyKey = context.req.header("idempotency-key");
+    if (!idempotencyKey) {
+      return context.json(
+        errorResponse(
+          "IDEMPOTENCY_KEY_REQUIRED",
+          "idempotency-key header is required",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const input = catalogAdminImageUploadRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!input.success) {
+      return context.json(
+        errorResponse(
+          "INVALID_CATALOG_IMAGE",
+          "catalog image details are invalid",
+          context.get("correlationId"),
+        ),
+        400,
+      );
+    }
+    const service = getCatalogAdminService(bindings);
+    const signer = resolveCatalogMediaSigner(bindings, options.mediaSigner);
+    if (!service || !signer) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGES_UNAVAILABLE",
+          "catalog image uploads are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    try {
+      const result = await service.createImage(
+        {
+          actorUserId: session.userId,
+          correlationId: context.get("correlationId"),
+          idempotencyKey,
+          appliedAt: now().toISOString(),
+        },
+        input.data,
+      );
+      const uploadUrlExpiresAt = new Date(now().getTime() + 15 * 60_000).toISOString();
+      const signed = await signer.createUploadUrl({
+        objectKey: result.image.objectKey,
+        contentType: result.image.contentType,
+        expiresAt: uploadUrlExpiresAt,
+      });
+      const body: CatalogAdminImageUploadResponse = {
+        data: {
+          image: toCatalogAdminImageData(result.image),
+          uploadUrl: signed.uploadUrl,
+          uploadUrlExpiresAt,
+          replayed: result.replayed,
+        },
+        meta: { correlationId: context.get("correlationId") },
+      };
+      catalogAdminImageUploadResponseSchema.parse(body);
+      return context.json(body, result.replayed ? 200 : 201);
+    } catch (error) {
+      return catalogAdminFailure(context, error);
+    }
+  });
+
+  app.post("/api/v1/admin/catalog/images/:id/complete", async (context) => {
+    const bindings = context.env ?? {};
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "catalog")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "catalog administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const service = getCatalogAdminService(bindings);
+    if (!service || !bindings.MEDIA_BUCKET) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGES_UNAVAILABLE",
+          "catalog image uploads are unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const image = await service.findImage(context.req.param("id"));
+    if (!image) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGE_NOT_FOUND",
+          "catalog image was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const object = await bindings.MEDIA_BUCKET.head(image.objectKey);
+    if (!object || object.size !== image.sizeBytes) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGE_UPLOAD_INCOMPLETE",
+          "catalog image upload is incomplete",
+          context.get("correlationId"),
+        ),
+        409,
+      );
+    }
+    const ready = await service.markImageReady(image.id, now().toISOString());
+    if (!ready) {
+      return context.json(
+        errorResponse(
+          "CATALOG_IMAGE_NOT_FOUND",
+          "catalog image was not found",
+          context.get("correlationId"),
+        ),
+        404,
+      );
+    }
+    const body: CatalogAdminImageResponse = {
+      data: { image: toCatalogAdminImageData(ready) },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    catalogAdminImageResponseSchema.parse(body);
+    return context.json(body, 200);
   });
 
   async function upsertAdminCategory(context: ApiContext, id?: string) {
@@ -6825,6 +7027,45 @@ function promotionErrorCode(message: string): string {
     return "PROMOTION_EXHAUSTED";
   if (message.includes("invalid")) return "INVALID_PROMOTION_CODE";
   return "PROMOTION_REJECTED";
+}
+
+function toCatalogAdminImageData(image: CatalogAdminImage) {
+  return {
+    id: image.id,
+    fileName: image.fileName,
+    altText: image.altText,
+    contentType: image.contentType,
+    sizeBytes: image.sizeBytes,
+    status: image.status,
+    url: image.url,
+    createdAt: image.createdAt,
+  };
+}
+
+function resolveCatalogMediaSigner(
+  bindings: ApiBindings,
+  configured: DeliveryMediaSigner | undefined,
+): DeliveryMediaSigner | null {
+  if (configured) return configured;
+  const baseUrl = bindings.MEDIA_BASE_URL ?? bindings.API_PUBLIC_ORIGIN;
+  const signingSecret = resolveMediaSigningSecret(bindings);
+  if (!signingSecret || !baseUrl) return null;
+  return new HmacDeliveryMediaSigner(signingSecret, baseUrl);
+}
+
+function resolveMediaSigningSecret(bindings: ApiBindings): string | undefined {
+  return (
+    bindings.MEDIA_SIGNING_SECRET ??
+    (isLocalDevelopment(bindings) ? bindings.BETTER_AUTH_SECRET : undefined)
+  );
+}
+
+function isLocalDevelopment(bindings: ApiBindings): boolean {
+  return (
+    bindings.APP_ENV === undefined ||
+    bindings.APP_ENV === "development" ||
+    bindings.APP_ENV === "test"
+  );
 }
 
 const defaultRateLimitPolicies: readonly ApiRateLimitPolicy[] = [
