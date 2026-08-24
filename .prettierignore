@@ -1,5 +1,5 @@
 .next
-.next-e2e
+.next-*
 coverage
 dist
 node_modules

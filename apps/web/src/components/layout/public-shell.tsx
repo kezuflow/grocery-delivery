@@ -16,12 +16,19 @@ export function PublicShell({
 }>) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-paper font-sans text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
-        <div className="mx-auto flex min-h-[72px] max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+      <a
+        className="flex min-h-9 items-center justify-center gap-2 bg-deep px-4 py-2 text-center text-xs font-bold text-white transition-colors hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sun"
+        href="#plans"
+      >
+        <span className="text-sun">Your first calendar month is free.</span>
+        <span className="hidden text-white/70 sm:inline">See eligible weekly plans</span>
+      </a>
+      <header className="sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur-md">
+        <div className="mx-auto flex min-h-[76px] max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <PublicBrandLink />
           <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-4">
             <MobileNavigation items={navigation} />
-            <nav aria-label="Primary navigation" className="hidden items-center gap-6 lg:flex">
+            <nav aria-label="Primary navigation" className="hidden items-center gap-7 lg:flex">
               {navigation.map((item) => (
                 <a
                   className="text-sm font-bold text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
@@ -45,17 +52,22 @@ function PublicBrandLink() {
   return (
     <a
       aria-label="Carbon Food Delivery home"
-      className="inline-flex min-w-0 items-center gap-2.5 font-bold text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
+      className="inline-flex min-w-0 items-center gap-3 font-bold text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
       href="/"
     >
       <span
         aria-hidden="true"
-        className="grid size-9 shrink-0 place-items-center bg-deep text-white"
+        className="grid size-10 shrink-0 place-items-center rounded-full bg-deep text-white"
       >
         <Leaf size={17} strokeWidth={2.25} />
       </span>
-      <span className="sm:hidden">Carbon</span>
-      <span className="hidden truncate sm:inline">Carbon Food Delivery</span>
+      <span className="grid leading-tight">
+        <span className="sm:hidden">Carbon</span>
+        <span className="hidden truncate sm:inline">Carbon Food Delivery</span>
+        <span className="hidden text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-muted sm:block">
+          Weekly market delivery
+        </span>
+      </span>
     </a>
   );
 }

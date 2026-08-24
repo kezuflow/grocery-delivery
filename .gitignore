@@ -4,7 +4,7 @@ node_modules/
 
 # Build and test output
 .next/
-.next-e2e/
+.next-*/
 .open-next/
 .turbo/
 *.tsbuildinfo

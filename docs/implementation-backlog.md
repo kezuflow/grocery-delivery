@@ -318,7 +318,39 @@ configured upstream. Do not deploy, publish fixtures, or make remote configurati
 | VS-MKT-13 | Local responsive, accessibility, performance, and workflow hardening    | complete |
 | VS-MKT-14 | Staging promotion and release evidence                                  | deferred |
 
-Landing-page work is outside the marketplace program and resumes after the core marketplace slices.
+### Completed Public Landing Page Editorial Refresh
+
+- **Status:** locally complete as a user-requested public landing-page visual, content, and
+  conversion refinement. No staging or production promotion was requested.
+- **Outcome and affected role:** public visitors now enter through a cinematic, Cebu-market-led
+  editorial hero with one primary weekly-shopping action, a secondary plan path, an accessible
+  trial announcement, live promotion context, concise trust signals, direct server-priced product
+  links, a legible three-step weekly flow, clearer plan value, and a stronger trial close. Existing
+  catalog, plan, promotion, authentication, and checkout behavior remains authoritative.
+- **Design references:** Mobbin web sections inspected on 2026-08-24 included
+  [Blue Apron hero composition](https://mobbin.com/sites/sections/034ae094-4059-4b93-8055-af18da44b565),
+  [Zipline three-step hierarchy](https://mobbin.com/sites/sections/7b0ca7a7-caf2-42a6-b315-53b86c8cd190),
+  and [Function membership value framing](https://mobbin.com/sites/sections/f5d5c740-7af0-4718-9893-3b8e80e39eed).
+  Carbon copy, data, layout, tokens, and artwork remain original.
+- **Imagery:** the built-in ImageGen workflow produced three original cinematic photographs,
+  optimized as `carbon-market-dawn.webp` (181 KB), `weekly-box-packing.webp` (166 KB), and
+  `market-delivery-home.webp` (230 KB) under `apps/web/public/landing`. The hero loads eagerly;
+  supporting frames remain lazy. The page no longer depends on third-party stock-photo requests.
+- **Behavior and accessibility:** featured catalog cards link to `/shop/:slug`; active promotion
+  title, copy, label, and safe destination remain server-provided; plan fees and credits remain
+  server-provided. Phone navigation retains dialog semantics and expanded state. The trial eyebrow
+  contrast was corrected after Axe reported 4.05:1.
+- **Local evidence:** focused storefront tests pass (4/4); web typecheck and lint pass; the optimized
+  Next.js production build passes. Browser inspection at 1440x1000 and 390x844 confirmed the full
+  visual hierarchy and image loading. Focused Playwright passes on phone, tablet, and desktop with
+  no horizontal overflow and no serious or critical WCAG 2 A/AA, 2.1 AA, or 2.2 AA Axe findings.
+- **Request, performance, persistence, and observability impact:** no API contract, request count,
+  persistence, cache policy, authorization, or observability boundary changed. Three local WebPs
+  add about 577 KB of source assets, with only the 181 KB hero on the initial image path. Tailwind
+  source detection is scoped to `apps/web/src`, preventing generated Playwright traces and build
+  caches from being interpreted as utility candidates.
+- **Resume point:** the public landing-page slice is locally complete. Resume only for a new
+  user-directed iteration or an explicitly requested staging/production promotion phase.
 
 ### Completed Admin Console UI Refinement
 

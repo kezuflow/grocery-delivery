@@ -22,14 +22,14 @@ export function StorefrontContent({
     <PublicShell
       actions={
         <LinkButton href="/shop" size="sm">
-          Go to app
+          Shop this week
           <ArrowRight aria-hidden="true" size={16} />
         </LinkButton>
       }
       navigation={[
-        { href: "#market", label: "Market" },
+        { href: "#market", label: "Weekly market" },
         { href: "#how-it-works", label: "How it works" },
-        { href: "#plans", label: "Plans" },
+        { href: "#plans", label: "Weekly plans" },
       ]}
     >
       <StorefrontHero banner={storefront.banners[0]} session={session} />

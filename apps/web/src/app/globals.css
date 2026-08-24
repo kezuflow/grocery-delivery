@@ -1,5 +1,5 @@
 @import "../styles/tokens.css";
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 
 @theme inline {
   --color-base-ink: var(--color-base-ink-value);

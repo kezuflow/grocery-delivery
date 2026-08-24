@@ -8,26 +8,31 @@ export function StorefrontCatalog({ storefront }: Readonly<{ storefront: Storefr
   const destination = "/shop";
 
   return (
-    <section className="bg-paper py-20 sm:py-24" id="market">
+    <section className="bg-white py-20 sm:py-28" id="market">
       <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-bold text-coral">This week&apos;s market</p>
-            <h2 className="storefront-display mt-3 max-w-2xl text-4xl leading-tight sm:text-5xl">
-              Vegetables, fruit, pantry staples, and more.
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-coral">
+              This week&apos;s market
+            </p>
+            <h2 className="storefront-display mt-4 max-w-3xl text-4xl leading-[1.04] tracking-[-0.035em] sm:text-6xl">
+              The market run, already within reach.
             </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted">
+              Explore the active catalog, save what looks good, and build a basket at your own pace.
+            </p>
           </div>
-          <LinkButton href={destination} tone="secondary">
+          <LinkButton className="shrink-0" href={destination} tone="secondary">
             Browse the full market
             <ArrowRight aria-hidden="true" size={17} />
           </LinkButton>
         </div>
 
         {storefront.catalog.categories.length ? (
-          <ul className="mt-8 flex flex-wrap gap-2" aria-label="Available categories">
+          <ul className="mt-9 flex flex-wrap gap-2" aria-label="Available categories">
             {storefront.catalog.categories.slice(0, 8).map((category) => (
               <li
-                className="border border-line bg-white px-4 py-2 text-sm font-bold text-ink"
+                className="rounded-full border border-line bg-paper px-4 py-2 text-sm font-bold text-ink"
                 key={category.id}
               >
                 {category.name}
@@ -37,36 +42,47 @@ export function StorefrontCatalog({ storefront }: Readonly<{ storefront: Storefr
         ) : null}
 
         {!storefront.error && storefront.catalog.items.length ? (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
             {storefront.catalog.items.slice(0, 8).map((item) => (
-              <article
-                className="group overflow-hidden rounded-[6px] border border-line bg-white"
+              <a
+                aria-label={`View ${item.name}, ${formatPhp(item.price.centavos)}`}
+                className="group block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-deep"
+                href={getProductHref(item.slug)}
                 key={item.id}
               >
-                <div className="aspect-[4/3] overflow-hidden bg-soft">
-                  {item.imageUrl ? (
-                    <img
-                      alt={item.name}
-                      className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                      decoding="async"
-                      loading="lazy"
-                      src={item.imageUrl}
-                    />
-                  ) : (
-                    <div className="grid size-full place-items-center text-deep">
-                      <Carrot aria-hidden="true" size={46} strokeWidth={1.5} />
+                <article>
+                  <div className="aspect-square overflow-hidden rounded-2xl bg-paper p-5 transition-colors group-hover:bg-soft">
+                    {item.imageUrl ? (
+                      <img
+                        alt={item.name}
+                        className="size-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+                        decoding="async"
+                        loading="lazy"
+                        src={item.imageUrl}
+                      />
+                    ) : (
+                      <div className="grid size-full place-items-center text-deep">
+                        <Carrot aria-hidden="true" size={46} strokeWidth={1.5} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid min-h-[168px] content-start gap-2 px-1 pt-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral">
+                        {getCategoryName(storefront, item.categoryId)}
+                      </p>
+                      <ArrowRight
+                        aria-hidden="true"
+                        className="text-muted transition-transform group-hover:translate-x-1 group-hover:text-ink"
+                        size={16}
+                      />
                     </div>
-                  )}
-                </div>
-                <div className="grid min-h-[190px] content-start gap-3 p-5">
-                  <p className="text-xs font-bold text-coral">
-                    {getCategoryName(storefront, item.categoryId)}
-                  </p>
-                  <h3 className="text-lg font-bold">{item.name}</h3>
-                  <p className="line-clamp-2 text-sm leading-6 text-muted">{item.description}</p>
-                  <strong className="mt-auto text-lg">{formatPhp(item.price.centavos)}</strong>
-                </div>
-              </article>
+                    <h3 className="text-lg font-bold">{item.name}</h3>
+                    <p className="line-clamp-2 text-sm leading-6 text-muted">{item.description}</p>
+                    <strong className="mt-1 text-lg">{formatPhp(item.price.centavos)}</strong>
+                  </div>
+                </article>
+              </a>
             ))}
           </div>
         ) : !storefront.error ? (
@@ -91,6 +107,10 @@ export function StorefrontCatalog({ storefront }: Readonly<{ storefront: Storefr
       </div>
     </section>
   );
+}
+
+export function getProductHref(slug: string): string {
+  return `/shop/${encodeURIComponent(slug)}`;
 }
 
 function getCategoryName(storefront: StorefrontData, categoryId: string): string {

@@ -15,7 +15,8 @@ export const metadata: Metadata = {
     default: "Carbon Food Delivery",
     template: "%s | Carbon Food Delivery",
   },
-  description: "Weekly groceries with a lighter footprint.",
+  description:
+    "Shop a flexible weekly grocery market with server-confirmed prices and scheduled delivery.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

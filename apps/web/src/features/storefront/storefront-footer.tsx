@@ -9,11 +9,11 @@ const links = [
 
 export function StorefrontFooter() {
   return (
-    <footer className="bg-[#14261f] text-white">
+    <footer className="bg-ink text-white">
       <div className="mx-auto grid max-w-[1240px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
         <div>
           <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center bg-sun text-ink">
+            <span className="grid size-10 place-items-center rounded-full bg-sun text-ink">
               <Leaf aria-hidden="true" size={19} />
             </span>
             <strong>Carbon Food Delivery</strong>
