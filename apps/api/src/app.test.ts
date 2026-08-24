@@ -741,6 +741,40 @@ describe("API worker", () => {
     expect(body.error.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
   });
 
+  it("allows pricing administrators to read catalog details without granting catalog writes", async () => {
+    const pricingApp = createApi({
+      catalogAdminCommandRepository: new InMemoryCatalogAdminCommandRepository(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-pricing-admin",
+              userId: "admin-pricing",
+              role: "admin",
+              adminPermissions: ["pricing"],
+              customerId: null,
+              expiresAt: "2099-08-24T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+
+    expect((await pricingApp.request("/api/v1/admin/catalog")).status).toBe(200);
+    expect(
+      (
+        await pricingApp.request("/api/v1/admin/catalog/categories", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": "pricing-category-command",
+          },
+          body: JSON.stringify({ name: "Restricted category", active: true }),
+        })
+      ).status,
+    ).toBe(403);
+  });
+
   it("applies and replays a superadmin launch configuration", async () => {
     const repository = new InMemoryLaunchConfigurationRepository();
     const launchConfigurationService = new LaunchConfigurationService(

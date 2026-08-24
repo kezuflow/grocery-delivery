@@ -79,6 +79,8 @@ describe("web API client", () => {
           role: "customer",
           adminPermissions: [],
           customerId: "customer-1",
+          mfaRequired: false,
+          mfaVerified: true,
           expiresAt: "2026-09-01T00:00:00.000Z",
         },
         meta,

@@ -11,6 +11,8 @@ const sessions = {
     role: "customer",
     adminPermissions: [],
     customerId: "customer-1",
+    mfaRequired: false,
+    mfaVerified: true,
     expiresAt: "2027-08-22T01:00:00.000Z",
   },
   admin: {
@@ -31,6 +33,8 @@ const sessions = {
       "superadmin",
     ],
     customerId: null,
+    mfaRequired: true,
+    mfaVerified: true,
     expiresAt: "2027-08-22T01:00:00.000Z",
   },
   deliveryman: {
@@ -39,6 +43,8 @@ const sessions = {
     role: "deliveryman",
     adminPermissions: [],
     customerId: null,
+    mfaRequired: false,
+    mfaVerified: true,
     expiresAt: "2027-08-22T01:00:00.000Z",
   },
 };

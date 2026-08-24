@@ -19,6 +19,9 @@ export async function requireSession(): Promise<SessionSummary> {
 export async function requireRole(role: UserRole): Promise<SessionSummary> {
   const session = await requireSession();
   if (!hasRole(session, role)) redirect("/forbidden");
+  if (role === "admin" && session.mfaRequired && !session.mfaVerified) {
+    redirect("/admin/security");
+  }
   return session;
 }
 

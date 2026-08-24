@@ -69,6 +69,14 @@ export function createConfiguredBetterAuthApi(
         twoFactorTable: "better_auth_two_factor",
         schema: {
           user: { fields: { twoFactorEnabled: "two_factor_enabled" } },
+          twoFactor: {
+            fields: {
+              userId: "user_id",
+              backupCodes: "backup_codes",
+              failedVerificationCount: "failed_verification_count",
+              lockedUntil: "locked_until",
+            },
+          },
         },
       }),
     ],

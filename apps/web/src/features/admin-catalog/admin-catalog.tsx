@@ -94,7 +94,9 @@ export function AdminCatalog({
 }>) {
   const router = useRouter();
   const client = createApiClient(createSameOriginApiTransport());
-  const canManage = permissions.includes("catalog") || permissions.includes("superadmin");
+  const canManage =
+    state.status !== "forbidden" &&
+    (permissions.includes("catalog") || permissions.includes("superadmin"));
   const [view, setView] = useState<"products" | "categories">("products");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -186,7 +188,10 @@ export function AdminCatalog({
         </div>
 
         {state.status === "forbidden" ? (
-          <Notice tone="warning">Catalog access is restricted for this role.</Notice>
+          <Notice tone="warning">
+            {state.message ?? "Catalog access is restricted for this role."}
+            {state.correlationId ? ` Reference: ${state.correlationId}` : ""}
+          </Notice>
         ) : error ? (
           <Notice tone="danger">{error}</Notice>
         ) : null}

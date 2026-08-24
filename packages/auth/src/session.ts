@@ -148,6 +148,8 @@ export type SessionSummary = Readonly<{
   role: Role;
   adminPermissions: readonly AdminPermission[];
   customerId: string | null;
+  mfaRequired: boolean;
+  mfaVerified: boolean;
   expiresAt: string;
 }>;
 
@@ -158,6 +160,8 @@ export function toSessionSummary(session: Session): SessionSummary {
     role: session.role,
     adminPermissions: session.adminPermissions,
     customerId: session.customerId,
+    mfaRequired: session.mfaRequired ?? false,
+    mfaVerified: session.mfaVerified ?? false,
     expiresAt: session.expiresAt,
   };
 }

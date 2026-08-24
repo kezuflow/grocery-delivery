@@ -5662,11 +5662,15 @@ export function createApi(options: ApiOptions = {}): ApiApp {
 
   app.get("/api/v1/admin/catalog", async (context) => {
     const session = context.get("session");
-    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "catalog")) {
+    const canReadCatalog =
+      session &&
+      (hasAdminPermission(session.role, session.adminPermissions, "catalog") ||
+        hasAdminPermission(session.role, session.adminPermissions, "pricing"));
+    if (!canReadCatalog) {
       return context.json(
         errorResponse(
           "FORBIDDEN",
-          "catalog administrator permission is required",
+          "catalog or pricing administrator permission is required",
           context.get("correlationId"),
         ),
         session ? 403 : 401,

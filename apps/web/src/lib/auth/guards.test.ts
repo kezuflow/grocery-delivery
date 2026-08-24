@@ -23,6 +23,8 @@ function session(overrides: Partial<SessionSummary> = {}): SessionSummary {
     role: "customer",
     adminPermissions: [],
     customerId: "customer-1",
+    mfaRequired: false,
+    mfaVerified: true,
     expiresAt: "2026-09-01T00:00:00.000Z",
     ...overrides,
   };
@@ -54,6 +56,20 @@ describe("protected route guards", () => {
       error: null,
     });
     await expect(requirePermission("reporting")).rejects.toThrow("REDIRECT:/forbidden");
+  });
+
+  it("sends administrators to security setup when required MFA is not enrolled", async () => {
+    mockedLoadCurrentSession.mockResolvedValue({
+      session: session({
+        role: "admin",
+        customerId: null,
+        adminPermissions: ["superadmin"],
+        mfaRequired: true,
+        mfaVerified: false,
+      }),
+      error: null,
+    });
+    await expect(requireRole("admin")).rejects.toThrow("REDIRECT:/admin/security");
   });
 
   it("requires a customer identity for customer routes", async () => {

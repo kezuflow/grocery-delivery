@@ -247,6 +247,31 @@ describe("Better Auth D1 integration", () => {
       .bind(user?.id)
       .first<{ action: string }>();
     expect(audit?.action).toBe("identity.admin-bootstrapped");
+
+    const cookie = response.headers.get("set-cookie")?.split(";")[0];
+    const enrollment = await app.request(
+      "/api/auth/two-factor/enable",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: cookie! },
+        body: JSON.stringify({
+          password: "correct-horse-battery-staple",
+          method: "totp",
+          issuer: "Carbon Food Delivery",
+        }),
+      },
+      bindings,
+    );
+    const enrollmentBody: unknown = await enrollment.json();
+    expect(enrollment.status).toBe(200);
+    expect(enrollmentBody).toMatchObject({ method: "totp" });
+    if (!isRecord(enrollmentBody)) throw new Error("two-factor enrollment response is invalid");
+    expect(enrollmentBody.totpURI).toMatch(/^otpauth:\/\/totp\//);
+    expect(enrollmentBody.backupCodes).toBeInstanceOf(Array);
+    if (!Array.isArray(enrollmentBody.backupCodes)) {
+      throw new Error("two-factor recovery codes are missing");
+    }
+    expect(enrollmentBody.backupCodes.length).toBeGreaterThan(0);
   });
 
   it("reconciles an existing allowlisted account to superadmin scope", async () => {
@@ -419,3 +444,7 @@ describe("Better Auth D1 integration", () => {
     expect(signIn.status).toBe(200);
   });
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}

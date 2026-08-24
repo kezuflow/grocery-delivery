@@ -23,6 +23,8 @@ export const sessionSummarySchema = z.object({
   role: roleSchema,
   adminPermissions: z.array(adminPermissionSchema),
   customerId: z.string().min(1).nullable(),
+  mfaRequired: z.boolean(),
+  mfaVerified: z.boolean(),
   expiresAt: z.string().datetime(),
 });
 

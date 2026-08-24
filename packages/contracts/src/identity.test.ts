@@ -16,6 +16,8 @@ describe("identity contracts", () => {
           role: "customer",
           adminPermissions: [],
           customerId: "customer-1",
+          mfaRequired: false,
+          mfaVerified: true,
           expiresAt: "2026-08-19T00:00:00.000Z",
         },
         meta: { correlationId: "identity-request" },

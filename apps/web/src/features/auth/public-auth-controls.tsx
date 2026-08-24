@@ -10,7 +10,7 @@ import { getAuthErrorMessage } from "../../lib/auth-error";
 import type { SessionSummary } from "../../lib/permissions";
 import { getRoleHome } from "../../lib/permissions";
 
-type AuthMode = "sign-in" | "sign-up" | "forgot-password";
+type AuthMode = "sign-in" | "sign-up" | "forgot-password" | "two-factor";
 
 type PublicAuthControlsProps = Readonly<{
   session: SessionSummary | null;
@@ -60,11 +60,51 @@ export function PublicAuthControls({
     setDialogOpen(true);
   }
 
+  async function finishAuthentication() {
+    const sessionResponse = await fetch("/api/v1/me", { cache: "no-store" });
+    const sessionPayload = (await sessionResponse.json().catch(() => null)) as {
+      data?: { role?: SessionSummary["role"] };
+    } | null;
+    if (!sessionResponse.ok || !sessionPayload?.data?.role) {
+      setMessage("Your session could not be loaded. Please try signing in again.");
+      setPending(false);
+      return;
+    }
+    setDialogOpen(false);
+    onAuthenticated?.(sessionPayload.data.role);
+    const destination =
+      redirectAfterAuth === false
+        ? null
+        : (redirectAfterAuth ?? getRoleHome(sessionPayload.data.role));
+    if (destination) router.replace(destination);
+    router.refresh();
+  }
+
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setMessage(null);
     const form = new FormData(event.currentTarget);
+
+    if (mode === "two-factor") {
+      const response = await fetch("/api/auth/two-factor/verify-totp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: form.get("code"), trustDevice: true }),
+      });
+      if (!response.ok) {
+        setMessage(
+          getAuthErrorMessage(
+            await response.json().catch(() => null),
+            "That authenticator code could not be verified.",
+          ),
+        );
+        setPending(false);
+        return;
+      }
+      await finishAuthentication();
+      return;
+    }
 
     if (mode === "forgot-password") {
       const response = await fetch("/api/auth/request-password-reset", {
@@ -101,19 +141,16 @@ export function PublicAuthControls({
       setPending(false);
       return;
     }
-    const sessionResponse = await fetch("/api/v1/me", { cache: "no-store" });
-    const sessionPayload = (await sessionResponse.json().catch(() => null)) as {
-      data?: { role?: SessionSummary["role"] };
+    const authPayload = (await response.json().catch(() => null)) as {
+      twoFactorRedirect?: boolean;
     } | null;
-    setDialogOpen(false);
-    if (sessionPayload?.data?.role) onAuthenticated?.(sessionPayload.data.role);
-    const destination =
-      redirectAfterAuth === false
-        ? null
-        : (redirectAfterAuth ??
-          (sessionPayload?.data?.role ? getRoleHome(sessionPayload.data.role) : "/"));
-    if (destination) router.replace(destination);
-    router.refresh();
+    if (authPayload?.twoFactorRedirect) {
+      setMode("two-factor");
+      setMessage("Enter the current code from your authenticator app.");
+      setPending(false);
+      return;
+    }
+    await finishAuthentication();
   }
 
   return (
@@ -140,24 +177,44 @@ export function PublicAuthControls({
         </div>
       ) : null}
       <Dialog
-        description="Use your email to access your weekly shop."
+        description={
+          mode === "two-factor"
+            ? "Complete the security check to finish signing in."
+            : "Use your email to access your weekly shop."
+        }
         onClose={() => setDialogOpen(false)}
         open={open}
         title={getDialogTitle(mode)}
       >
         <form className="grid gap-4" onSubmit={(event) => void submitAuth(event)}>
+          {mode === "two-factor" ? (
+            <Input
+              autoComplete="one-time-code"
+              autoFocus
+              id="auth-totp"
+              inputMode="numeric"
+              label="Authenticator code"
+              maxLength={6}
+              name="code"
+              pattern="[0-9]{6}"
+              placeholder="000000"
+              required
+            />
+          ) : null}
           {mode === "sign-up" ? (
             <Input autoComplete="name" id="auth-name" label="Name" name="name" required />
           ) : null}
-          <Input
-            autoComplete="email"
-            id="auth-email"
-            label="Email"
-            name="email"
-            required
-            type="email"
-          />
-          {mode !== "forgot-password" ? (
+          {mode !== "two-factor" ? (
+            <Input
+              autoComplete="email"
+              id="auth-email"
+              label="Email"
+              name="email"
+              required
+              type="email"
+            />
+          ) : null}
+          {mode !== "forgot-password" && mode !== "two-factor" ? (
             <Input
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               id="auth-password"
@@ -181,13 +238,15 @@ export function PublicAuthControls({
                 Forgot password?
               </button>
             ) : null}
-            <button
-              className="font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
-              onClick={() => setMode(mode === "sign-up" ? "sign-in" : "sign-up")}
-              type="button"
-            >
-              {mode === "sign-up" ? "Already registered? Sign in" : "Create an account"}
-            </button>
+            {mode !== "two-factor" ? (
+              <button
+                className="font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+                onClick={() => setMode(mode === "sign-up" ? "sign-in" : "sign-up")}
+                type="button"
+              >
+                {mode === "sign-up" ? "Already registered? Sign in" : "Create an account"}
+              </button>
+            ) : null}
           </div>
           {message ? (
             <p className="text-sm text-muted" role="status">
@@ -201,12 +260,14 @@ export function PublicAuthControls({
 }
 
 function getDialogTitle(mode: AuthMode): string {
+  if (mode === "two-factor") return "Enter your security code";
   if (mode === "sign-up") return "Create your account";
   if (mode === "forgot-password") return "Reset your password";
   return "Welcome back";
 }
 
 function getSubmitLabel(mode: AuthMode): string {
+  if (mode === "two-factor") return "Verify and continue";
   if (mode === "sign-up") return "Create account";
   if (mode === "forgot-password") return "Send reset link";
   return "Sign in";

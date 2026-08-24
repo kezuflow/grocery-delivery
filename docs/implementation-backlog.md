@@ -181,6 +181,28 @@ batch launch/import process with a complete-data preview and strong confirmation
   upload, deletion, folders, and persistent R2-backed asset inventory remain AD-03B. Category deletion
   guards and broader catalog error/offline E2E states also remain before AD-03 can be marked complete.
 
+### AD-03A Administrator Access Follow-up
+
+- **Root cause:** The local bootstrap superadmin correctly required MFA, but the web session contract
+  hid MFA state and no enrollment or sign-in verification UI existed. Admin APIs returned
+  `MFA_REQUIRED`, which Catalog incorrectly presented as a role restriction. The Better Auth two-factor
+  plugin also lacked mappings from its logical camelCase fields to the existing snake_case D1 schema,
+  so its enrollment endpoint failed before creating a secret.
+- **Outcome:** Session responses now expose server-resolved MFA requirement and verification state.
+  Unverified administrators are redirected to `/admin/security`, where they confirm their password,
+  enroll a TOTP authenticator, save recovery codes, and verify the first six-digit code. Credential
+  sign-in now continues through the TOTP challenge and trusted-device flow instead of attempting to
+  load a session prematurely. MFA remains enforced by the API.
+- **Permission parity:** Pricing-only administrators can read detailed catalog data but cannot create
+  categories or products. Catalog errors preserve the server message and correlation reference, and
+  mutation controls are hidden when the server denies the feed.
+- **Verification:** The Better Auth D1 integration proves that a bootstrap administrator can start
+  TOTP enrollment through the real endpoint and existing migration. Focused API tests cover pricing
+  read/catalog write separation; web tests cover MFA routing and enrollment-response parsing. Local
+  browser verification confirms `/admin/catalog` redirects the active unenrolled superadmin to the
+  responsive security setup screen. Repository `pnpm check` passes all 55 Turbo tasks. No remote
+  state, deployment, or new dependency was added.
+
 ### Slice Acceptance Baseline
 
 Every admin slice must include explicit loading, empty, unavailable, forbidden, validation,

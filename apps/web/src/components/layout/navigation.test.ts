@@ -10,6 +10,8 @@ function adminSession(permissions: SessionSummary["adminPermissions"]): SessionS
     role: "admin",
     adminPermissions: permissions,
     customerId: null,
+    mfaRequired: true,
+    mfaVerified: true,
     expiresAt: "2026-09-01T00:00:00.000Z",
   };
 }
