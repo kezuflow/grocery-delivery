@@ -1,31 +1,45 @@
 "use client";
 
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, X } from "lucide-react";
+import { ArrowRight, Check, Leaf, Menu, PackageCheck, RefreshCw, Truck, X } from "lucide-react";
 import { useState } from "react";
 
 import styles from "./freshmarkets-landing.module.css";
 
 const navigation = [
-  { label: "Shop the market", href: "/shop" },
   { label: "How it works", href: "#how-it-works" },
-  { label: "Membership", href: "#membership" },
+  { label: "Shop", href: "/shop" },
+  { label: "Sustainability", href: "#better-choices" },
+  { label: "About us", href: "#footer" },
 ];
 
-const produce = [
+const benefits = [
+  { icon: "leaf", title: "Freshly sourced", copy: "From trusted local farmers and suppliers." },
+  { icon: "package", title: "Packed with care", copy: "We pack every box like it is our own." },
+  { icon: "truck", title: "Schedule that works", copy: "Choose your day. We handle the rest." },
+  { icon: "refresh", title: "Flexible and easy", copy: "Pause, skip, or change anytime." },
+];
+
+const boxes = [
   {
-    name: "Sun-ripened tomatoes",
-    detail: "Picked for the week ahead",
-    image: "/marketplace/tomatoes.webp",
+    name: "Small Box",
+    description: "Fresh essentials for 1 to 2 people.",
+    size: "1 to 2 people",
+    price: "$49.99 / delivery",
+    image: "/landing/box-small.webp",
   },
   {
-    name: "Crisp greens",
-    detail: "Washed, bright, ready to cook",
-    image: "/marketplace/lettuce.webp",
+    name: "Medium Box",
+    description: "Balanced variety for 2 to 4 people.",
+    size: "2 to 4 people",
+    price: "$69.99 / delivery",
+    image: "/landing/box-medium.webp",
   },
   {
-    name: "Build-your-box",
-    detail: "Your staples, your way",
-    image: "/marketplace/build-your-box-campaign.webp",
+    name: "Family Box",
+    description: "Abundant picks for 4+ people.",
+    size: "4+ people",
+    price: "$89.99 / delivery",
+    image: "/landing/box-family.webp",
   },
 ];
 
@@ -34,35 +48,31 @@ export function FreshMarketsLanding() {
 
   return (
     <main className={styles.page}>
-      <div className={styles.announcement}>
-        <span>Fresh this week</span>
-        <span>Free delivery on your first basket</span>
-        <a href="/shop">
-          Shop now <ArrowRight aria-hidden="true" size={14} />
-        </a>
-      </div>
-
       <section className={styles.hero} aria-labelledby="hero-heading">
         <header className={styles.navbar}>
-          <a className={styles.wordmark} href="/" aria-label="FreshMarkets home">
-            <span className={styles.wordmarkMark} aria-hidden="true">
-              <span />
-            </span>
-            <span>freshmarkets</span>
-          </a>
           <nav className={styles.desktopNav} aria-label="Primary navigation">
-            {navigation.map((item) => (
+            {navigation.slice(0, 2).map((item) => (
               <a href={item.href} key={item.label}>
                 {item.label}
               </a>
             ))}
           </nav>
-          <div className={styles.navActions}>
-            <a className={styles.signIn} href="/account">
-              Sign in
+          <a className={styles.wordmark} href="/" aria-label="FreshMarkets home">
+            freshmarkets
+          </a>
+          <div className={styles.navRight}>
+            <nav className={styles.desktopNav} aria-label="Secondary navigation">
+              {navigation.slice(2).map((item) => (
+                <a href={item.href} key={item.label}>
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <a className={styles.login} href="/account">
+              Log in
             </a>
             <a className={styles.navCta} href="/shop">
-              Start shopping <ArrowRight aria-hidden="true" size={15} />
+              Start free trial
             </a>
             <button
               className={styles.menuButton}
@@ -87,214 +97,198 @@ export function FreshMarketsLanding() {
             </a>
           ))}
           <a href="/account" onClick={() => setMenuOpen(false)}>
-            Sign in
+            Log in
           </a>
         </div>
 
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Premium groceries, made easy</p>
+            <p className={styles.eyebrow}>Groceries, delivered differently</p>
             <h1 id="hero-heading">
-              Good food.
-              <br />
-              <em>Better value.</em>
+              Groceries that <span>fit</span> your life.
             </h1>
             <p className={styles.heroLead}>
-              A curated market of fresh produce and everyday staples, delivered to your door for
-              less than the supermarket run.
+              Market-fresh produce, everyday essentials, and local favorites packed in a box and
+              delivered on your schedule.
             </p>
-            <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="/shop">
-                Build your basket <ArrowRight aria-hidden="true" size={17} />
-              </a>
-              <a className={styles.textButton} href="#how-it-works">
-                See how it works <ArrowDownRight aria-hidden="true" size={17} />
-              </a>
-            </div>
-            <p className={styles.heroProof}>
-              <span>4.9/5</span> from fresh-market regulars, delivered on your schedule
+            <a className={styles.primaryButton} href="/shop">
+              Start your free trial <ArrowRight size={17} aria-hidden="true" />
+            </a>
+            <p className={styles.noCommitment}>
+              <Check size={15} aria-hidden="true" /> No commitment during trial
+            </p>
+            <p className={styles.proof}>
+              Loved by 10,000+ households <span aria-label="4.9 out of 5 stars">★★★★★</span>{" "}
+              <strong>4.9/5</strong>
             </p>
           </div>
-          <div
-            className={styles.heroVisual}
-            aria-label="A colorful selection of fresh vegetables"
-            role="img"
-          >
-            <div className={styles.heroGlow} />
+          <div className={styles.heroVisual}>
             <img
-              className={styles.heroProduce}
-              src="/landing/background.webp"
-              alt=""
-              width="1672"
-              height="941"
+              src="/landing/hero-box.webp"
+              alt="A FreshMarkets box filled with fresh groceries"
+              width="1200"
+              height="900"
               fetchPriority="high"
             />
-            <img
-              className={styles.heroPerson}
-              src="/marketplace/market-fresh-campaign.webp"
-              alt="A FreshMarkets market host holding a box of produce"
-              width="1024"
-              height="1024"
-            />
-            <span className={`${styles.sticker} ${styles.stickerTop}`}>picked for now</span>
-            <span className={`${styles.sticker} ${styles.stickerBottom}`}>zero guesswork</span>
           </div>
         </div>
       </section>
 
-      <section className={styles.marquee} aria-label="FreshMarkets benefits">
-        <div>real food</div>
-        <div>real people</div>
-        <div>real easy</div>
-        <div>real fresh</div>
+      <section className={styles.benefits} aria-label="FreshMarkets benefits">
+        {benefits.map(({ icon, title, copy }) => (
+          <article className={styles.benefit} key={title}>
+            {icon === "leaf" ? <Leaf size={32} strokeWidth={1.5} aria-hidden="true" /> : null}
+            {icon === "package" ? (
+              <PackageCheck size={32} strokeWidth={1.5} aria-hidden="true" />
+            ) : null}
+            {icon === "truck" ? <Truck size={32} strokeWidth={1.5} aria-hidden="true" /> : null}
+            {icon === "refresh" ? (
+              <RefreshCw size={32} strokeWidth={1.5} aria-hidden="true" />
+            ) : null}
+            <div>
+              <h2>{title}</h2>
+              <p>{copy}</p>
+            </div>
+          </article>
+        ))}
       </section>
 
-      <section className={styles.storySection} id="how-it-works">
-        <div className={styles.sectionIntro}>
-          <p className={styles.kicker}>The FreshMarkets difference</p>
-          <h2>Make the premium choice the easy choice.</h2>
+      <section className={styles.boxSection} id="boxes" aria-labelledby="box-heading">
+        <div className={styles.sectionHeading}>
+          <h2 id="box-heading">Find your perfect box</h2>
           <p>
-            We take the friction out of eating well. Pick what looks good, set your rhythm, and let
-            a real person bring it to your door at a price that respects your week.
+            Choose a size that matches your household. Every box is packed with what is best right
+            now.
           </p>
         </div>
-        <div className={styles.storyGrid}>
-          <article className={`${styles.storyCard} ${styles.storyCardTall}`}>
-            <img
-              src="/marketplace/build-your-box-campaign.webp"
-              alt="Hands arranging colorful produce inside a FreshMarkets box"
-              width="1024"
-              height="1024"
-              loading="lazy"
-            />
-            <div>
-              <h3>Choose your kind of fresh</h3>
-              <p>
-                Shop the market or start with a box that already knows what a good week tastes like.
-                No aisle wandering required.
-              </p>
-            </div>
-          </article>
-          <article className={`${styles.storyCard} ${styles.storyCardGreen}`}>
-            <div className={styles.numberLockup}>
-              <span>Curated for you</span>
-              <ArrowDownRight aria-hidden="true" size={28} />
-            </div>
-            <h3>We pack it like it matters</h3>
-            <p>
-              Produce is checked, packed, and sent out on a schedule that keeps it at its best.
-              Premium handling, without the premium markup.
-            </p>
-            <a href="/shop">
-              Meet the market <ArrowRight aria-hidden="true" size={16} />
-            </a>
-          </article>
-          <article className={`${styles.storyCard} ${styles.storyCardWide}`}>
-            <div>
-              <h3>Your fridge gets a reset</h3>
-              <p>More color on the counter. More options at dinner. Less last-minute takeout.</p>
-            </div>
-            <img
-              src="/marketplace/weekend-delivery-campaign.webp"
-              alt="A FreshMarkets courier ready to deliver a produce box"
-              width="1024"
-              height="1024"
-              loading="lazy"
-            />
-          </article>
-        </div>
-      </section>
-
-      <section className={styles.marketSection} id="market">
-        <div className={styles.marketHeading}>
-          <div>
-            <p className={styles.kicker}>Inside this week</p>
-            <h2>Food with a point of view.</h2>
-          </div>
-          <a className={styles.textButtonDark} href="/shop">
-            Explore the full market <ArrowRight aria-hidden="true" size={17} />
-          </a>
-        </div>
-        <div className={styles.produceRail}>
-          {produce.map((item) => (
-            <a href="/shop" className={styles.produceItem} key={item.name}>
-              <div className={styles.produceImage}>
-                <img src={item.image} alt="" width="1024" height="1024" loading="lazy" />
+        <div className={styles.boxGrid}>
+          {boxes.map((box) => (
+            <article className={styles.boxCard} key={box.name}>
+              <div className={styles.boxImage}>
+                <img
+                  src={box.image}
+                  alt={`${box.name} filled with fresh groceries`}
+                  width="600"
+                  height="480"
+                  loading="lazy"
+                />
               </div>
-              <div>
-                <h3>{item.name}</h3>
-                <p>{item.detail}</p>
+              <div className={styles.boxInfo}>
+                <h3>{box.name}</h3>
+                <p>{box.description}</p>
+                <div className={styles.boxMeta}>
+                  <span>{box.size}</span>
+                  <strong>{box.price}</strong>
+                </div>
+                <a href="/shop">
+                  Choose {box.name.replace(" Box", "")} <ArrowRight size={15} aria-hidden="true" />
+                </a>
               </div>
-              <ArrowUpRight aria-hidden="true" size={18} />
-            </a>
+            </article>
           ))}
         </div>
       </section>
 
-      <section className={styles.membershipSection} id="membership">
-        <div className={styles.membershipImage}>
+      <section className={styles.choices} id="better-choices" aria-labelledby="choices-heading">
+        <div className={styles.choicesCopy}>
+          <h2 id="choices-heading">Better food starts with better choices.</h2>
+          <p>
+            We partner with trusted farms and makers who grow and produce with care. Every item is
+            chosen for freshness, quality, and flavor.
+          </p>
+          <div className={styles.choiceProof}>
+            <span>
+              <Leaf size={20} aria-hidden="true" /> Sourced from trusted farms
+            </span>
+            <span>
+              <PackageCheck size={20} aria-hidden="true" /> Picked at peak freshness
+            </span>
+            <span>
+              <Check size={20} aria-hidden="true" /> Better for you and the planet
+            </span>
+          </div>
+        </div>
+        <div className={styles.choicesImage}>
           <img
-            src="/marketplace/first-order-campaign.webp"
-            alt="A shopper celebrating with a box of fresh produce"
-            width="1024"
-            height="1024"
+            src="/landing/farm-story.webp"
+            alt="A farmer tending rows of vegetables in a field"
+            width="1200"
+            height="720"
             loading="lazy"
           />
         </div>
-        <div className={styles.membershipCopy}>
-          <p className={styles.kicker}>FreshMarkets membership</p>
-          <h2>Keep good food in your plans.</h2>
-          <p>
-            Make weekly shopping feel less like a chore and more like a small ritual you look
-            forward to. Pause anytime. Add what you need. Keep your favorites close while spending
-            less than a typical supermarket basket.
-          </p>
+      </section>
+
+      <section className={styles.trial} id="how-it-works" aria-labelledby="trial-heading">
+        <div className={styles.trialCopy}>
+          <p className={styles.eyebrow}>Try risk-free</p>
+          <h2 id="trial-heading">
+            Start your <span>free trial</span> today.
+          </h2>
           <ul>
             <li>
-              <span>✓</span> Flexible weekly delivery windows
+              <Check size={16} aria-hidden="true" /> 7-day free trial
             </li>
             <li>
-              <span>✓</span> Member-only market drops
+              <Check size={16} aria-hidden="true" /> Free delivery on your first box
             </li>
             <li>
-              <span>✓</span> No wasteful surprise boxes
+              <Check size={16} aria-hidden="true" /> Pause, skip, or cancel anytime
+            </li>
+            <li>
+              <Check size={16} aria-hidden="true" /> No commitments
             </li>
           </ul>
-          <a className={styles.primaryButton} href="/account/subscribe">
-            Find your rhythm <ArrowRight aria-hidden="true" size={17} />
-          </a>
-        </div>
-      </section>
-
-      <section className={styles.finalCta}>
-        <div>
-          <p className={styles.kicker}>Your next good meal starts here</p>
-          <h2>
-            Bring home
-            <br />
-            <em>something better.</em>
-          </h2>
-        </div>
-        <div className={styles.finalCtaAction}>
-          <p>Fresh food, chosen with care, delivered on your time, and priced for real life.</p>
           <a className={styles.darkButton} href="/shop">
-            Shop FreshMarkets <ArrowRight aria-hidden="true" size={17} />
+            Start your free trial <ArrowRight size={17} aria-hidden="true" />
           </a>
+          <small>No commitment during trial</small>
+        </div>
+        <div className={styles.trialImage}>
+          <img
+            src="/landing/trial-meal.webp"
+            alt="A colorful fresh salad made with seasonal produce"
+            width="900"
+            height="900"
+            loading="lazy"
+          />
+          <div className={styles.trialBadge}>
+            <strong>7-day</strong>
+            <span>free trial</span>
+          </div>
         </div>
       </section>
 
-      <footer className={styles.footer}>
-        <a className={styles.wordmark} href="/" aria-label="FreshMarkets home">
-          <span className={styles.wordmarkMark} aria-hidden="true">
-            <span />
-          </span>
-          <span>freshmarkets</span>
-        </a>
-        <p>Fresh choices for better weeks.</p>
-        <div>
-          <a href="/shop">Shop</a>
-          <a href="/account">Account</a>
-          <a href="#how-it-works">How it works</a>
+      <footer className={styles.footer} id="footer">
+        <div className={styles.footerBrand}>
+          <a className={styles.wordmark} href="/" aria-label="FreshMarkets home">
+            freshmarkets
+          </a>
+          <p>Good food. Real convenience.</p>
+        </div>
+        <div className={styles.footerLinks}>
+          <div>
+            <h2>Shop</h2>
+            <a href="/shop">Shop boxes</a>
+            <a href="/shop">Fresh produce</a>
+            <a href="/shop">Pantry</a>
+          </div>
+          <div>
+            <h2>Support</h2>
+            <a href="#how-it-works">How it works</a>
+            <a href="/account">Your account</a>
+            <a href="/account/support">Help center</a>
+          </div>
+          <div>
+            <h2>About</h2>
+            <a href="#better-choices">Sustainability</a>
+            <a href="#footer">Our story</a>
+            <a href="#footer">Contact us</a>
+          </div>
+        </div>
+        <div className={styles.footerBottom}>
+          <span>© 2026 FreshMarkets</span>
+          <span>Fresh food for better weeks.</span>
         </div>
       </footer>
     </main>

@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { FreshMarketsLanding } from "../features/landing/freshmarkets-landing";
 
 export const metadata: Metadata = {
-  title: "Good food. Better value.",
+  title: "Groceries that fit your life",
   description:
-    "Fresh produce, local staples, and dinner-worthy ingredients delivered when your week needs them most.",
+    "Market-fresh produce and everyday essentials packed in a box and delivered on your schedule.",
 };
 
 export default function HomePage() {

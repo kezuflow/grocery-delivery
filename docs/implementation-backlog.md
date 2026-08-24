@@ -31,6 +31,25 @@ the next slice begins.
 - `blocked`: requires a product or technical decision that cannot be inferred safely.
 - `deferred`: intentionally paused until the user starts that phase.
 
+## Landing Page Refresh (Local)
+
+- **Status:** locally complete for the requested visual slice.
+- **Outcome:** the public `/` route now contains only the requested FreshMarkets sections: centered
+  header, “Groceries that fit your life” hero, four benefit items, “Find your perfect box”,
+  “Better food starts with better choices”, “Start your free trial today”, and footer. Existing
+  shop, account, and support links remain connected to their current routes.
+- **Visual direction:** light warm-white page with dark green type and a single lime accent, based
+  on the user-provided references without importing their extra sections or copy.
+- **Image handoff:** ImageGen was unavailable in this session. Temporary local grocery imagery is
+  wired under `apps/web/public/landing/`; exact replacement filenames and generation prompts are in
+  `apps/web/public/landing/IMAGE_PROMPTS.md`.
+- **Verification:** web lint, typecheck, 77 web unit tests, production build, and the focused
+  landing Playwright test pass on phone, tablet, and desktop with serious/critical Axe and overflow
+  checks. Repository `pnpm check` remains blocked by pre-existing formatting warnings in unrelated
+  skill, generated, and legacy landing files.
+- **Next resume point:** replace the six temporary image files with generated assets when available;
+  no layout code changes should be needed.
+
 ## Current Product Direction
 
 Build a single-store Carbon Market experience with high-quality grocery discovery and ordering on

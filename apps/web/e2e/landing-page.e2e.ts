@@ -9,14 +9,18 @@ test("landing page presents the FreshMarkets storefront", async ({ openAs, page 
   await openAs(null, "/");
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "Good food. Better value." }),
+    page.getByRole("heading", { level: 1, name: "Groceries that fit your life." }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Build your basket" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Start your free trial" }).first()).toHaveAttribute(
     "href",
     "/shop",
   );
   await expect(page.getByRole("link", { name: "FreshMarkets home" }).first()).toBeVisible();
-  await expect(page.locator('img[src="/landing/background.webp"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find your perfect box" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Better food starts with better choices." }),
+  ).toBeVisible();
+  await expect(page.locator('img[src="/landing/hero-box.webp"]')).toBeVisible();
 
   if ((await page.evaluate(() => window.innerWidth)) <= 900) {
     await expect(page.getByRole("button", { name: "Open navigation" })).toBeVisible();
