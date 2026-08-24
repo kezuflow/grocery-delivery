@@ -745,6 +745,11 @@ authentication and promotion remain deferred.
   and full-desktop layouts and passes 3/3 projects; `pnpm check` passes all 55 Turbo tasks. The slice
   changes no request, persistence, latency, runtime dependency, or observability boundary.
 
+- **Cart popup CTA contrast:** the guest `/shop` cart popup now forces the sign-in CTA label to
+  remain white on the black action background, avoiding the global anchor color override that made
+  the label unreadable. Focused Playwright coverage passes on phone, tablet, and desktop with
+  horizontal-overflow and serious/critical Axe checks; the full local `pnpm check` remains green.
+
 - **Marketplace search simplification:** the duplicate in-content `Crave it? Get it.` heading and
   secondary search form are removed from `/shop`, so category filters and the featured campaign now
   follow the shared marketplace header directly. The responsive header search remains the single

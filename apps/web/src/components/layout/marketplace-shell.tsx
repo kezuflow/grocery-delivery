@@ -447,7 +447,7 @@ function CartPopup({
           </div>
           {session?.role === "customer" ? (
             <a
-              className="flex min-h-10 items-center justify-center rounded-md bg-base-action px-4 py-2 text-sm font-bold text-white hover:brightness-95"
+              className="flex min-h-10 items-center justify-center rounded-md bg-base-action px-4 py-2 text-sm font-bold !text-white hover:brightness-95"
               href="/account/cart"
               onClick={onClose}
             >
@@ -455,7 +455,7 @@ function CartPopup({
             </a>
           ) : (
             <a
-              className="flex min-h-10 items-center justify-center rounded-md bg-base-action px-4 py-2 text-sm font-bold text-white hover:brightness-95"
+              className="flex min-h-10 items-center justify-center rounded-md bg-base-action px-4 py-2 text-sm font-bold !text-white hover:brightness-95"
               href="/shop"
               onClick={onClose}
             >
