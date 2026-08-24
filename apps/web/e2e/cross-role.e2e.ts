@@ -77,6 +77,12 @@ test("marketplace converges across phone and desktop layouts", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Cart orders" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Featured offers" })).toBeVisible();
+  const firstOrderOffer = page.getByRole("link", { name: /40% off your first order/ });
+  await expect(firstOrderOffer).toBeVisible();
+  await expect(firstOrderOffer.getByRole("img")).toHaveAttribute(
+    "src",
+    "/marketplace/first-order-campaign.webp",
+  );
   await expect(page.getByText("Crave it? Get it.")).toBeVisible();
   await expect(
     page.getByPlaceholder("Search for vegetables, healthy food, or a dish"),

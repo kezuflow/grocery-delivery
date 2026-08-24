@@ -357,9 +357,7 @@ export function CustomerCatalog({
         </div>
       </div>
 
-      {!hasFilters && visibleItems.length > 1 ? (
-        <MerchandisingRail banners={banners} items={visibleItems} />
-      ) : null}
+      {!hasFilters && visibleItems.length > 1 ? <MerchandisingRail banners={banners} /> : null}
 
       {error ? (
         <ErrorState
@@ -660,10 +658,8 @@ function selectCollection(id: string) {
 
 function MerchandisingRail({
   banners,
-  items,
 }: Readonly<{
   banners: ActivePromotionBannersResponse["data"]["banners"];
-  items: readonly CatalogSkuResponse[];
 }>) {
   if (banners.length) {
     return (
@@ -704,51 +700,58 @@ function MerchandisingRail({
     );
   }
 
-  const cards = [
-    {
-      eyebrow: "Featured in fresh markets",
-      title: "Bright greens for every table",
-      copy: "Leafy vegetables and herbs selected for your weekly box.",
-      item: items.find((item) => /lettuce|pechay|kangkong|basil/i.test(item.name)) ?? items[1],
-      href: "/shop?search=greens",
-    },
-  ].filter((card) => card.item);
-
   return (
-    <section
-      aria-label="Featured offers"
-      className="mb-9 grid scroll-mt-24 gap-3 sm:grid-cols-2"
-      id="featured-offers"
-    >
-      {cards.map((card, index) =>
-        card.item ? (
-          <a
-            className={`group relative min-h-36 overflow-hidden rounded-lg px-5 py-5 sm:min-h-40 ${index === 0 ? "bg-[#e8f5ed]" : "bg-[#fff1d6]"}`}
-            href={card.href}
-            key={card.title}
-          >
-            <div className="relative z-10 max-w-[64%]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#087443]">
-                {card.eyebrow}
-              </p>
-              <h2 className="!m-0 mt-2 !text-lg font-extrabold leading-tight sm:!text-xl">
-                {card.title}
-              </h2>
-              <p className="mt-1 text-xs leading-4 text-[#52675d]">{card.copy}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold">
-                Shop now <ChevronRight size={14} />
-              </span>
-            </div>
-            {card.item.imageUrl ? (
-              <img
-                alt=""
-                className="absolute bottom-0 right-2 size-36 object-contain object-bottom transition-transform group-hover:scale-105 sm:right-4 sm:size-40"
-                src={card.item.imageUrl}
-              />
-            ) : null}
-          </a>
-        ) : null,
-      )}
+    <section aria-label="Featured offers" className="mb-10 scroll-mt-24" id="featured-offers">
+      <a
+        className="group relative isolate flex min-h-[320px] overflow-hidden rounded-[28px] bg-[#ff3f8f] px-6 py-7 text-white shadow-[0_22px_60px_rgba(139,19,71,0.18)] sm:min-h-[330px] sm:items-center sm:px-10 sm:py-9 lg:px-14"
+        href="/shop?sort=popular"
+      >
+        <span
+          aria-hidden="true"
+          className="absolute -left-14 -top-20 size-52 rounded-full bg-[#ff87b8]/70 blur-sm"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-28 left-[37%] size-72 rounded-full bg-[#ffc6dc]/55"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-[#ffb5d2]/55 transition-transform duration-300 group-hover:rotate-12"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 z-[15] w-[68%] bg-gradient-to-r from-[#ff3f8f] via-[#ff3f8f]/95 to-transparent sm:hidden"
+        />
+
+        <div className="relative z-20 flex w-[61%] max-w-[520px] flex-col items-start sm:w-[52%]">
+          <span className="inline-flex rounded-full bg-[#143f31] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white sm:text-xs">
+            First order only
+          </span>
+          <h2 className="!m-0 mt-4 flex flex-col font-black tracking-[-0.055em] text-white">
+            <span className="text-[clamp(3.15rem,7vw,5.75rem)] leading-[0.82]">40% off</span>
+            <span className="mt-3 max-w-[10ch] text-[clamp(1.55rem,3.4vw,2.6rem)] leading-[0.92]">
+              your first
+              <br />
+              order
+            </span>
+          </h2>
+          <p className="mt-4 max-w-[21ch] text-xs font-bold leading-5 text-[#102c24] sm:max-w-[32ch] sm:text-sm">
+            A bright welcome to the weekly market. Eligibility and savings are confirmed at
+            checkout.
+          </p>
+          <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#fff8ed] px-4 py-2.5 text-xs font-extrabold text-[#163d30] shadow-sm transition-transform group-hover:translate-x-1 sm:px-5 sm:text-sm">
+            Shop the offer <ChevronRight size={16} />
+          </span>
+        </div>
+
+        <img
+          alt="A cheerful shopper holding fresh groceries beside Carbon's sprout mascot"
+          className="pointer-events-none absolute -bottom-[6%] -right-[15%] z-10 w-[74%] max-w-[570px] object-contain transition-transform duration-300 group-hover:scale-[1.025] sm:-right-[2%] sm:bottom-auto sm:top-[-5%] sm:w-[44%] lg:right-[2%] lg:w-[45%]"
+          height="1024"
+          src="/marketplace/first-order-campaign.webp"
+          width="1024"
+        />
+      </a>
     </section>
   );
 }
