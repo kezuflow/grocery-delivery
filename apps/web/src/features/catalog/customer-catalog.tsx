@@ -618,7 +618,6 @@ function selectCollection(id: string) {
 const DEFAULT_FEATURED_CAMPAIGNS = [
   {
     id: "first-order",
-    eyebrow: "First order only",
     headline: "40% off",
     subheadline: "your first order",
     ctaLabel: "Shop the offer",
@@ -628,14 +627,12 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     backgroundClassName: "bg-[#ff3f8f] text-white",
     headlineClassName: "text-[#161616]",
     mobileVeilClassName: "from-[#ff3f8f] via-[#ff3f8f]/95",
-    badgeClassName: "bg-[#143f31] text-white",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
     imageClassName:
       "-bottom-[6%] right-[12%] w-[92%] sm:right-[10%] sm:w-[78%] lg:-bottom-[12%] lg:right-[16%] lg:w-[72%]",
   },
   {
     id: "build-your-box",
-    eyebrow: "Pick every item",
     headline: "Build your box",
     subheadline: "your way",
     ctaLabel: "Start choosing",
@@ -645,14 +642,12 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     backgroundClassName: "bg-[#174b3a] text-white",
     headlineClassName: "text-white",
     mobileVeilClassName: "from-[#174b3a] via-[#174b3a]/95",
-    badgeClassName: "bg-[#f4cf63] text-[#143f31]",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
     imageClassName:
       "-bottom-[8%] right-[4%] w-[100%] sm:right-[6%] sm:w-[88%] lg:right-[3%] lg:w-[90%]",
   },
   {
     id: "market-fresh",
-    eyebrow: "Farm-to-door favorites",
     headline: "Market fresh",
     subheadline: "every week",
     ctaLabel: "See what's fresh",
@@ -662,14 +657,12 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     backgroundClassName: "bg-[#ffad52] text-[#143f31]",
     headlineClassName: "text-[#161616]",
     mobileVeilClassName: "from-[#ffad52] via-[#ffad52]/95",
-    badgeClassName: "bg-[#143f31] text-white",
     ctaClassName: "bg-white text-[#163d30]",
     imageClassName:
       "-bottom-[7%] right-[12%] w-[90%] sm:right-[10%] sm:w-[76%] lg:-bottom-[12%] lg:right-[14%] lg:w-[70%]",
   },
   {
     id: "weekend-delivery",
-    eyebrow: "Plan your weekend",
     headline: "Weekend drops",
     subheadline: "right on time",
     ctaLabel: "Browse the market",
@@ -679,14 +672,12 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     backgroundClassName: "bg-[#9cd9eb] text-[#143f31]",
     headlineClassName: "text-[#161616]",
     mobileVeilClassName: "from-[#9cd9eb] via-[#9cd9eb]/95",
-    badgeClassName: "bg-[#143f31] text-white",
     ctaClassName: "bg-white text-[#163d30]",
     imageClassName:
       "-bottom-[7%] right-[7%] w-[96%] sm:right-[7%] sm:w-[84%] lg:-bottom-[12%] lg:right-[10%] lg:w-[76%]",
   },
   {
     id: "free-month",
-    eyebrow: "New member trial",
     headline: "One month free",
     subheadline: "to get started",
     ctaLabel: "Try a membership",
@@ -696,7 +687,6 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     backgroundClassName: "bg-[#7446a8] text-white",
     headlineClassName: "text-white",
     mobileVeilClassName: "from-[#7446a8] via-[#7446a8]/95",
-    badgeClassName: "bg-[#f4cf63] text-[#143f31]",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
     imageClassName:
       "-bottom-[7%] right-[8%] w-[94%] sm:right-[8%] sm:w-[82%] lg:-bottom-[12%] lg:right-[10%] lg:w-[78%]",
@@ -798,13 +788,8 @@ function MerchandisingRail({
             />
 
             <div className="relative z-20 flex w-[67%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[59%] lg:w-[68%]">
-              <span
-                className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] sm:text-xs ${campaign.badgeClassName}`}
-              >
-                {campaign.eyebrow}
-              </span>
               <h2
-                className={`!m-0 mt-4 flex flex-col font-black tracking-[-0.055em] ${campaign.headlineClassName}`}
+                className={`!m-0 flex flex-col font-black tracking-[-0.055em] ${campaign.headlineClassName}`}
               >
                 <span className="max-w-[9ch] text-[clamp(2.7rem,6.4vw,5.6rem)] leading-[0.82] text-inherit lg:text-[clamp(2.7rem,3.6vw,3.65rem)]">
                   {campaign.headline}

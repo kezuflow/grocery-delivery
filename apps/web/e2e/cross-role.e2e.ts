@@ -78,6 +78,15 @@ test("marketplace converges across phone and desktop layouts", async ({
   await expect(page.getByRole("dialog", { name: "Cart orders" })).toHaveCount(0);
   const featuredOffers = page.getByRole("region", { name: "Featured offers" });
   await expect(featuredOffers).toBeVisible();
+  for (const removedLabel of [
+    "First order only",
+    "Pick every item",
+    "Farm-to-door favorites",
+    "Plan your weekend",
+    "New member trial",
+  ]) {
+    await expect(featuredOffers.getByText(removedLabel, { exact: true })).toHaveCount(0);
+  }
   const campaigns = [
     {
       button: "Show featured offer 1: 40% off",

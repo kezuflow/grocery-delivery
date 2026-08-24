@@ -692,7 +692,8 @@ authentication and promotion remain deferred.
   manually controlled campaign carousel with oversized HTML copy, previous/next controls, and five
   direct-select indicators. Phone and tablet layouts show one centered campaign, while desktop
   presents two compact cards side by side so the centered people and boxes are not stretched toward
-  the outer edge. The first-order artwork replaces the former mascot and shopping bags
+  the outer edge. Campaign eyebrow pills such as `First order only` are omitted so each card leads
+  directly with its main offer. The first-order artwork replaces the former mascot and shopping bags
   with a sturdy produce delivery box, and the former welcome/eligibility paragraph is removed. Four
   additional original, text-free box campaigns cover build-your-own selection, weekly market
   freshness, weekend delivery, and the membership trial. All five ImageGen cutouts are optimized
