@@ -32,7 +32,11 @@ export function StorefrontContent({
         { href: "#plans", label: "Weekly plans" },
       ]}
     >
-      <div data-impeccable-target="landing-page" id="landing-page">
+      <section
+        aria-label="Freshmarkets landing page"
+        data-impeccable-target="landing-page"
+        id="landing-page"
+      >
         <StorefrontHero banner={storefront.banners[0]} session={session} />
         <StorefrontBenefits />
         <StorefrontCatalog storefront={storefront} />
@@ -40,7 +44,7 @@ export function StorefrontContent({
         <StorefrontPlans storefront={storefront} />
         <StorefrontTrial session={session} />
         <StorefrontFooter />
-      </div>
+      </section>
     </PublicShell>
   );
 }
