@@ -264,3 +264,9 @@ Sources:
 - Do not add labels, packaging, logos, decorative props, or watermarks.
 - Save final catalog assets as optimized square WebP files under
   `apps/web/public/marketplace/`.
+
+## Generated asset coverage
+
+- 226 transparent WebP assets are generated under `apps/web/public/marketplace/produce/`.
+- Every asset is 512×512 pixels with an alpha channel; the complete set is approximately 11.1 MB.
+- Filenames use lowercase kebab-case slugs matching the checklist names.
