@@ -704,6 +704,15 @@ authentication and promotion remain deferred.
   overflow checks; `pnpm check` passes all 55 Turbo tasks. The change adds no request, persistence,
   latency, runtime dependency, or observability boundary.
 
+- **Featured-promotion crop hardening:** fallback campaign artwork now uses one height-bounded,
+  bottom-right media treatment instead of per-campaign width scaling and negative bottom offsets.
+  Complete people and produce boxes remain inside the rounded cards at 390-by-844 phone,
+  820-by-1180 tablet, 1440-by-1000 desktop, and 1920-by-1080 full-desktop viewports. The former
+  left-to-right gradient veil is removed, while live HTML headlines and CTAs retain solid campaign
+  contrast. A focused Playwright regression checks all five campaigns across phone, tablet, desktop,
+  and full-desktop layouts and passes 3/3 projects; `pnpm check` passes all 55 Turbo tasks. The slice
+  changes no request, persistence, latency, runtime dependency, or observability boundary.
+
 - **Marketplace search simplification:** the duplicate in-content `Crave it? Get it.` heading and
   secondary search form are removed from `/shop`, so category filters and the featured campaign now
   follow the shared marketplace header directly. The responsive header search remains the single

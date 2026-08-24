@@ -626,10 +626,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     imageAlt: "A cheerful shopper presenting a box of fresh produce",
     backgroundClassName: "bg-[#ff3f8f] text-white",
     headlineClassName: "text-[#161616]",
-    mobileVeilClassName: "from-[#ff3f8f] via-[#ff3f8f]/95",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
-    imageClassName:
-      "-bottom-[6%] right-[12%] w-[92%] sm:right-[10%] sm:w-[78%] lg:-bottom-[12%] lg:right-[16%] lg:w-[72%]",
   },
   {
     id: "build-your-box",
@@ -641,10 +638,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     imageAlt: "Hands packing a fresh produce box",
     backgroundClassName: "bg-[#174b3a] text-white",
     headlineClassName: "text-white",
-    mobileVeilClassName: "from-[#174b3a] via-[#174b3a]/95",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
-    imageClassName:
-      "-bottom-[8%] right-[4%] w-[100%] sm:right-[6%] sm:w-[88%] lg:right-[3%] lg:w-[90%]",
   },
   {
     id: "market-fresh",
@@ -656,10 +650,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     imageAlt: "A market grower holding a box of fresh produce",
     backgroundClassName: "bg-[#ffad52] text-[#143f31]",
     headlineClassName: "text-[#161616]",
-    mobileVeilClassName: "from-[#ffad52] via-[#ffad52]/95",
     ctaClassName: "bg-white text-[#163d30]",
-    imageClassName:
-      "-bottom-[7%] right-[12%] w-[90%] sm:right-[10%] sm:w-[76%] lg:-bottom-[12%] lg:right-[14%] lg:w-[70%]",
   },
   {
     id: "weekend-delivery",
@@ -671,10 +662,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     imageAlt: "A bicycle courier carrying a produce delivery box",
     backgroundClassName: "bg-[#9cd9eb] text-[#143f31]",
     headlineClassName: "text-[#161616]",
-    mobileVeilClassName: "from-[#9cd9eb] via-[#9cd9eb]/95",
     ctaClassName: "bg-white text-[#163d30]",
-    imageClassName:
-      "-bottom-[7%] right-[7%] w-[96%] sm:right-[7%] sm:w-[84%] lg:-bottom-[12%] lg:right-[10%] lg:w-[76%]",
   },
   {
     id: "free-month",
@@ -686,10 +674,7 @@ const DEFAULT_FEATURED_CAMPAIGNS = [
     imageAlt: "A couple happily unpacking a box of fresh produce",
     backgroundClassName: "bg-[#7446a8] text-white",
     headlineClassName: "text-white",
-    mobileVeilClassName: "from-[#7446a8] via-[#7446a8]/95",
     ctaClassName: "bg-[#fff8ed] text-[#163d30]",
-    imageClassName:
-      "-bottom-[7%] right-[8%] w-[94%] sm:right-[8%] sm:w-[82%] lg:-bottom-[12%] lg:right-[10%] lg:w-[78%]",
   },
 ] as const;
 
@@ -782,12 +767,7 @@ function MerchandisingRail({
               aria-hidden="true"
               className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-white/20 transition-transform duration-300 group-hover:rotate-12"
             />
-            <span
-              aria-hidden="true"
-              className={`absolute inset-y-0 left-0 z-[15] w-[76%] bg-gradient-to-r to-transparent ${campaign.mobileVeilClassName}`}
-            />
-
-            <div className="relative z-20 flex w-[67%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[59%] lg:w-[68%]">
+            <div className="relative z-20 flex w-[61%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[56%] lg:w-[58%]">
               <h2
                 className={`!m-0 flex flex-col font-black tracking-[-0.055em] ${campaign.headlineClassName}`}
               >
@@ -807,7 +787,7 @@ function MerchandisingRail({
 
             <img
               alt={campaign.imageAlt}
-              className={`pointer-events-none absolute z-10 max-w-[620px] object-contain transition-transform duration-300 group-hover:scale-[1.025] ${campaign.imageClassName}`}
+              className="pointer-events-none absolute bottom-0 right-2 z-10 h-[94%] w-auto max-w-none origin-bottom-right object-contain object-right-bottom transition-transform duration-300 group-hover:scale-[1.015] sm:right-3 sm:h-[96%] lg:right-4"
               height="1024"
               src={campaign.imageUrl}
               width="1024"
