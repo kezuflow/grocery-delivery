@@ -24,6 +24,11 @@ test("marketplace header keeps one visual language across responsive layouts", a
     await expect(responsiveHeader).toBeVisible();
     await expect(responsiveHeader).toHaveCSS("background-color", "rgb(255, 255, 255)");
     await expect(desktopHeader).toBeHidden();
+    const headerRow = page.getByTestId("responsive-marketplace-header-row");
+    await expect(headerRow).toHaveCSS("flex-direction", "row");
+    await expect(
+      responsiveHeader.getByRole("link", { name: "freshmarkets", exact: true }),
+    ).toBeVisible();
     const accountButton = page.getByRole("button", { name: "Open account menu" });
     await expect(accountButton).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to stores" })).toHaveCount(0);

@@ -773,15 +773,16 @@ authentication and promotion remain deferred.
   horizontal-overflow and serious/critical Axe checks; the full local `pnpm check` remains green.
 
 - **Responsive marketplace header alignment:** the phone and tablet header now uses the same white,
-  neutral visual language as the desktop shell instead of a separate green inverse treatment. Its
-  content spans the available responsive width, and the previous back arrow that linked `/shop` to
-  itself is replaced by the shared account-menu control. Live local browser review covers
+  neutral visual language as the desktop shell instead of a separate green inverse treatment. The
+  responsive chrome is one horizontal row with the account control, visible `freshmarkets` name,
+  search, and cart; its content spans the available width, and the previous back arrow that linked
+  `/shop` to itself is replaced by the shared account-menu control. Live local browser review covers
   390-by-844 phone, 820-by-1180 tablet, and 1440-by-1000 desktop layouts. Focused Playwright passes
   3/3 projects with account-drawer behavior, full-width, overflow, and serious/critical Axe checks;
-  web lint also passes. The repository-wide `pnpm check`, web typecheck, and web unit suite are
-  currently blocked by unrelated active catalog `categoryIds` changes and their stale tests, while
-  the header slice adds no request, persistence, latency, runtime dependency, or observability
-  boundary.
+  focused component lint also passes. The repository-wide `pnpm check`, web package lint,
+  typecheck, and unit suite are currently blocked by unrelated active catalog `categoryIds` changes
+  and their stale imports/tests, while the header slice adds no request, persistence, latency,
+  runtime dependency, or observability boundary.
 
 - **Marketplace search simplification:** the duplicate in-content `Crave it? Get it.` heading and
   secondary search form are removed from `/shop`, so category filters and the featured campaign now

@@ -139,59 +139,59 @@ export function MarketplaceShell({
           </button>
         </div>
         <div
-          className="border-b border-base-line bg-white px-4 pb-3 pt-2.5 lg:hidden"
+          className="border-b border-base-line bg-white px-4 py-3 lg:hidden"
           data-testid="responsive-marketplace-header"
         >
-          <div className="grid w-full gap-2 text-market-ink">
-            <div className="flex items-center justify-between gap-3">
-              <FulfillmentControl />
-              <DeliveryAddressControl addressLabel={addressLabel} />
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                aria-expanded={accountOpen}
-                aria-haspopup="dialog"
-                aria-label="Open account menu"
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-base-surface hover:bg-base-line"
-                onClick={() => {
-                  setCartOpen(false);
-                  setAccountOpen(true);
-                }}
-                title="Open account menu"
-                type="button"
-              >
-                <Library size={18} />
-              </button>
-              <form action="/shop" className="relative min-w-0 flex-1" role="search">
-                <label className="sr-only" htmlFor="mobile-market-search">
-                  Search the store
-                </label>
-                <Search className="absolute left-3.5 top-3 text-base-muted" size={16} />
-                <input
-                  className="h-10 w-full rounded-full border-0 bg-base-surface pl-10 pr-3 text-sm text-base-ink outline-none ring-1 ring-transparent placeholder:text-base-muted focus:bg-white focus:ring-market-green"
-                  defaultValue={search}
-                  id="mobile-market-search"
-                  name="search"
-                  placeholder="Search freshmarkets"
-                  type="search"
-                />
-              </form>
-              <button
-                aria-expanded={cartOpen}
-                aria-haspopup="dialog"
-                aria-label={cartCount ? `Your cart, ${cartCount} items` : "Your cart"}
-                className="relative grid size-9 shrink-0 place-items-center rounded-full bg-base-surface hover:bg-base-line"
-                onClick={() => {
-                  setAccountOpen(false);
-                  setCartOpen(true);
-                }}
-                title="Your cart"
-                type="button"
-              >
-                <ShoppingBag size={18} />
-                {cartCount ? <CartBadge count={cartCount} /> : null}
-              </button>
-            </div>
+          <div
+            className="flex w-full items-center gap-2 text-market-ink"
+            data-testid="responsive-marketplace-header-row"
+          >
+            <button
+              aria-expanded={accountOpen}
+              aria-haspopup="dialog"
+              aria-label="Open account menu"
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-base-surface hover:bg-base-line"
+              onClick={() => {
+                setCartOpen(false);
+                setAccountOpen(true);
+              }}
+              title="Open account menu"
+              type="button"
+            >
+              <Library size={18} />
+            </button>
+            <a className="shrink-0 text-sm font-extrabold lowercase tracking-normal" href="/shop">
+              freshmarkets
+            </a>
+            <form action="/shop" className="relative min-w-0 flex-1" role="search">
+              <label className="sr-only" htmlFor="mobile-market-search">
+                Search the store
+              </label>
+              <Search className="absolute left-3.5 top-3 text-base-muted" size={16} />
+              <input
+                className="h-10 w-full rounded-full border-0 bg-base-surface pl-10 pr-3 text-sm text-base-ink outline-none ring-1 ring-transparent placeholder:text-base-muted focus:bg-white focus:ring-market-green"
+                defaultValue={search}
+                id="mobile-market-search"
+                name="search"
+                placeholder="Search freshmarkets"
+                type="search"
+              />
+            </form>
+            <button
+              aria-expanded={cartOpen}
+              aria-haspopup="dialog"
+              aria-label={cartCount ? `Your cart, ${cartCount} items` : "Your cart"}
+              className="relative grid size-9 shrink-0 place-items-center rounded-full bg-base-surface hover:bg-base-line"
+              onClick={() => {
+                setAccountOpen(false);
+                setCartOpen(true);
+              }}
+              title="Your cart"
+              type="button"
+            >
+              <ShoppingBag size={18} />
+              {cartCount ? <CartBadge count={cartCount} /> : null}
+            </button>
           </div>
         </div>
       </header>
