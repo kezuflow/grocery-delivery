@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type {
   AdminAuditResponse,
   AdminOrderRequestsResponse,
-  CatalogListResponse,
+  CatalogAdminListResponse,
   DispatchResponse,
   OperationalProjectionResponse,
   ProcurementResponse,
@@ -18,7 +18,7 @@ import type { AdminFeedState } from "./admin";
 type AdminRequestInit = Readonly<{ headers: { cookie: string } }>;
 
 export type AdminCatalogData = Readonly<{
-  catalog: CatalogListResponse["data"] | null;
+  catalog: CatalogAdminListResponse["data"] | null;
   state: AdminFeedState;
   error: string | null;
 }>;
@@ -48,12 +48,9 @@ export type AdminStaffData = Readonly<{
 export async function loadAdminCatalog(): Promise<AdminCatalogData> {
   try {
     const client = createApiClient(createRuntimeApiTransport());
-    const response = await client.listCatalog(
-      { limit: 100, includeInactive: true },
-      {
-        headers: { cookie: (await cookies()).toString() },
-      },
-    );
+    const response = await client.listAdminCatalog({
+      headers: { cookie: (await cookies()).toString() },
+    });
     return {
       catalog: response.data,
       state: {

@@ -6,6 +6,11 @@ import {
   catalogItemResponseSchema,
   catalogAdminStatusRequestSchema,
   catalogAdminStatusResponseSchema,
+  catalogAdminCategoryResponseSchema,
+  catalogAdminCategoryUpsertRequestSchema,
+  catalogAdminListResponseSchema,
+  catalogAdminSkuResponseSchema,
+  catalogAdminSkuUpsertRequestSchema,
   currentSessionResponseSchema,
   deliveryAddressInputSchema,
   deliveryAddressResponseSchema,
@@ -81,6 +86,9 @@ import {
   type CatalogListResponse,
   type CatalogItemResponse,
   type CatalogAdminStatusResponse,
+  type CatalogAdminCategoryResponse,
+  type CatalogAdminListResponse,
+  type CatalogAdminSkuResponse,
   type CatalogSort,
   type CurrentSessionResponse,
   type DeliveryAddressInput,
@@ -213,6 +221,49 @@ export function createApiClient(baseTransport: ApiTransport) {
         catalogAdminStatusResponseSchema,
         "PATCH",
         init,
+      );
+    },
+    listAdminCatalog(init?: RequestInit): Promise<CatalogAdminListResponse> {
+      return getJson(transport, "/api/v1/admin/catalog", catalogAdminListResponseSchema, init);
+    },
+    upsertAdminCatalogCategory(
+      id: string | null,
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CatalogAdminCategoryResponse> {
+      const payload = catalogAdminCategoryUpsertRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        id
+          ? `/api/v1/admin/catalog/categories/${encodeURIComponent(id)}`
+          : "/api/v1/admin/catalog/categories",
+        payload,
+        catalogAdminCategoryResponseSchema,
+        id ? "PUT" : "POST",
+        { ...init, headers },
+      );
+    },
+    upsertAdminCatalogItem(
+      id: string | null,
+      input: unknown,
+      idempotencyKey: string,
+      init?: RequestInit,
+    ): Promise<CatalogAdminSkuResponse> {
+      const payload = catalogAdminSkuUpsertRequestSchema.parse(input);
+      const headers = new Headers(init?.headers);
+      headers.set("idempotency-key", idempotencyKey);
+      return sendJson(
+        transport,
+        id
+          ? `/api/v1/admin/catalog/items/${encodeURIComponent(id)}`
+          : "/api/v1/admin/catalog/items",
+        payload,
+        catalogAdminSkuResponseSchema,
+        id ? "PUT" : "POST",
+        { ...init, headers },
       );
     },
     getActivePromotionBanners(

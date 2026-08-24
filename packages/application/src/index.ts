@@ -8,3 +8,4 @@ export * from "./rate-limit.js";
 export * from "./operations-alerts.js";
 export * from "./event-processing.js";
 export * from "./launch-configuration.js";
+export * from "./catalog-admin.js";

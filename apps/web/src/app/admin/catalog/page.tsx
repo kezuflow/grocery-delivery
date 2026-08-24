@@ -20,7 +20,7 @@ export default async function AdminCatalogPage() {
         { href: "/admin", label: "Operations" },
         { label: "Catalog" },
       ]}
-      description="Manage catalog visibility inline and use the approved configuration workflow for product detail changes."
+      description="Create products, organize categories, set pricing, and manage availability."
       eyebrow="Product operations"
       session={session}
       title="Catalog"

@@ -1,5 +1,6 @@
 export {};
 export * from "./catalog.js";
+export * from "./catalog-admin.js";
 export * from "./carts.js";
 export * from "./delivery.js";
 export * from "./delivery-windows.js";

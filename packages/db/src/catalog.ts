@@ -293,10 +293,10 @@ export class D1CatalogAdminRepository implements CatalogAdminRepository {
       this.database
         .prepare(
           `UPDATE catalog_skus
-           SET active = ?, updated_at = ?
+           SET active = ?, lifecycle_status = ?, updated_at = ?
            WHERE id = ?`,
         )
-        .bind(active, updatedAt, skuId),
+        .bind(active, status, updatedAt, skuId),
       this.database
         .prepare(
           `UPDATE catalog_cache_state

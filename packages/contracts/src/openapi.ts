@@ -178,6 +178,29 @@ export const openApiDocument: OpenApiDocument = {
       },
     },
     "/api/v1/admin/plans/{id}": protectedOperation("Propose a plan change", "put"),
+    "/api/v1/admin/catalog": protectedOperation("List editable catalog details", "get"),
+    "/api/v1/admin/catalog/categories": protectedOperation(
+      "Create an idempotent catalog category",
+      "post",
+      "201",
+    ),
+    "/api/v1/admin/catalog/categories/{id}": protectedOperation(
+      "Update an idempotent catalog category",
+      "put",
+    ),
+    "/api/v1/admin/catalog/items": protectedOperation(
+      "Create an idempotent catalog product",
+      "post",
+      "201",
+    ),
+    "/api/v1/admin/catalog/items/{id}": protectedOperation(
+      "Update an idempotent catalog product",
+      "put",
+    ),
+    "/api/v1/admin/catalog/{id}/status": protectedOperation(
+      "Update catalog product lifecycle status",
+      "patch",
+    ),
     "/api/v1/admin/launch-configuration": protectedOperation(
       "Apply an idempotent launch catalog and delivery-window configuration",
       "put",

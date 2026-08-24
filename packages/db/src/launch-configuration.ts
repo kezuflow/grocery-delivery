@@ -66,8 +66,9 @@ export class D1LaunchConfigurationRepository implements LaunchConfigurationRepos
             `INSERT INTO catalog_skus (
                id, category_id, name, slug, description, unit, image_url,
                current_procurement_cost_centavos, current_markup_basis_points,
-               current_price_centavos, current_price_effective_at, active, created_at, updated_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               current_price_centavos, current_price_effective_at, active, lifecycle_status,
+               created_at, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET
                category_id = excluded.category_id,
                name = excluded.name,
@@ -80,6 +81,7 @@ export class D1LaunchConfigurationRepository implements LaunchConfigurationRepos
                current_price_centavos = excluded.current_price_centavos,
                current_price_effective_at = excluded.current_price_effective_at,
                active = excluded.active,
+               lifecycle_status = excluded.lifecycle_status,
                updated_at = excluded.updated_at`,
           )
           .bind(
@@ -95,6 +97,7 @@ export class D1LaunchConfigurationRepository implements LaunchConfigurationRepos
             item.sku.price.centavos,
             item.priceHistory.effectiveAt,
             item.sku.active ? 1 : 0,
+            item.sku.active ? "active" : "paused",
             command.result.appliedAt,
             command.result.appliedAt,
           ),

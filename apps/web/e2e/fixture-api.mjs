@@ -336,6 +336,73 @@ function routeResponse(method, url, role, scenario, body) {
             ],
     });
   if (url.pathname === "/api/v1/catalog") return ok(catalog);
+  if (url.pathname === "/api/v1/admin/catalog" && method === "GET")
+    return requireRole(role, "admin", () =>
+      ok({
+        categories: catalog.categories,
+        items: catalog.items.map(toAdminCatalogItem),
+      }),
+    );
+  const catalogCategoryMatch = /^\/api\/v1\/admin\/catalog\/categories(?:\/([^/]+))?$/.exec(
+    url.pathname,
+  );
+  if (catalogCategoryMatch && ["POST", "PUT"].includes(method))
+    return requireRole(role, "admin", () => {
+      const existingId = catalogCategoryMatch[1]
+        ? decodeURIComponent(catalogCategoryMatch[1])
+        : null;
+      const existing = catalog.categories.find((item) => item.id === existingId);
+      if (existingId && !existing)
+        return error(404, "CATALOG_ITEM_NOT_FOUND", "catalog category was not found");
+      const category = {
+        id: existing?.id ?? `category-${slugify(body.name)}`,
+        name: body.name,
+        slug: existing?.slug ?? slugify(body.name),
+        active: body.active,
+      };
+      if (existing) Object.assign(existing, category);
+      else catalog.categories.push(category);
+      return ok({ category, replayed: false });
+    });
+  const catalogItemMatch = /^\/api\/v1\/admin\/catalog\/items(?:\/([^/]+))?$/.exec(url.pathname);
+  if (catalogItemMatch && ["POST", "PUT"].includes(method))
+    return requireRole(role, "admin", () => {
+      const existingId = catalogItemMatch[1] ? decodeURIComponent(catalogItemMatch[1]) : null;
+      const existing = catalog.items.find((item) => item.id === existingId);
+      if (existingId && !existing)
+        return error(404, "CATALOG_ITEM_NOT_FOUND", "catalog item was not found");
+      const priceCentavos = Math.floor(
+        (body.procurementCostCentavos * (10_000 + body.markupBasisPoints) + 5_000) / 10_000,
+      );
+      const item = {
+        id: existing?.id ?? `sku-${slugify(body.name)}`,
+        categoryId: body.categoryId,
+        name: body.name,
+        slug: existing?.slug ?? slugify(body.name),
+        description: body.description,
+        unit: body.unit,
+        imageUrl: body.imageUrl,
+        price: money(priceCentavos),
+        active: body.status === "active",
+        procurementCostCentavos: body.procurementCostCentavos,
+        markupBasisPoints: body.markupBasisPoints,
+        status: body.status,
+      };
+      if (existing) Object.assign(existing, item);
+      else catalog.items.push(item);
+      return ok({ item, replayed: false });
+    });
+  const catalogStatusMatch = /^\/api\/v1\/admin\/catalog\/([^/]+)\/status$/.exec(url.pathname);
+  if (catalogStatusMatch && method === "PATCH")
+    return requireRole(role, "admin", () => {
+      const item = catalog.items.find(
+        (candidate) => candidate.id === decodeURIComponent(catalogStatusMatch[1]),
+      );
+      if (!item) return error(404, "CATALOG_ITEM_NOT_FOUND", "catalog item was not found");
+      item.status = body.status;
+      item.active = body.status === "active";
+      return ok({ id: item.id, status: body.status, updatedAt: timestamp });
+    });
   if (url.pathname.startsWith("/api/v1/catalog/") && method === "GET") {
     const slug = decodeURIComponent(url.pathname.slice("/api/v1/catalog/".length));
     const item = catalog.items.find((candidate) => candidate.slug === slug);
@@ -947,6 +1014,21 @@ function requireRole(actual, expected, callback) {
   return actual === expected
     ? callback()
     : error(403, "FORBIDDEN", `${expected} access is required`);
+}
+function toAdminCatalogItem(item) {
+  return {
+    ...item,
+    procurementCostCentavos: item.procurementCostCentavos ?? item.price.centavos,
+    markupBasisPoints: item.markupBasisPoints ?? 0,
+    status: item.status ?? (item.active ? "active" : "paused"),
+  };
+}
+function slugify(value) {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 function checkoutState(scenario) {
   const key = scenario ?? "default";

@@ -17,7 +17,7 @@ export function Sheet({
 }>) {
   return (
     <Dialog
-      className="m-0 ml-auto min-h-full w-[min(100%-1rem,28rem)] rounded-none border-y-0 border-r-0"
+      className="m-0 ml-auto h-full max-h-full w-full max-w-2xl overflow-hidden rounded-none border-y-0 border-r-0"
       onClose={onClose}
       open={open}
       title={title}

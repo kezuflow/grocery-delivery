@@ -67,10 +67,16 @@ export function createCatalogSku(input: CatalogSku): CatalogSku {
     );
   }
   if (input.imageUrl !== null) {
-    try {
-      new URL(input.imageUrl);
-    } catch {
-      throw new DomainValidationError("INVALID_CATALOG_IMAGE", "imageUrl must be an absolute URL");
+    const isMarketplaceAsset = input.imageUrl.startsWith("/marketplace/");
+    if (!isMarketplaceAsset) {
+      try {
+        new URL(input.imageUrl);
+      } catch {
+        throw new DomainValidationError(
+          "INVALID_CATALOG_IMAGE",
+          "imageUrl must be an absolute URL or a marketplace asset path",
+        );
+      }
     }
   }
 

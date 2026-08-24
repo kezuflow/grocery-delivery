@@ -6,6 +6,9 @@ import {
   catalogListResponseSchema,
   catalogItemResponseSchema,
   catalogAdminStatusResponseSchema,
+  catalogAdminCategoryResponseSchema,
+  catalogAdminListResponseSchema,
+  catalogAdminSkuResponseSchema,
   currentSessionResponseSchema,
   deliveryAddressResponseSchema,
   deliveryAddressesResponseSchema,
@@ -53,6 +56,7 @@ import {
   InMemorySubscriptionRepository,
   InMemoryLaunchConfigurationRepository,
   LaunchConfigurationService,
+  InMemoryCatalogAdminCommandRepository,
 } from "@carbon/application";
 import {
   DefaultPaymentService,
@@ -634,6 +638,107 @@ describe("API worker", () => {
     expect(updates).toEqual([
       { id: "sku-apples", status: "paused", updatedAt: "2026-08-21T08:00:00.000Z" },
     ]);
+  });
+
+  it("creates and replays catalog categories and products through focused admin endpoints", async () => {
+    const repository = new InMemoryCatalogAdminCommandRepository();
+    const adminApp = createApi({
+      now: () => new Date("2026-08-24T03:00:00.000Z"),
+      catalogAdminCommandRepository: repository,
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-catalog-admin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["catalog"],
+              customerId: null,
+              expiresAt: "2099-08-24T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const categoryRequest = {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "category-command-1",
+      },
+      body: JSON.stringify({ name: "Fresh Produce", active: true }),
+    } as const;
+    const categoryResponse = await adminApp.request(
+      "/api/v1/admin/catalog/categories",
+      categoryRequest,
+    );
+    const category = catalogAdminCategoryResponseSchema.parse(await categoryResponse.json());
+    const replayResponse = await adminApp.request(
+      "/api/v1/admin/catalog/categories",
+      categoryRequest,
+    );
+    const replay = catalogAdminCategoryResponseSchema.parse(await replayResponse.json());
+
+    expect(categoryResponse.status).toBe(201);
+    expect(category.data.category.slug).toBe("fresh-produce");
+    expect(replay.data.replayed).toBe(true);
+
+    const productResponse = await adminApp.request("/api/v1/admin/catalog/items", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "product-command-1",
+      },
+      body: JSON.stringify({
+        categoryId: category.data.category.id,
+        name: "Roma Tomatoes",
+        description: "Fresh local tomatoes.",
+        unit: "kilogram",
+        imageUrl: "/marketplace/tomatoes.webp",
+        procurementCostCentavos: 10_000,
+        markupBasisPoints: 2_500,
+        status: "active",
+      }),
+    });
+    const product = catalogAdminSkuResponseSchema.parse(await productResponse.json());
+    expect(productResponse.status).toBe(201);
+    expect(product.data.item.price.centavos).toBe(12_500);
+
+    const listResponse = await adminApp.request("/api/v1/admin/catalog");
+    const list = catalogAdminListResponseSchema.parse(await listResponse.json());
+    expect(list.data).toMatchObject({
+      categories: [{ name: "Fresh Produce" }],
+      items: [{ name: "Roma Tomatoes", status: "active" }],
+    });
+  });
+
+  it("requires idempotency keys for catalog creates", async () => {
+    const adminApp = createApi({
+      catalogAdminCommandRepository: new InMemoryCatalogAdminCommandRepository(),
+      sessionResolver: {
+        resolve: () =>
+          Promise.resolve(
+            createSession({
+              id: "session-catalog-admin",
+              userId: "admin-1",
+              role: "admin",
+              adminPermissions: ["catalog"],
+              customerId: null,
+              expiresAt: "2099-08-24T00:00:00.000Z",
+              revokedAt: null,
+            }),
+          ),
+      },
+    });
+    const response = await adminApp.request("/api/v1/admin/catalog/categories", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Fresh Produce", active: true }),
+    });
+    const body = apiErrorResponseSchema.parse(await response.json());
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
   });
 
   it("applies and replays a superadmin launch configuration", async () => {

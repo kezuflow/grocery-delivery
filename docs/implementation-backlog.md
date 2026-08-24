@@ -99,18 +99,18 @@ batch launch/import process with a complete-data preview and strong confirmation
 
 ### Ordered Local Slices
 
-| Slice | Outcome                                                                                         | Status   |
-| ----- | ----------------------------------------------------------------------------------------------- | -------- |
-| AD-00 | Truthful per-feed dashboard states and permission/navigation/action parity                      | complete |
-| AD-01 | Shared admin list, queue, drawer, confirmation, feedback, and responsive interaction primitives | next     |
-| AD-02 | Server-owned operational settings and Configuration policy console                              | planned  |
-| AD-03 | Catalog CRUD, active/paused/archived lifecycle, and persistent product-media library            | planned  |
-| AD-04 | Canonical Orders list, filters, pagination, and lifecycle detail                                | planned  |
-| AD-05 | Contextual Procurement demand, purchase, shortage, and substitution workflow                    | planned  |
-| AD-06 | Packing queue, exceptions, and completion workflow                                              | planned  |
-| AD-07 | Dispatch board with eligible order/window/driver assignment and conflict visibility             | planned  |
-| AD-08 | Support case lifecycle, Promotions, Staff directory, and Reporting completion                   | planned  |
-| AD-09 | Shell cleanup, accessibility, mobile behavior, and full cross-role E2E coverage                 | planned  |
+| Slice | Outcome                                                                                         | Status      |
+| ----- | ----------------------------------------------------------------------------------------------- | ----------- |
+| AD-00 | Truthful per-feed dashboard states and permission/navigation/action parity                      | complete    |
+| AD-01 | Shared admin list, queue, drawer, confirmation, feedback, and responsive interaction primitives | planned     |
+| AD-02 | Server-owned operational settings and Configuration policy console                              | planned     |
+| AD-03 | Catalog CRUD, active/paused/archived lifecycle, and persistent product-media library            | in progress |
+| AD-04 | Canonical Orders list, filters, pagination, and lifecycle detail                                | planned     |
+| AD-05 | Contextual Procurement demand, purchase, shortage, and substitution workflow                    | planned     |
+| AD-06 | Packing queue, exceptions, and completion workflow                                              | planned     |
+| AD-07 | Dispatch board with eligible order/window/driver assignment and conflict visibility             | planned     |
+| AD-08 | Support case lifecycle, Promotions, Staff directory, and Reporting completion                   | planned     |
+| AD-09 | Shell cleanup, accessibility, mobile behavior, and full cross-role E2E coverage                 | planned     |
 
 ### AD-00 Local Completion Record
 
@@ -149,6 +149,38 @@ batch launch/import process with a complete-data preview and strong confirmation
   shared interaction primitives, operational Configuration policy editing, and full cross-role E2E
   coverage remain in later slices.
 
+### AD-03A Local Completion Record
+
+- **Outcome:** Catalog now provides focused product and category creation and editing without asking
+  administrators to reconstruct the launch manifest. The editor groups product details, category,
+  pricing, media, and lifecycle in a wide responsive sheet; supports inline category creation; keeps
+  Save available in a sticky footer; and replaces the phone table with compact cards.
+- **Server ownership and persistence:** Dedicated typed admin catalog contracts, application use
+  cases, protected Hono endpoints, and a D1 repository now own category and product writes. Product
+  IDs and slugs are derived on the server, sell price is calculated from procurement cost and markup,
+  retriable writes require idempotency keys, mutations create audit records, and active, paused, and
+  archived lifecycle state is persisted by forward-only migration `0041`.
+- **Mobbin references:** The interaction model was adapted from Shopify's grouped product editor and
+  sticky unsaved-change actions, Squarespace's category placement, Customer.io's searchable asset
+  picker, and Etsy's sectioned editor. References:
+  [Shopify](https://mobbin.com/flows/dae1edfb-b1b9-413d-a1db-1775d1ffcebb),
+  [Squarespace](https://mobbin.com/screens/a4f394d4-4522-42b1-beb5-44065ddfa2e1),
+  [Customer.io](https://mobbin.com/screens/f128a8f0-7dcf-4c0f-9aa8-ad4b6472b4f7?content_type=screens&q=media+library),
+  and [Etsy](https://mobbin.com/screens/3e3fa9be-ff87-4e10-bcbd-6655fcc1efbc?content_type=screens&q=edit+product).
+- **Verification and browser evidence:** Contract, domain, application, repository-facing API, and
+  UI conversion tests pass. API verification passes 81 unit/runtime tests, two D1 order integration
+  tests, and five Better Auth D1 integration tests. Focused Playwright product-creation coverage
+  passes on desktop and phone against the local fixture API; the phone layout has no horizontal
+  document overflow. Repository `pnpm check` passes all formatting, lint, typecheck, unit, API, and
+  D1 integration tasks. Migration `0041` was applied only to local D1 state.
+- **Request, persistence, and observability impact:** The slice adds one protected catalog read and
+  four create/update routes alongside the existing lifecycle route. Each successful write uses one
+  D1 batch for catalog state, idempotency response, cache revision, price history or markup where
+  relevant, and audit event. It adds no polling, remote resources, runtime dependency, or deployment.
+- **Remaining AD-03 scope:** The searchable image picker selects existing marketplace assets, but
+  upload, deletion, folders, and persistent R2-backed asset inventory remain AD-03B. Category deletion
+  guards and broader catalog error/offline E2E states also remain before AD-03 can be marked complete.
+
 ### Slice Acceptance Baseline
 
 Every admin slice must include explicit loading, empty, unavailable, forbidden, validation,
@@ -179,8 +211,8 @@ operational policy management, not catalog editing; weekly scheduled delivery is
 delivery is visible only as a disabled future option; and guests may build a cart but must sign in
 or create an account before payment and order creation.
 
-Implement only the next independently reviewable slice. AD-00 is complete; begin with AD-01 unless
-the backlog says another slice is `next`. Trace route,
+Implement only the next independently reviewable slice. AD-00 and AD-03A are complete; continue
+AD-03B with the persistent product-media library before returning to AD-01. Trace route,
 contract, API, application/domain, repository/migration, UI states, and tests before editing. Add
 focused tests, run pnpm check, inspect git diff --check and the staged diff, update this backlog
 with local evidence and the next resume point, commit with a conventional commit, and push to the

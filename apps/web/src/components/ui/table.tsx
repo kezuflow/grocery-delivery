@@ -14,7 +14,10 @@ export function Table({
 }: TableHTMLAttributes<HTMLTableElement> & { wrapperClassName?: string }) {
   return (
     <div
-      className={cn("w-full overflow-x-auto rounded-md border border-[#e4e4e4]", wrapperClassName)}
+      className={cn(
+        "min-w-0 max-w-full overflow-x-auto rounded-md border border-[#e4e4e4]",
+        wrapperClassName,
+      )}
     >
       <table
         className={cn("w-full min-w-[42rem] border-collapse text-left text-[13px]", className)}

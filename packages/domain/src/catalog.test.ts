@@ -36,4 +36,10 @@ describe("catalog entities", () => {
       DomainValidationError,
     );
   });
+
+  it("accepts a bundled marketplace image path", () => {
+    expect(createCatalogSku({ ...validSku, imageUrl: "/marketplace/tomatoes.webp" }).imageUrl).toBe(
+      "/marketplace/tomatoes.webp",
+    );
+  });
 });

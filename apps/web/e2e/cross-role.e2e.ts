@@ -51,6 +51,67 @@ test("protected routes enforce session and role guards", async ({ openAs, page }
   await expect(page).toHaveURL(/\/forbidden$/);
 });
 
+test("catalog administrators can create a product without leaving the catalog", async ({
+  openAs,
+  page,
+}, testInfo) => {
+  await openAs("admin", "/admin/catalog");
+  await expect(page.getByRole("heading", { level: 1, name: "Catalog" })).toBeVisible();
+  if (testInfo.project.name === "phone") {
+    await expect(page.getByRole("button", { name: "Edit Roma tomatoes" })).toBeVisible();
+  } else {
+    await expect(page.getByRole("row").filter({ hasText: "Roma tomatoes" })).toBeVisible();
+  }
+
+  await page.getByRole("button", { name: "Add product" }).click();
+  const editor = page.getByRole("dialog", { name: "Add product" });
+  await expect(editor.getByRole("heading", { name: "Product details" })).toBeVisible();
+  await expect(editor.getByRole("heading", { name: "Media" })).toBeVisible();
+  await expect(editor.getByRole("heading", { name: "Pricing" })).toBeVisible();
+
+  const productName = `Catalog test ${testInfo.project.name} ${Date.now()}`;
+  await editor.getByLabel("Product name").fill(productName);
+  await editor.getByLabel("Description").fill("A locally verified catalog product.");
+  await editor.getByLabel("Category", { exact: true }).selectOption({ label: "Fresh produce" });
+  await editor.getByLabel("Sold by").selectOption("pack");
+  const chooseImage = editor.getByRole("button", { name: /Choose image/ });
+  if (testInfo.project.name === "phone") {
+    await chooseImage.focus();
+    await chooseImage.press("Enter");
+  } else {
+    await chooseImage.click();
+  }
+
+  const library = page.getByRole("dialog", { name: "Image library" });
+  await library.getByLabel("Search images").fill("Roma");
+  const romaImage = library.getByRole("button", { name: /Roma tomatoes/ });
+  if (testInfo.project.name === "phone") {
+    await romaImage.focus();
+    await romaImage.press("Enter");
+  } else {
+    await romaImage.click();
+  }
+  await editor.getByLabel("Procurement cost (PHP)").fill("100");
+  await editor.getByLabel("Markup (%)").fill("25");
+  await expect(editor.getByText("₱125.00")).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+  const saveProduct = editor.getByRole("button", { name: "Save product" });
+  if (testInfo.project.name === "phone") {
+    await saveProduct.focus();
+    await saveProduct.press("Enter");
+  } else {
+    await saveProduct.click();
+  }
+
+  await expect(page.getByText("Product created.")).toBeVisible();
+  if (testInfo.project.name === "phone") {
+    await expect(page.getByRole("button", { name: `Edit ${productName}` })).toBeVisible();
+  } else {
+    await expect(page.getByRole("row").filter({ hasText: productName })).toBeVisible();
+  }
+  await expectNoHorizontalOverflow(page);
+});
+
 test("marketplace converges across phone and desktop layouts", async ({
   openAs,
   page,

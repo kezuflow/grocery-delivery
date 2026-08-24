@@ -16,7 +16,7 @@
     "lint": "eslint src",
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "vitest run src/app.test.ts src/runtime.test.ts src/event-processors.test.ts --pool=threads --poolOptions.threads.singleThread",
-    "test:integration": "vitest run src/orders.integration.test.ts --pool=forks --poolOptions.forks.singleFork && vitest run src/better-auth.integration.test.ts --pool=forks --poolOptions.forks.singleFork",
+    "test:integration": "vitest run src/orders.integration.test.ts src/better-auth.integration.test.ts --pool=threads --poolOptions.threads.singleThread",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
