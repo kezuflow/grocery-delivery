@@ -44,6 +44,16 @@ export default async function AccountPage() {
       session={session}
       title="Account"
     >
+      <nav aria-label="Account sections" className="account-marketplace-nav">
+        <a aria-current="page" href="/account">
+          Overview
+        </a>
+        <a href="/account/cart">Cart</a>
+        <a href="/account/orders">Orders</a>
+        <a href="/account/saved">Saved items</a>
+        <a href="/account/subscribe">Subscription</a>
+        <a href="/account/support">Support</a>
+      </nav>
       {account.error ? (
         <section className="account-state" role="status">
           <h2>Account temporarily unavailable</h2>

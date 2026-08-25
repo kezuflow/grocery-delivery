@@ -1129,10 +1129,10 @@ during local implementation. The audit must support development, not block it.
 - **Scope:** customer marketplace only. Marketing, admin, delivery, and backend boundaries remain unchanged.
 - **Research:** authenticated Mobbin MCP sampling covered DoorDash discovery, category/browse, search/filtering, grocery market/item detail, cart/checkout, tracking, orders, and address flows. Evidence and adaptations are recorded in `docs/design/marketplace/REFERENCES.md`.
 - **Design authority:** `docs/design/marketplace/DESIGN.md`, `COMPONENTS.md`, and `AUDIT.md` now define the Carbon marketplace grammar, reusable components, and KEEP/REFACTOR/REPLACE decisions.
-- **Implementation:** added marketplace semantic tokens, introduced `MarketplacePageShell`, migrated customer account/cart/checkout/orders/saved/support/subscription routes off the generic account shell, linked product cards to detail routes, corrected responsive bottom navigation destinations and active states, and reduced fallback promotion height to preserve product discovery.
-- **Local evidence:** `/shop` verified at desktop and 390px phone width; `/shop/apple` verified at 390px phone width; API served locally on `127.0.0.1:8788`; existing web server served locally on `localhost:3000`. Unauthenticated `/account` correctly redirected to `/forbidden`.
-- **Verification:** web lint, typecheck, 23 Vitest files / 77 tests, and `git diff --check` pass. Full authenticated cart/checkout/order browser evidence remains pending a customer fixture session.
-- **Next resume point:** complete authenticated marketplace regression coverage and migrate remaining customer account feature styling to the new primitives before starting unrelated work.
+- **Implementation:** added marketplace semantic tokens, introduced `MarketplacePageShell`, migrated customer account/cart/checkout/orders/saved/support/subscription routes off the generic account shell, linked product cards to detail routes, corrected responsive bottom navigation destinations and active states, reduced fallback promotion height to preserve product discovery, and redesigned cart, checkout, order history/detail, account navigation, and account child form surfaces while preserving their existing feature contracts.
+- **Local evidence:** `/shop` verified at desktop and 390px phone width; `/shop/apple` verified at 390px phone width with no horizontal overflow; API served locally on `127.0.0.1:8788`; existing web server served locally on `localhost:3000`. Unauthenticated `/account` correctly redirected to `/forbidden`. The current browser session cannot exercise protected authenticated pages; customer fixture E2E scenarios cover cart, checkout, payment retry, reorder, and order tracking.
+- **Verification:** web lint, typecheck, 23 Vitest files / 77 tests, production build, and `git diff --check` pass. Focused customer fixture E2E verifies cart, checkout, payment retry, reorder/account preferences, and tracking/proof across phone, tablet, and desktop. The combined stateful matrix passed 14/18 before later projects inherited completed fixture state; isolated tablet and desktop reruns passed the four affected scenarios. Repository `pnpm check` remains blocked only by the 18 pre-existing unrelated formatting warnings already recorded in this backlog.
+- **Next resume point:** the requested marketplace research, design authority, shell, browse/detail, cart, checkout, orders, and account presentation redesign is locally complete. Use `docs/design/marketplace/DESIGN.md` for future customer marketplace screens; staging and production remain separate explicit promotion work.
 
 Existing staging and production configuration, deployment scripts, runbooks, and historical evidence
 remain in the repository. They are dormant until the user explicitly starts VS-MKT-14 or another
@@ -1140,3 +1140,23 @@ promotion task. At that point, create a separate checklist for remote migrations
 sandbox behavior, deployment, smoke evidence, observability, rollout, and rollback.
 
 Do not treat missing staging or production evidence as a local-development failure.
+
+## Completed Admin Catalog And Customers Slice
+
+- **Status:** locally complete for `/admin/catalog` and `/admin/customers`.
+- **Outcome:** retained the catalog's server-owned CRUD, pricing, image, category, and lifecycle
+  behavior while replacing remaining storefront styling and category cards with the shared admin
+  table/editor grammar. Added a support-authorized customer directory with search, verification,
+  signup, and update context.
+- **Trace:** `GET /api/v1/admin/customers` uses the identity repository boundary, returns customer
+  identities only, validates the typed response contract, disables shared caching, and requires the
+  existing `support` administrator permission. No session, credential, or security fields are
+  exposed.
+- **Verification:** contracts 36/36, database 54/54, API unit 84/84, API integration 8/8, and web
+  77/77 tests pass. API and web lint/typecheck pass. Desktop browser checks cover both admin routes;
+  the Customers route was also checked at 390 by 844 with no document-level horizontal overflow.
+- **Impact:** one bounded D1 identity query per Customers page load, limited to 100 rows by the web
+  client and 200 rows by the API. No runtime dependency, write path, migration, queue, or remote
+  resource was added.
+- **Next resume point:** add pagination and a customer detail/activity route only when the product
+  requires deeper support workflows.

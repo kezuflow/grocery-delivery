@@ -189,11 +189,16 @@ export function CheckoutReview({
   const effectiveAddress = currentAddress ?? selectedAddress;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="marketplace-checkout grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="grid gap-6">
-        <Card aria-label="Delivery address">
+        <Card
+          aria-label="Delivery address"
+          className="rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5"
+        >
           <CardHeader>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">1 of 3</p>
+            <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+              1 of 3
+            </p>
             <CardTitle>Delivery address</CardTitle>
             <CardDescription>
               {effectiveAddress
@@ -246,9 +251,14 @@ export function CheckoutReview({
             Manage addresses
           </Button>
         </Card>
-        <Card aria-label="Delivery time">
+        <Card
+          aria-label="Delivery time"
+          className="rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5"
+        >
           <CardHeader>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">2 of 3</p>
+            <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+              2 of 3
+            </p>
             <CardTitle>Delivery time</CardTitle>
             <CardDescription>
               Choose an available weekend window before the Friday cutoff.
@@ -276,9 +286,14 @@ export function CheckoutReview({
             )}
           </div>
         </Card>
-        <Card aria-label="Discount code">
+        <Card
+          aria-label="Discount code"
+          className="rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5"
+        >
           <CardHeader>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">3 of 3</p>
+            <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+              3 of 3
+            </p>
             <CardTitle>Discount code</CardTitle>
             <CardDescription>Eligibility and savings are calculated by the server.</CardDescription>
           </CardHeader>
@@ -306,9 +321,14 @@ export function CheckoutReview({
             <p className="mt-3 text-sm font-bold text-deep">{appliedCoupon} is applied</p>
           ) : null}
         </Card>
-        <Card aria-label="Payment method">
+        <Card
+          aria-label="Payment method"
+          className="rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5"
+        >
           <CardHeader>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">Payment</p>
+            <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+              Payment
+            </p>
             <CardTitle>Payment method</CardTitle>
             <CardDescription>
               The local provider receives only the saved provider reference after the order is
@@ -342,7 +362,10 @@ export function CheckoutReview({
           )}
         </Card>
       </div>
-      <Card aria-label="Order summary" className="h-fit lg:sticky lg:top-6">
+      <Card
+        aria-label="Order summary"
+        className="h-fit rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5 lg:sticky lg:top-6"
+      >
         <CardHeader>
           <CardTitle>Review order</CardTitle>
           <CardDescription>{cartLines} saved cart lines</CardDescription>
@@ -355,7 +378,7 @@ export function CheckoutReview({
             <QuoteRow label="Credit overage" value={quote.overage.centavos} />
             <QuoteRow label="Delivery" value={quote.deliveryFee.centavos} />
             <QuoteRow label="Weekly fee" value={quote.weeklyFee.centavos} />
-            <div className="flex justify-between border-t border-line pt-3 text-base font-bold">
+            <div className="flex justify-between border-t border-[var(--marketplace-border)] pt-4 text-base font-bold tabular-nums">
               <dt>Total due</dt>
               <dd>{formatPrice(quote.totalDue.centavos)}</dd>
             </div>

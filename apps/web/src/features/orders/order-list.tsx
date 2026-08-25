@@ -17,46 +17,41 @@ export function CustomerOrderList({
   }
 
   return (
-    <div className="overflow-x-auto border border-line bg-white">
-      <table className="w-full min-w-[42rem] text-left text-sm">
-        <thead className="border-b border-line bg-paper text-xs uppercase tracking-[0.12em] text-muted">
-          <tr>
-            <th className="p-4">Order</th>
-            <th className="p-4">Delivery cycle</th>
-            <th className="p-4">Total</th>
-            <th className="p-4">Status</th>
-            <th className="p-4">
-              <span className="sr-only">Open</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {orders.map((order) => (
-            <tr key={order.id}>
-              <td className="p-4 font-bold">{order.id}</td>
-              <td className="p-4 text-muted">{formatCycle(order.cycleId)}</td>
-              <td className="p-4">{formatPhp(order.totals.totalDue.centavos)}</td>
-              <td className="p-4">
-                <StatusPill
-                  status={order.status === "canceled" ? order.status : order.paymentState}
-                />
-              </td>
-              <td className="p-4">
-                <div className="grid gap-2 justify-items-start">
-                  <a
-                    className="font-bold text-deep underline-offset-4 hover:underline"
-                    href={`/account/orders/${encodeURIComponent(order.id)}`}
-                  >
-                    View order
-                  </a>
-                  <ReorderButton lines={order.lines} />
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <section className="marketplace-orders grid gap-3" aria-label="Past orders">
+      {orders.map((order) => (
+        <article
+          className="rounded-[var(--marketplace-radius-card)] border border-[var(--marketplace-border)] bg-[var(--marketplace-surface)] p-4 sm:p-5"
+          key={order.id}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+                {formatCycle(order.cycleId)}
+              </p>
+              <h2 className="mt-1 font-bold tracking-[-0.02em]">Order {order.id}</h2>
+            </div>
+            <StatusPill status={order.status === "canceled" ? order.status : order.paymentState} />
+          </div>
+          <div className="mt-4 grid gap-3 border-t border-[var(--marketplace-border)] pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <p className="text-xs text-muted">Total due</p>
+              <p className="mt-1 text-xl font-bold tabular-nums">
+                {formatPhp(order.totals.totalDue.centavos)}
+              </p>
+            </div>
+            <div className="grid gap-2 justify-items-start sm:justify-items-end">
+              <a
+                className="font-bold text-deep underline-offset-4 hover:underline"
+                href={`/account/orders/${encodeURIComponent(order.id)}`}
+              >
+                View order
+              </a>
+              <ReorderButton lines={order.lines} />
+            </div>
+          </div>
+        </article>
+      ))}
+    </section>
   );
 }
 

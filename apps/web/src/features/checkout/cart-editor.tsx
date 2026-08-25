@@ -101,11 +101,11 @@ export function CartEditor({
   }
 
   return (
-    <section className="grid gap-6 pb-24 lg:grid-cols-[minmax(0,1fr)_22rem] lg:pb-0">
-      <div className="overflow-hidden rounded-lg border border-line bg-white">
+    <section className="marketplace-cart grid gap-6 pb-28 lg:grid-cols-[minmax(0,1fr)_22rem] lg:pb-0">
+      <div className="overflow-hidden rounded-[var(--marketplace-radius-card)] border border-[var(--marketplace-border)] bg-[var(--marketplace-surface)]">
         {cart.adjustments?.length ? (
           <div
-            className="border-b border-warning/30 bg-warning/10 px-5 py-3 text-sm text-ink"
+            className="border-b border-warning/30 bg-warning/10 px-4 py-3 text-sm text-ink sm:px-5"
             role="alert"
           >
             We updated {cart.adjustments.length} cart{" "}
@@ -113,31 +113,40 @@ export function CartEditor({
             availability.
           </div>
         ) : null}
-        <div className="border-b border-line p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Saved cart</p>
-          <h2 className="mt-2 text-2xl font-bold">Items for this week</h2>
+        <div className="border-b border-[var(--marketplace-border)] p-4 sm:p-5">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+                Saved cart
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Items for this week</h2>
+            </div>
+            <span className="text-sm tabular-nums text-muted">
+              {lines.length} {lines.length === 1 ? "item" : "items"}
+            </span>
+          </div>
         </div>
         <ul className="divide-y divide-line">
           {lines.map((line) => (
             <li
-              className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:items-center sm:p-5"
+              className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 p-4 transition-colors hover:bg-[var(--marketplace-surface-subtle)] sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:items-center sm:p-5"
               key={line.skuId}
             >
-              <div className="aspect-square overflow-hidden rounded bg-market-soft">
+              <div className="aspect-square overflow-hidden rounded-[var(--marketplace-radius-media)] bg-[var(--marketplace-surface-subtle)] p-2">
                 {catalogById.get(line.skuId)?.imageUrl ? (
                   <img
-                    alt=""
-                    className="size-full object-cover"
+                    alt={catalogById.get(line.skuId)?.name ?? "Cart item"}
+                    className="size-full object-contain"
                     src={catalogById.get(line.skuId)?.imageUrl ?? ""}
                   />
                 ) : null}
               </div>
               <div className="min-w-0">
-                <strong className="block truncate">
+                <strong className="block truncate text-[15px]">
                   {catalogById.get(line.skuId)?.name ?? "Unavailable item"}
                 </strong>
                 {catalogById.has(line.skuId) ? (
-                  <span className="mt-1 block text-sm text-muted">
+                  <span className="mt-1 block text-sm tabular-nums text-muted">
                     {formatPhp(
                       cart.lines.find((item) => item.skuId === line.skuId)?.unitPrice.centavos ?? 0,
                     )}{" "}
@@ -146,7 +155,7 @@ export function CartEditor({
                 ) : (
                   <span className="text-xs text-danger">No longer available</span>
                 )}
-                <label className="mt-3 flex items-center gap-2 text-xs text-muted">
+                <label className="mt-3 flex min-h-10 items-center gap-2 text-xs text-muted">
                   <input
                     checked={(line.substitutionPreference ?? "best_match") === "best_match"}
                     disabled={pending}
@@ -179,9 +188,16 @@ export function CartEditor({
           ))}
         </ul>
       </div>
-      <aside className="fixed inset-x-0 bottom-16 z-30 border-t border-line bg-white p-4 shadow-[0_-8px_24px_rgba(17,24,39,0.08)] lg:sticky lg:inset-auto lg:top-6 lg:rounded-lg lg:border lg:p-5 lg:shadow-none">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Server total</p>
-        <p className="mt-2 text-3xl font-bold">{formatPrice(cart.subtotal.centavos)}</p>
+      <aside className="fixed inset-x-0 bottom-16 z-30 border-t border-[var(--marketplace-border)] bg-[var(--marketplace-surface)] p-4 shadow-[0_-8px_24px_rgba(17,24,39,0.08)] lg:sticky lg:inset-auto lg:top-6 lg:h-fit lg:rounded-[var(--marketplace-radius-card)] lg:border lg:p-5 lg:shadow-none">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs font-bold tracking-[0.12em] text-[var(--marketplace-accent-strong)]">
+            Server total
+          </p>
+          <span className="text-xs text-muted">Updated as you edit</span>
+        </div>
+        <p className="mt-2 text-3xl font-bold tabular-nums tracking-[-0.04em]">
+          {formatPrice(cart.subtotal.centavos)}
+        </p>
         <p className="mt-2 text-sm leading-6 text-muted">
           Carbon confirms price and availability after every change.
         </p>
@@ -189,7 +205,7 @@ export function CartEditor({
           <Button
             onClick={() => router.push("/account/checkout")}
             size="sm"
-            tone="secondary"
+            tone="primary"
             type="button"
           >
             Continue to checkout

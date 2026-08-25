@@ -25,17 +25,18 @@ export function CustomerOrderDetailView({
 }: Readonly<{ customerId: string; detail: CustomerOrderDetail }>) {
   const { order, tracking, media } = detail;
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="marketplace-order-detail grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="grid gap-6">
-        <Card>
+        <Card className="rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5">
           <CardHeader>
             <CardTitle>Order {order.id}</CardTitle>
             <CardDescription>
               Locked {new Date(order.lockedAt).toLocaleString("en-PH")}
             </CardDescription>
           </CardHeader>
-          <div className="mb-5">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <ReorderButton lines={order.lines} />
+            <StatusPill status={order.status === "canceled" ? order.status : order.paymentState} />
           </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <DetailRow label="Cycle" value={order.cycleId} />
@@ -47,7 +48,7 @@ export function CustomerOrderDetailView({
             />
           </dl>
         </Card>
-        <Card>
+        <Card className="rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5">
           <CardHeader>
             <CardTitle>Delivery timeline</CardTitle>
             <CardDescription>
@@ -55,10 +56,10 @@ export function CustomerOrderDetailView({
             </CardDescription>
           </CardHeader>
           {tracking?.events.length ? (
-            <ol className="grid gap-4 border-l border-line pl-5">
+            <ol className="grid gap-5 border-l border-[var(--marketplace-border)] pl-5">
               {tracking.events.map((event) => (
                 <li key={event.id} className="relative">
-                  <span className="absolute -left-[1.6rem] top-1 h-2.5 w-2.5 rounded-full bg-deep" />
+                  <span className="absolute -left-[1.6rem] top-1 h-3 w-3 rounded-full border-2 border-[var(--marketplace-surface)] bg-[var(--marketplace-accent)] ring-1 ring-[var(--marketplace-accent)]" />
                   <strong className="capitalize">{event.type.replaceAll("_", " ")}</strong>
                   <p className="mt-1 text-sm text-muted">
                     {new Date(event.occurredAt).toLocaleString("en-PH")}
@@ -72,7 +73,7 @@ export function CustomerOrderDetailView({
           )}
         </Card>
       </div>
-      <Card className="h-fit lg:sticky lg:top-6">
+      <Card className="h-fit rounded-[var(--marketplace-radius-card)] border-[var(--marketplace-border)] p-4 sm:p-5 lg:sticky lg:top-6">
         <CardHeader>
           <CardTitle>Receipt</CardTitle>
           <CardDescription>Server-confirmed order totals</CardDescription>
@@ -86,7 +87,7 @@ export function CustomerOrderDetailView({
             label="Included credit"
             value={formatPhp(order.totals.includedCredit.centavos)}
           />
-          <div className="flex justify-between border-t border-line pt-3 font-bold">
+          <div className="flex justify-between border-t border-[var(--marketplace-border)] pt-4 font-bold tabular-nums">
             <dt>Total due</dt>
             <dd>{formatPhp(order.totals.totalDue.centavos)}</dd>
           </div>

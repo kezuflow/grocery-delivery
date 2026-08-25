@@ -1152,6 +1152,47 @@ p {
   padding: 0 0 48px;
 }
 
+.marketplace-shell .account-marketplace-nav {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 20px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  scrollbar-width: none;
+}
+
+.marketplace-shell .account-marketplace-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.marketplace-shell .account-marketplace-nav a {
+  border: 1px solid var(--marketplace-border);
+  border-radius: var(--marketplace-radius-control);
+  color: var(--marketplace-text-secondary);
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 10px 13px;
+  text-decoration: none;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.marketplace-shell .account-marketplace-nav a:hover,
+.marketplace-shell .account-marketplace-nav a[aria-current="page"] {
+  background: var(--marketplace-surface-subtle);
+  border-color: var(--marketplace-accent-strong);
+  color: var(--marketplace-accent-strong);
+}
+
+.marketplace-shell .account-marketplace-nav a:focus-visible {
+  outline: 2px solid var(--marketplace-accent-strong);
+  outline-offset: 2px;
+}
+
 .marketplace-shell .account-panel,
 .marketplace-shell .account-state {
   border: 1px solid var(--marketplace-border);
@@ -1202,4 +1243,174 @@ p {
   border-radius: var(--marketplace-radius-card);
   background: var(--marketplace-surface);
   padding: 14px;
+}
+
+.marketplace-shell .account-panel form,
+.marketplace-shell .delivery-address-editor,
+.marketplace-shell .account-address-book,
+.marketplace-shell .delivery-window-selector,
+.marketplace-shell .plan-selector {
+  margin-top: 18px;
+}
+
+.marketplace-shell .address-form-grid {
+  gap: 14px;
+}
+
+.marketplace-shell .address-form-grid label,
+.marketplace-shell .account-panel form > label {
+  color: var(--marketplace-text-secondary);
+  display: grid;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 7px;
+}
+
+.marketplace-shell .address-form-grid input,
+.marketplace-shell .address-form-grid textarea,
+.marketplace-shell .account-panel form input:not([type="checkbox"]),
+.marketplace-shell .account-panel form textarea {
+  background: var(--marketplace-surface);
+  border: 1px solid var(--marketplace-border);
+  border-radius: var(--marketplace-radius-control);
+  color: var(--marketplace-text-primary);
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.marketplace-shell .address-form-grid textarea,
+.marketplace-shell .account-panel form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.marketplace-shell .address-form-grid input:focus,
+.marketplace-shell .address-form-grid textarea:focus,
+.marketplace-shell .account-panel form input:not([type="checkbox"]):focus,
+.marketplace-shell .account-panel form textarea:focus {
+  border-color: var(--marketplace-accent-strong);
+  outline: 2px solid color-mix(in srgb, var(--marketplace-accent) 30%, transparent);
+  outline-offset: 1px;
+}
+
+.marketplace-shell .address-editor-actions,
+.marketplace-shell .subscription-action-buttons,
+.marketplace-shell .deliveryman-actions,
+.marketplace-shell .account-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.marketplace-shell .account-address-book,
+.marketplace-shell .delivery-window-list {
+  display: grid;
+  gap: 10px;
+}
+
+.marketplace-shell .account-address-card,
+.marketplace-shell .delivery-window-option {
+  align-items: center;
+  background: var(--marketplace-surface-subtle);
+  border: 1px solid var(--marketplace-border);
+  border-radius: var(--marketplace-radius-control);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.marketplace-shell .account-address-card p,
+.marketplace-shell .account-address-card small {
+  color: var(--marketplace-text-secondary);
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 3px 0 0;
+}
+
+.marketplace-shell .account-address-card > span,
+.marketplace-shell .delivery-window-option.selected {
+  color: var(--marketplace-accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.marketplace-shell .account-address-card button,
+.marketplace-shell .delivery-window-option {
+  color: var(--marketplace-text-primary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.marketplace-shell .account-address-card button {
+  background: transparent;
+  border: 0;
+  color: var(--marketplace-accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 8px 0 8px 8px;
+}
+
+.marketplace-shell .account-address-card button:disabled,
+.marketplace-shell .delivery-window-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.marketplace-shell .delivery-window-option {
+  width: 100%;
+}
+
+.marketplace-shell .delivery-window-option.selected {
+  background: color-mix(in srgb, var(--marketplace-accent) 13%, var(--marketplace-surface));
+  border-color: var(--marketplace-accent-strong);
+}
+
+.marketplace-shell .delivery-window-option span {
+  color: var(--marketplace-text-secondary);
+  font-size: 0.78rem;
+}
+
+.marketplace-shell .notification-preferences,
+.marketplace-shell .account-panel form:has(input[type="checkbox"]) {
+  display: grid;
+  gap: 12px;
+}
+
+.marketplace-shell .account-panel form > label:has(input[type="checkbox"]) {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  min-height: 40px;
+}
+
+.marketplace-shell .account-panel form input[type="checkbox"] {
+  accent-color: var(--marketplace-accent-strong);
+  height: 18px;
+  width: 18px;
+}
+
+.marketplace-shell .account-panel form > button,
+.marketplace-shell .account-panel .button {
+  min-height: 40px;
+}
+
+.marketplace-shell .support-case-form,
+.marketplace-shell .subscription-actions,
+.marketplace-shell .plan-selector {
+  border-top-color: var(--marketplace-border);
+}
+
+.marketplace-shell .marketplace-cart,
+.marketplace-shell .marketplace-checkout,
+.marketplace-shell .marketplace-orders,
+.marketplace-shell .marketplace-order-detail {
+  min-width: 0;
 }

@@ -39,4 +39,20 @@ Do not change API contracts, business rules, server pricing, authorization, paym
 
 ## Current slice status
 
-The foundation slice is locally verified and includes marketplace semantic tokens, shared page shell migration, product-card links/detail continuity, responsive navigation, and compressed fallback merchandising. Full authenticated regression coverage and broader page migration remain the next slice.
+The foundation and transactional presentation slices are locally verified. The marketplace now has
+semantic tokens, a shared page shell, responsive navigation, product-card/detail continuity, compact
+fallback merchandising, marketplace cart and checkout composition, responsive order history/detail
+surfaces, and scoped account form styling. Cart expected-version refresh, checkout quote/payment
+idempotency, server totals, order tracking, reorder, and authorization behavior remain unchanged.
+
+Focused web lint, typecheck, 23 Vitest files / 77 tests, production build, and `git diff --check`
+pass. The local browser verifies `/shop` at desktop and 390px phone width and `/shop/apple` at 390px
+without console errors or horizontal overflow. Protected `/account` routes correctly redirect the
+current unauthenticated browser session to `/forbidden`. Customer fixture E2E verifies cart,
+checkout, payment retry, reorder, account preferences, and tracking/proof flows across phone,
+tablet, and desktop. The combined stateful run passed 14/18 before later projects inherited earlier
+payment/delivery fixture state; fresh tablet and desktop reruns passed the four affected scenarios.
+
+Remaining gaps are limited to the existing cross-project fixture isolation issue, broader manual
+authenticated visual comparison, and future extraction of repeated account form primitives if more
+customer sections are added.
