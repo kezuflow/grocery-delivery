@@ -121,7 +121,12 @@ export function ProductDetailActions({
           showTriggers={false}
         />
       ) : null}
-      <Button loading={pending} onClick={requestAdd} type="button">
+      <Button
+        className="sticky bottom-[5rem] z-30 shadow-[0_10px_30px_rgba(22,101,52,0.2)] sm:static sm:shadow-none"
+        loading={pending}
+        onClick={requestAdd}
+        type="button"
+      >
         Add to weekly cart
       </Button>
       <Button disabled={pending} onClick={() => void saveItem()} tone="secondary" type="button">

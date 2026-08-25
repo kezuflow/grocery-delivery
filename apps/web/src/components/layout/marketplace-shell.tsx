@@ -195,6 +195,12 @@ export function MarketplaceShell({
               {cartCount ? <CartBadge count={cartCount} /> : null}
             </button>
           </div>
+          <div className="mt-2 flex min-h-9 items-center justify-between gap-3 border-t border-base-line pt-2">
+            <DeliveryAddressControl addressLabel={addressLabel} />
+            <span className="shrink-0 text-[11px] font-semibold text-market-muted">
+              Delivery only
+            </span>
+          </div>
         </div>
       </header>
       <div className="grid w-full lg:grid-cols-[232px_minmax(0,1fr)]">
@@ -248,13 +254,18 @@ export function MarketplaceShell({
             />
           </li>
           <li>
-            <BottomLink href="/shop#featured-offers" icon={<Tag size={19} />} label="Deals" />
+            <BottomLink
+              active={pathname.startsWith("/account/orders")}
+              href="/account/orders"
+              icon={<ClipboardList size={19} />}
+              label="Orders"
+            />
           </li>
           <li>
             <BottomLink
-              active={pathname.startsWith("/account")}
+              active={pathname.startsWith("/account") && !pathname.startsWith("/account/orders")}
               href="/account"
-              icon={<Bookmark size={19} />}
+              icon={<UserRound size={19} />}
               label="Account"
             />
           </li>

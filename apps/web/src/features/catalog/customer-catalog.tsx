@@ -233,7 +233,7 @@ export function CustomerCatalog({
           showTriggers={false}
         />
       ) : null}
-      <div className="sticky top-[68px] z-20 -mx-4 mb-6 border-y border-base-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
+      <div className="sticky top-[106px] z-20 -mx-4 mb-6 border-y border-base-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           {categoryShortcuts(catalog.categories).map((category) => (
             <button
