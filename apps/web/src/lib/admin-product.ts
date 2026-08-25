@@ -8,6 +8,7 @@ import type {
   OperationalProjectionResponse,
   ProcurementResponse,
   SupportCasesResponse,
+  AdminCustomersResponse,
 } from "@carbon/contracts";
 
 import { createApiClient } from "./api/client";
@@ -44,6 +45,32 @@ export type AdminStaffData = Readonly<{
   state: AdminFeedState;
   error: string | null;
 }>;
+
+export type AdminCustomersData = Readonly<{
+  customers: AdminCustomersResponse["data"]["customers"];
+  state: AdminFeedState;
+  error: string | null;
+}>;
+
+export async function loadAdminCustomers(): Promise<AdminCustomersData> {
+  try {
+    const response = await createApiClient(createRuntimeApiTransport()).listAdminCustomers(
+      await getRequestInit(),
+    );
+    return {
+      customers: response.data.customers,
+      state: {
+        status: response.data.customers.length === 0 ? "empty" : "ready",
+        message: null,
+        correlationId: null,
+      },
+      error: null,
+    };
+  } catch (error) {
+    const state = classifyAdminFeedError(error);
+    return { customers: [], state, error: state.message };
+  }
+}
 
 export async function loadAdminCatalog(): Promise<AdminCatalogData> {
   try {

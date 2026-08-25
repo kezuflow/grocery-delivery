@@ -26,6 +26,8 @@ export type IdentityUser = Readonly<{
   updatedAt: string;
 }>;
 
+export type AdminCustomer = IdentityUser;
+
 export type IdentitySessionRecord = Readonly<{
   id: string;
   createdAt: string;
@@ -59,6 +61,10 @@ export interface AccountIdentityRepository {
 
 export interface AuditEventReader {
   listAuditEvents(limit: number): Promise<readonly AuditEvent[]>;
+}
+
+export interface CustomerDirectoryReader {
+  listCustomers(limit?: number): Promise<readonly AdminCustomer[]>;
 }
 
 export type IdentityCommandResult = Readonly<{
@@ -124,6 +130,29 @@ export class D1IdentityRepository {
           updatedAt: row.updated_at,
         }
       : null;
+  }
+
+  async listCustomers(limit = 100): Promise<readonly AdminCustomer[]> {
+    const rows = await this.database
+      .prepare(
+        `SELECT u.id, u.email, u.name, u.email_verified, u.image_url, u.created_at, u.updated_at
+         FROM identity_users u
+         INNER JOIN identity_role_assignments r ON r.user_id = u.id
+         WHERE r.role = 'customer'
+         ORDER BY u.created_at DESC, u.id DESC
+         LIMIT ?`,
+      )
+      .bind(Math.min(200, Math.max(1, limit)))
+      .all<IdentityUserRow>();
+    return rows.results.map((row) => ({
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      emailVerified: row.email_verified === 1,
+      imageUrl: row.image_url,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
   }
 
   async updateUserName(userId: string, name: string, updatedAt: string): Promise<void> {

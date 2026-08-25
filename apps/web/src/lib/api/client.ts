@@ -55,6 +55,7 @@ import {
   activePromotionBannersResponseSchema,
   bannerPlacementSchema,
   adminAuditResponseSchema,
+  adminCustomersResponseSchema,
   supportCaseCreateRequestSchema,
   supportCaseResponseSchema,
   supportCaseStatusRequestSchema,
@@ -129,6 +130,7 @@ import {
   type SubscriptionResponse,
   type ActivePromotionBannersResponse,
   type AdminAuditResponse,
+  type AdminCustomersResponse,
   type SupportCaseResponse,
   type SupportCasesResponse,
   type NotificationPreferencesResponse,
@@ -456,6 +458,14 @@ export function createApiClient(baseTransport: ApiTransport) {
     },
     getAdminAudit(init?: RequestInit): Promise<AdminAuditResponse> {
       return getJson(transport, "/api/v1/admin/audit?limit=50", adminAuditResponseSchema, init);
+    },
+    listAdminCustomers(init?: RequestInit): Promise<AdminCustomersResponse> {
+      return getJson(
+        transport,
+        "/api/v1/admin/customers?limit=100",
+        adminCustomersResponseSchema,
+        init,
+      );
     },
     applyLaunchConfiguration(
       input: unknown,

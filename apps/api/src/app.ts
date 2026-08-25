@@ -148,6 +148,7 @@ import {
   promotionBannerAnalyticsRequestSchema,
   promotionBannerAnalyticsResponseSchema,
   adminAuditResponseSchema,
+  adminCustomersResponseSchema,
   supportCaseCreateRequestSchema,
   supportCaseResponseSchema,
   supportCaseStatusRequestSchema,
@@ -237,6 +238,7 @@ import {
   type OperationalProjectionRepository,
   type AccountIdentityRepository,
   type AuditEventReader,
+  type CustomerDirectoryReader,
   type IdentityUser,
 } from "@carbon/db";
 import {
@@ -366,6 +368,7 @@ export type ApiOptions = Readonly<{
   customerOrderRequestRepository?: CustomerOrderRequestRepository;
   customerOrderSubstitutionRepository?: CustomerOrderSubstitutionRepository;
   identityRepository?: AccountIdentityRepository;
+  customerDirectoryReader?: CustomerDirectoryReader;
   deliveryEventRepository?: DeliveryEventRepository;
   deliveryTrackingRepository?: DeliveryTrackingRepository;
   deliveryMediaRepository?: DeliveryMediaRepository;
@@ -2950,6 +2953,51 @@ export function createApi(options: ApiOptions = {}): ApiApp {
       meta: { correlationId: context.get("correlationId") },
     };
     supportCaseResponseSchema.parse(body);
+    return context.json(body, 200);
+  });
+
+  app.get("/api/v1/admin/customers", async (context) => {
+    const session = context.get("session");
+    if (!session || !hasAdminPermission(session.role, session.adminPermissions, "support")) {
+      return context.json(
+        errorResponse(
+          "FORBIDDEN",
+          "support administrator permission is required",
+          context.get("correlationId"),
+        ),
+        session ? 403 : 401,
+      );
+    }
+    const repository =
+      options.customerDirectoryReader ??
+      (context.env?.DB ? new D1IdentityRepository(context.env.DB) : undefined);
+    if (!repository) {
+      return context.json(
+        errorResponse(
+          "CUSTOMERS_UNAVAILABLE",
+          "customer directory is unavailable",
+          context.get("correlationId"),
+        ),
+        503,
+      );
+    }
+    const requested = Number(context.req.query("limit") ?? 100);
+    const limit = Number.isSafeInteger(requested) ? Math.min(200, Math.max(1, requested)) : 100;
+    const body = {
+      data: {
+        customers: (await repository.listCustomers(limit)).map((customer) => ({
+          id: customer.id,
+          email: customer.email,
+          name: customer.name,
+          emailVerified: customer.emailVerified,
+          createdAt: customer.createdAt,
+          updatedAt: customer.updatedAt,
+        })),
+      },
+      meta: { correlationId: context.get("correlationId") },
+    };
+    adminCustomersResponseSchema.parse(body);
+    context.header("cache-control", "private, no-store");
     return context.json(body, 200);
   });
 

@@ -4,6 +4,7 @@ import {
   BarChart3,
   Boxes,
   ClipboardList,
+  ContactRound,
   Gift,
   Headphones,
   LayoutDashboard,
@@ -71,6 +72,7 @@ function NavigationIcon({ href }: Readonly<{ href: string }>) {
   if (href === "/admin/packing") return <PackageCheck {...props} />;
   if (href === "/admin/dispatch") return <Truck {...props} />;
   if (href === "/admin/support") return <Headphones {...props} />;
+  if (href === "/admin/customers") return <ContactRound {...props} />;
   if (href === "/admin/promotions") return <Gift {...props} />;
   if (href === "/admin/reporting") return <BarChart3 {...props} />;
   if (href === "/admin/staff") return <Users {...props} />;

@@ -51,6 +51,7 @@ const adminNavigation: readonly NavigationItem[] = [
   { href: "/admin/packing", label: "Packing", permission: "packing", group: "Operations" },
   { href: "/admin/dispatch", label: "Dispatch", permission: "dispatch", group: "Operations" },
   { href: "/admin/support", label: "Support", permission: "support", group: "Operations" },
+  { href: "/admin/customers", label: "Customers", permission: "support", group: "Operations" },
   { href: "/admin/promotions", label: "Promotions", permission: "marketing", group: "Manage" },
   { href: "/admin/reporting", label: "Reporting", permission: "reporting", group: "Manage" },
   { href: "/admin/staff", label: "Staff", permission: "superadmin", group: "Manage" },

@@ -7,6 +7,7 @@ export const adminWorkspacePermissions = {
   packing: ["packing"],
   dispatch: ["dispatch"],
   support: ["support"],
+  customers: ["support"],
   promotions: ["marketing"],
   reporting: ["reporting"],
   staff: ["superadmin"],

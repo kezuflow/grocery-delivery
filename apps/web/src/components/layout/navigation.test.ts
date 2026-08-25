@@ -28,6 +28,7 @@ describe("role navigation", () => {
       "Overview",
       "Orders",
       "Support",
+      "Customers",
     ]);
   });
 
@@ -40,6 +41,7 @@ describe("role navigation", () => {
       "Packing",
       "Dispatch",
       "Support",
+      "Customers",
       "Promotions",
       "Reporting",
       "Staff",

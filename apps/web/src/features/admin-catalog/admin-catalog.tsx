@@ -268,7 +268,7 @@ export function AdminCatalog({
           selectedCategory ? (
             <div className="grid gap-4 py-4">
               <button
-                className="flex w-fit items-center gap-2 text-xs font-bold text-muted hover:text-deep"
+                className="flex w-fit items-center gap-2 text-xs font-bold text-admin-text-muted hover:text-admin-text-primary"
                 onClick={() => {
                   setSelectedCategoryId(null);
                   setCategoryProductQuery("");
@@ -277,13 +277,15 @@ export function AdminCatalog({
               >
                 <ArrowLeft aria-hidden="true" size={14} /> All categories
               </button>
-              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-admin-border pb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-ink">{selectedCategory.name}</h2>
+                    <h2 className="text-lg font-bold text-admin-text-primary">
+                      {selectedCategory.name}
+                    </h2>
                     <StatusPill status={selectedCategory.active ? "active" : "paused"} />
                   </div>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-admin-text-muted">
                     {categoryProducts.length}{" "}
                     {categoryProducts.length === 1 ? "product" : "products"}
                   </p>
@@ -340,50 +342,62 @@ export function AdminCatalog({
               )}
             </div>
           ) : (
-            <div className="grid gap-3 py-4 sm:grid-cols-2 xl:grid-cols-3">
-              {categories.map((item) => {
-                const count = catalogItems.filter((product) =>
-                  product.categoryIds.includes(item.id),
-                ).length;
-                return (
-                  <article className="relative rounded-lg border border-line" key={item.id}>
-                    <button
-                      aria-label={`Open ${item.name}`}
-                      className="w-full rounded-lg p-4 pr-12 text-left hover:bg-accent/10"
-                      onClick={() => {
-                        setSelectedCategoryId(item.id);
-                        setCategoryProductQuery("");
-                      }}
-                      type="button"
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span>
-                          <strong className="block text-sm text-ink">{item.name}</strong>
-                          <span className="mt-1 block text-xs text-muted">{count} products</span>
-                        </span>
+            <Table wrapperClassName="mt-4">
+              <TableHeader>
+                <tr>
+                  <TableHeaderCell>Category</TableHeaderCell>
+                  <TableHeaderCell>Products</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {categories.map((item) => {
+                  const count = catalogItems.filter((product) =>
+                    product.categoryIds.includes(item.id),
+                  ).length;
+                  return (
+                    <tr className="hover:bg-admin-surface-subtle" key={item.id}>
+                      <TableCell>
+                        <button
+                          className="font-semibold text-admin-text-primary hover:text-admin-accent"
+                          onClick={() => {
+                            setSelectedCategoryId(item.id);
+                            setCategoryProductQuery("");
+                          }}
+                          type="button"
+                        >
+                          {item.name}
+                        </button>
+                      </TableCell>
+                      <TableCell>{count}</TableCell>
+                      <TableCell>
                         <StatusPill status={item.active ? "active" : "paused"} />
-                      </span>
-                    </button>
-                    {canManage ? (
-                      <button
-                        aria-label={`Edit ${item.name} category`}
-                        className="absolute bottom-2 right-2 grid size-8 place-items-center rounded text-muted hover:bg-black/5 hover:text-ink"
-                        onClick={() => openCategoryEditor(item.id)}
-                        type="button"
-                      >
-                        <Pencil aria-hidden="true" size={14} />
-                      </button>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {canManage ? (
+                          <Button
+                            aria-label={`Edit ${item.name} category`}
+                            onClick={() => openCategoryEditor(item.id)}
+                            size="sm"
+                            tone="ghost"
+                            type="button"
+                          >
+                            <Pencil aria-hidden="true" size={14} /> Edit
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </tr>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )
         ) : (
           <div className="grid gap-5 py-4">
             {canManage ? (
               <form
-                className="grid gap-3 rounded-lg border border-dashed border-line bg-black/[0.02] p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
+                className="grid gap-3 rounded-md border border-admin-border bg-admin-surface-subtle p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
                 onSubmit={(event) => void uploadCatalogImage(event)}
               >
                 <Input
@@ -404,7 +418,7 @@ export function AdminCatalog({
                 <Button loading={saving} size="sm" type="submit">
                   <Upload aria-hidden="true" size={14} /> Upload image
                 </Button>
-                <p className="text-xs text-muted md:col-span-3">
+                <p className="text-xs text-admin-text-muted md:col-span-3">
                   JPEG, PNG, or WebP up to 5 MB. Files are stored in media storage; searchable
                   metadata is stored with the catalog.
                 </p>
@@ -413,8 +427,11 @@ export function AdminCatalog({
             {catalogImages.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {catalogImages.map((image) => (
-                  <article className="overflow-hidden rounded-lg border border-line" key={image.id}>
-                    <span className="grid aspect-square place-items-center bg-black/[0.03] text-muted">
+                  <article
+                    className="overflow-hidden rounded-md border border-admin-border"
+                    key={image.id}
+                  >
+                    <span className="grid aspect-square place-items-center bg-admin-surface-subtle text-admin-text-muted">
                       {image.status === "ready" ? (
                         <img
                           alt={image.altText}
@@ -426,9 +443,13 @@ export function AdminCatalog({
                       )}
                     </span>
                     <div className="grid gap-1 p-3">
-                      <strong className="truncate text-sm text-ink">{image.altText}</strong>
-                      <span className="truncate text-xs text-muted">{image.fileName}</span>
-                      <span className="flex items-center justify-between gap-2 pt-1 text-xs text-muted">
+                      <strong className="truncate text-sm text-admin-text-primary">
+                        {image.altText}
+                      </strong>
+                      <span className="truncate text-xs text-admin-text-muted">
+                        {image.fileName}
+                      </span>
+                      <span className="flex items-center justify-between gap-2 pt-1 text-xs text-admin-text-muted">
                         {formatFileSize(image.sizeBytes)}
                         <StatusPill status={image.status} />
                       </span>
@@ -470,16 +491,21 @@ export function AdminCatalog({
               value={productDraft.description}
             />
             <div className="grid gap-3 sm:grid-cols-2">
-              <fieldset className="grid gap-2 rounded border border-line p-3">
-                <legend className="px-1 text-xs font-bold text-ink">Categories</legend>
-                <p className="text-xs text-muted">
+              <fieldset className="grid gap-2 rounded-md border border-admin-border p-3">
+                <legend className="px-1 text-xs font-bold text-admin-text-primary">
+                  Categories
+                </legend>
+                <p className="text-xs text-admin-text-muted">
                   Choose every section where this product belongs.
                 </p>
                 <div className="grid max-h-36 gap-2 overflow-y-auto">
                   {categories
                     .filter((item) => item.active || productDraft.categoryIds.includes(item.id))
                     .map((item) => (
-                      <label className="flex items-center gap-2 text-sm text-ink" key={item.id}>
+                      <label
+                        className="flex items-center gap-2 text-sm text-admin-text-primary"
+                        key={item.id}
+                      >
                         <input
                           checked={productDraft.categoryIds.includes(item.id)}
                           onChange={() => toggleProductCategory(item.id)}
@@ -502,12 +528,12 @@ export function AdminCatalog({
                 ))}
               </Select>
             </div>
-            <div className="rounded border border-dashed border-line bg-black/[0.02] p-3">
-              <p className="text-xs font-bold text-ink">Need another category?</p>
+            <div className="rounded-md border border-admin-border bg-admin-surface-subtle p-3">
+              <p className="text-xs font-bold text-admin-text-primary">Need another category?</p>
               <div className="mt-2 flex gap-2">
                 <input
                   aria-label="New category name"
-                  className="min-h-9 min-w-0 flex-1 rounded border border-line px-3 text-sm"
+                  className="min-h-9 min-w-0 flex-1 rounded-md border border-admin-border-strong bg-admin-surface px-3 text-sm text-admin-text-primary outline-none focus:border-admin-accent focus:ring-2 focus:ring-admin-accent-soft"
                   onChange={(event) => setInlineCategoryName(event.target.value)}
                   placeholder="e.g. Household essentials"
                   value={inlineCategoryName}
@@ -530,11 +556,11 @@ export function AdminCatalog({
             title="Media"
           >
             <button
-              className="flex items-center gap-3 rounded border border-line p-3 text-left hover:border-deep"
+              className="flex items-center gap-3 rounded-md border border-admin-border p-3 text-left hover:border-admin-border-strong"
               onClick={() => setLibraryOpen(true)}
               type="button"
             >
-              <span className="grid size-16 place-items-center overflow-hidden rounded bg-black/5 text-muted">
+              <span className="grid size-16 place-items-center overflow-hidden rounded bg-admin-surface-subtle text-admin-text-muted">
                 {productDraft.imageUrl ? (
                   <img alt="" className="size-full object-cover" src={productDraft.imageUrl} />
                 ) : (
@@ -542,10 +568,10 @@ export function AdminCatalog({
                 )}
               </span>
               <span>
-                <strong className="block text-sm text-ink">
+                <strong className="block text-sm text-admin-text-primary">
                   {productDraft.imageUrl ? "Change image" : "Choose image"}
                 </strong>
-                <span className="mt-1 block text-xs text-muted">
+                <span className="mt-1 block text-xs text-admin-text-muted">
                   Search the product image library
                 </span>
               </span>
@@ -578,9 +604,11 @@ export function AdminCatalog({
                 value={productDraft.markupPercent}
               />
             </div>
-            <div className="flex items-center justify-between rounded bg-accent/20 px-3 py-2 text-sm">
-              <span className="text-muted">Estimated selling price</span>
-              <strong>{estimatedPrice === null ? "—" : formatPhp(estimatedPrice)}</strong>
+            <div className="flex items-center justify-between rounded-md bg-admin-accent-soft px-3 py-2 text-sm">
+              <span className="text-admin-text-secondary">Estimated selling price</span>
+              <strong>
+                {estimatedPrice === null ? "Not available" : formatPhp(estimatedPrice)}
+              </strong>
             </div>
           </EditorSection>
 
@@ -592,13 +620,13 @@ export function AdminCatalog({
               }
               value={productDraft.status}
             >
-              <option value="active">Active — visible to customers</option>
-              <option value="paused">Paused — temporarily hidden</option>
-              <option value="archived">Archived — retired from sale</option>
+              <option value="active">Active: visible to customers</option>
+              <option value="paused">Paused: temporarily hidden</option>
+              <option value="archived">Archived: retired from sale</option>
             </Select>
           </EditorSection>
 
-          <div className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t border-line bg-white px-6 py-4">
+          <div className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t border-admin-border bg-admin-surface px-6 py-4">
             <Button onClick={closeEditor} size="sm" tone="ghost" type="button">
               Cancel
             </Button>
@@ -636,7 +664,7 @@ export function AdminCatalog({
               <option value="paused">Paused</option>
             </Select>
           </EditorSection>
-          <div className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t border-line bg-white px-6 py-4">
+          <div className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t border-admin-border bg-admin-surface px-6 py-4">
             <Button onClick={closeEditor} size="sm" tone="ghost" type="button">
               Cancel
             </Button>
@@ -669,7 +697,7 @@ export function AdminCatalog({
           <div className="grid max-h-[45vh] gap-2 overflow-y-auto pr-1">
             {attachableProducts.map((item) => (
               <label
-                className="flex cursor-pointer items-center gap-3 rounded border border-line p-3 hover:border-deep"
+                className="flex cursor-pointer items-center gap-3 rounded-md border border-admin-border p-3 hover:border-admin-border-strong"
                 key={item.id}
               >
                 <input
@@ -678,8 +706,10 @@ export function AdminCatalog({
                   type="checkbox"
                 />
                 <span className="min-w-0">
-                  <strong className="block truncate text-sm text-ink">{item.name}</strong>
-                  <span className="block truncate text-xs text-muted">
+                  <strong className="block truncate text-sm text-admin-text-primary">
+                    {item.name}
+                  </strong>
+                  <span className="block truncate text-xs text-admin-text-muted">
                     {formatCategoryNames(item.categoryIds, categoryNames)}
                   </span>
                 </span>
@@ -687,13 +717,13 @@ export function AdminCatalog({
             ))}
           </div>
         ) : (
-          <p className="rounded bg-black/[0.03] px-3 py-4 text-sm text-muted">
+          <p className="rounded-md bg-admin-surface-subtle px-3 py-4 text-sm text-admin-text-muted">
             {attachQuery
               ? "No available products match this search."
               : "Every product already belongs to this category."}
           </p>
         )}
-        <div className="flex justify-end gap-2 border-t border-line pt-4">
+        <div className="flex justify-end gap-2 border-t border-admin-border pt-4">
           <Button onClick={closeAttachProducts} size="sm" tone="ghost" type="button">
             Cancel
           </Button>
@@ -732,7 +762,9 @@ export function AdminCatalog({
               <button
                 aria-pressed={selected}
                 className={`group overflow-hidden rounded border text-left ${
-                  selected ? "border-deep ring-2 ring-accent" : "border-line hover:border-deep"
+                  selected
+                    ? "border-admin-accent ring-2 ring-admin-accent-soft"
+                    : "border-admin-border hover:border-admin-border-strong"
                 }`}
                 key={image.id}
                 onClick={() => {
@@ -741,7 +773,7 @@ export function AdminCatalog({
                 }}
                 type="button"
               >
-                <span className="relative block aspect-square bg-black/[0.03]">
+                <span className="relative block aspect-square bg-admin-surface-subtle">
                   <img alt="" className="size-full object-cover" src={image.url} />
                   {selected ? (
                     <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-deep text-white">
@@ -749,7 +781,7 @@ export function AdminCatalog({
                     </span>
                   ) : null}
                 </span>
-                <span className="block truncate px-2 py-1.5 text-[10px] font-medium text-muted">
+                <span className="block truncate px-2 py-1.5 text-[10px] font-medium text-admin-text-muted">
                   {image.label}
                 </span>
               </button>
@@ -1008,12 +1040,12 @@ function ProductTable({
           return (
             <button
               aria-label={`${canManage ? "Edit" : "View"} ${item.name}`}
-              className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-line bg-white p-3 text-left"
+              className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-admin-border bg-admin-surface p-3 text-left"
               key={item.id}
               onClick={() => onEdit(item.id)}
               type="button"
             >
-              <span className="grid size-12 place-items-center overflow-hidden rounded bg-black/[0.03] text-muted">
+              <span className="grid size-12 place-items-center overflow-hidden rounded bg-admin-surface-subtle text-admin-text-muted">
                 {imageUrl ? (
                   <img alt="" className="size-full object-cover" src={imageUrl} />
                 ) : (
@@ -1021,11 +1053,13 @@ function ProductTable({
                 )}
               </span>
               <span className="min-w-0">
-                <strong className="block truncate text-sm text-ink">{item.name}</strong>
-                <span className="mt-1 block truncate text-xs text-muted">
+                <strong className="block truncate text-sm text-admin-text-primary">
+                  {item.name}
+                </strong>
+                <span className="mt-1 block truncate text-xs text-admin-text-muted">
                   {formatCategoryNames(item.categoryIds, categoryNames)} · {item.unit}
                 </span>
-                <span className="mt-1 block text-sm font-bold text-ink">
+                <span className="mt-1 block text-sm font-bold text-admin-text-primary">
                   {formatPhp(item.price.centavos)}
                 </span>
               </span>
@@ -1051,13 +1085,13 @@ function ProductTable({
             const imageUrl = item.imageUrl ?? localImageFor(item.slug);
             return (
               <tr
-                className="group cursor-pointer hover:bg-black/[0.02]"
+                className="group cursor-pointer hover:bg-admin-surface-subtle"
                 key={item.id}
                 onClick={() => onEdit(item.id)}
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded border border-line bg-black/[0.03] text-muted">
+                    <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded border border-admin-border bg-admin-surface-subtle text-admin-text-muted">
                       {imageUrl ? (
                         <img alt="" className="size-full object-cover" src={imageUrl} />
                       ) : (
@@ -1065,8 +1099,10 @@ function ProductTable({
                       )}
                     </span>
                     <span className="min-w-0">
-                      <strong className="block text-ink">{item.name}</strong>
-                      <span className="block truncate text-[11px] text-muted">{item.unit}</span>
+                      <strong className="block text-admin-text-primary">{item.name}</strong>
+                      <span className="block truncate text-[11px] text-admin-text-muted">
+                        {item.unit}
+                      </span>
                     </span>
                   </div>
                 </TableCell>
@@ -1079,7 +1115,7 @@ function ProductTable({
                   <button
                     aria-expanded={openMenuId === item.id}
                     aria-label={`Actions for ${item.name}`}
-                    className="inline-grid size-8 place-items-center rounded text-muted hover:bg-black/5 hover:text-ink"
+                    className="inline-grid size-8 place-items-center rounded text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text-primary"
                     onClick={(event) => {
                       event.stopPropagation();
                       setOpenMenuId(openMenuId === item.id ? null : item.id);
@@ -1089,7 +1125,7 @@ function ProductTable({
                     <MoreHorizontal aria-hidden="true" size={17} />
                   </button>
                   {openMenuId === item.id ? (
-                    <div className="absolute right-3 top-11 z-20 min-w-40 rounded border border-line bg-white p-1 text-left shadow-lg">
+                    <div className="absolute right-3 top-11 z-20 min-w-40 rounded-md border border-admin-border bg-admin-surface p-1 text-left shadow-lg">
                       <MenuButton
                         icon={<Pencil size={14} />}
                         label={canManage ? "Edit product" : "View details"}
@@ -1135,10 +1171,12 @@ function EditorSection({
   children,
 }: Readonly<{ title: string; description?: string; children: ReactNode }>) {
   return (
-    <section className="grid gap-3 rounded-lg border border-line p-4">
+    <section className="grid gap-3 rounded-md border border-admin-border p-4">
       <header>
-        <h3 className="text-sm font-bold text-ink">{title}</h3>
-        {description ? <p className="mt-1 text-xs leading-5 text-muted">{description}</p> : null}
+        <h3 className="text-sm font-bold text-admin-text-primary">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-admin-text-muted">{description}</p>
+        ) : null}
       </header>
       {children}
     </section>
@@ -1153,8 +1191,8 @@ function MenuButton({
 }: Readonly<{ icon: ReactNode; label: string; onClick: () => void; danger?: boolean }>) {
   return (
     <button
-      className={`flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium hover:bg-black/5 ${
-        danger ? "text-red-700" : "text-ink"
+      className={`flex w-full items-center gap-2 rounded px-2.5 py-2 text-xs font-medium hover:bg-admin-surface-hover ${
+        danger ? "text-red-700" : "text-admin-text-primary"
       }`}
       onClick={(event) => {
         event.stopPropagation();

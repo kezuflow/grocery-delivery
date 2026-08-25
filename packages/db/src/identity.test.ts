@@ -53,6 +53,36 @@ describe("identity repository", () => {
     });
   });
 
+  it("lists customer identities without exposing other roles", async () => {
+    const database = new FakeIdentityDatabase([
+      [
+        {
+          id: "customer-1",
+          email: "customer@example.com",
+          name: "Customer One",
+          email_verified: 1,
+          image_url: null,
+          created_at: "2026-08-19T00:00:00.000Z",
+          updated_at: "2026-08-20T00:00:00.000Z",
+        },
+      ],
+    ]);
+
+    await expect(new D1IdentityRepository(database).listCustomers(25)).resolves.toEqual([
+      {
+        id: "customer-1",
+        email: "customer@example.com",
+        name: "Customer One",
+        emailVerified: true,
+        imageUrl: null,
+        createdAt: "2026-08-19T00:00:00.000Z",
+        updatedAt: "2026-08-20T00:00:00.000Z",
+      },
+    ]);
+    expect(database.calls[0]?.sql).toContain("WHERE r.role = 'customer'");
+    expect(database.calls[0]?.values).toEqual([25]);
+  });
+
   it("persists role scope and session revocation through D1 batches", async () => {
     const database = new FakeIdentityDatabase([]);
     const repository = new D1IdentityRepository(database);

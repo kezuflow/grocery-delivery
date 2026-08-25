@@ -45,6 +45,7 @@ import {
   customerOrderSubstitutionResponseSchema,
   customerOrderSubstitutionsResponseSchema,
   launchConfigurationResponseSchema,
+  adminCustomersResponseSchema,
 } from "@carbon/contracts";
 import {
   DefaultCartLockService,
@@ -3160,6 +3161,51 @@ describe("API worker", () => {
     expect(await response.json()).toMatchObject({
       data: { events: [{ id: "audit-1" }] },
     });
+  });
+
+  it("limits the customer directory to support administrators", async () => {
+    const customerDirectoryReader = {
+      listCustomers: () =>
+        Promise.resolve([
+          {
+            id: "customer-1",
+            email: "customer@example.com",
+            name: "Customer One",
+            emailVerified: true,
+            imageUrl: null,
+            createdAt: "2026-08-19T00:00:00.000Z",
+            updatedAt: "2026-08-20T00:00:00.000Z",
+          },
+        ]),
+    };
+    const createCustomerApp = (permissions: readonly ("support" | "reporting")[]) =>
+      createApi({
+        customerDirectoryReader,
+        sink: () => undefined,
+        sessionResolver: {
+          resolve: () =>
+            Promise.resolve(
+              createSession({
+                id: "session-customers",
+                userId: "admin-1",
+                role: "admin",
+                adminPermissions: permissions,
+                customerId: null,
+                expiresAt: "2099-08-21T00:00:00.000Z",
+                revokedAt: null,
+              }),
+            ),
+        },
+      });
+
+    expect((await createCustomerApp(["reporting"]).request("/api/v1/admin/customers")).status).toBe(
+      403,
+    );
+    const response = await createCustomerApp(["support"]).request("/api/v1/admin/customers");
+    expect(response.status).toBe(200);
+    expect(adminCustomersResponseSchema.parse(await response.json()).data.customers).toHaveLength(
+      1,
+    );
   });
 
   it("accepts customer-owned idempotent cancellation and refund requests only when eligible", async () => {

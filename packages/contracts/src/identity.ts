@@ -57,7 +57,22 @@ export const adminAuditResponseSchema = z.object({
   meta: responseMetaSchema,
 });
 
+export const adminCustomerSchema = z.object({
+  id: z.string().min(1),
+  email: z.string().email(),
+  name: z.string().min(1),
+  emailVerified: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const adminCustomersResponseSchema = z.object({
+  data: z.object({ customers: z.array(adminCustomerSchema) }),
+  meta: responseMetaSchema,
+});
+
 export type AdminAuditResponse = z.infer<typeof adminAuditResponseSchema>;
+export type AdminCustomersResponse = z.infer<typeof adminCustomersResponseSchema>;
 
 export const accountProfileSchema = z.object({
   userId: z.string().min(1),

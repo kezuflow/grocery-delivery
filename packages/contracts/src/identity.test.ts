@@ -4,6 +4,7 @@ import {
   accountDeletionRequestResponseSchema,
   adminRoleAssignmentRequestSchema,
   currentSessionResponseSchema,
+  adminCustomersResponseSchema,
 } from "./identity.js";
 
 describe("identity contracts", () => {
@@ -49,5 +50,25 @@ describe("identity contracts", () => {
         meta: { correlationId: "correlation-1" },
       }).data.reasons,
     ).toEqual(["ACTIVE_SUBSCRIPTION"]);
+  });
+
+  it("accepts a customer directory response without session fields", () => {
+    expect(
+      adminCustomersResponseSchema.parse({
+        data: {
+          customers: [
+            {
+              id: "customer-1",
+              email: "customer@example.com",
+              name: "Customer One",
+              emailVerified: true,
+              createdAt: "2026-08-19T00:00:00.000Z",
+              updatedAt: "2026-08-19T00:00:00.000Z",
+            },
+          ],
+        },
+        meta: { correlationId: "customers-1" },
+      }).data.customers,
+    ).toHaveLength(1);
   });
 });
