@@ -22,11 +22,15 @@ export function ProductCard({
   return (
     <article className="w-[148px] shrink-0 sm:w-[184px]">
       <div className="group relative aspect-square overflow-hidden rounded-[var(--marketplace-radius-media)] bg-[var(--marketplace-surface-subtle)]">
-        <a aria-label={`View ${item.name}`} className="block size-full" href={`/shop/${item.slug}`}>
+        <a
+          aria-label={`View ${item.name}`}
+          className="block size-full p-3"
+          href={`/shop/${item.slug}`}
+        >
           {item.imageUrl ? (
             <img
               alt={item.name}
-              className="size-full object-contain p-3 transition-transform duration-200 group-hover:scale-[1.04]"
+              className="size-full rounded-[calc(var(--marketplace-radius-media)-4px)] object-cover transition-transform duration-200 group-hover:scale-[1.04]"
               loading="lazy"
               src={item.imageUrl}
             />

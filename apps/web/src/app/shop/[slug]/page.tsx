@@ -44,7 +44,7 @@ export default async function ProductPage({
             {data.item.imageUrl ? (
               <img
                 alt={data.item.name}
-                className="size-full object-cover"
+                className="size-full rounded-[inherit] object-cover"
                 src={data.item.imageUrl}
               />
             ) : (
