@@ -133,6 +133,27 @@ offline, and success states where applicable.
   reviewable admin page archetype, starting with the overview or catalog list; do not broaden this
   into a cross-surface frontend refactor.
 
+## Completed Admin Overview Presentation Slice
+
+- **Status:** locally complete for the authenticated `/admin` overview.
+- **Classification:** kept role enforcement, permission resolution, parallel dashboard feed
+  loading, server-owned values, independent feed states, workspace-link filtering, and audit
+  contracts; refactored repeated presentation recipes into local overview primitives/selectors;
+  replaced the card-heavy overview composition and raw color utilities with the admin semantic
+  token system.
+- **Outcome:** the overview now leads with operational pulse and freshness, then an attention queue,
+  compact cycle activity, permission-aware workspace directory, and recent audit activity. Empty,
+  forbidden, unavailable, and correlation-aware states remain intact.
+- **Verification:** web lint, typecheck, and 77 web tests pass. Local browser verification at the
+  default desktop viewport and 390x844 confirms the new hierarchy, active shell state, and no
+  horizontal overflow (`bodyScrollWidth` 375px at the 390px viewport). `pnpm check` remains
+  blocked at the same 18 pre-existing unrelated formatting issues under `.agents/skills`,
+  `.impeccable`, and existing landing/storefront work.
+- **Impact:** no API, persistence, authentication, authorization, business-rule, request, latency,
+  bundle, or observability boundary changed. No new runtime dependency was added.
+- **Next resume point:** apply the same authority to one admin list/table archetype, beginning with
+  catalog or orders; do not broaden this into a cross-surface frontend refactor.
+
 ## Admin Dashboard Recovery Program
 
 **Status:** active. This program supersedes the prior direction that treated the launch

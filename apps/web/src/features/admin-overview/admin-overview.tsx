@@ -20,131 +20,91 @@ export function AdminOverview({
   dashboard,
   permissions,
 }: Readonly<{ dashboard: AdminDashboardData; permissions: readonly AdminPermission[] }>) {
-  const projection = dashboard.projection;
   const projectionState = dashboard.states.projection;
-  const projectionData = projectionState.status === "ready" ? projection : null;
+  const projection = projectionState.status === "ready" ? dashboard.projection : null;
   const links = visibleAdminWorkspaceLinks(permissions);
-  const openCases =
-    dashboard.states.supportCases.status === "ready" ||
-    dashboard.states.supportCases.status === "empty"
-      ? dashboard.supportCases.filter((item) => item.status !== "resolved").length
-      : "Unavailable";
-  const hasUnavailableFeed = Object.values(dashboard.states).some(
-    (state) => state.status === "unavailable",
-  );
-  const hasForbiddenFeed = Object.values(dashboard.states).some(
-    (state) => state.status === "forbidden",
-  );
-  const healthLabel = hasUnavailableFeed
-    ? "Some feeds unavailable"
-    : hasForbiddenFeed || projectionState.status !== "ready"
-      ? "Limited access"
-      : "Systems operational";
-  const healthTone = hasUnavailableFeed
-    ? "border-amber-200 bg-amber-50 text-amber-800"
-    : hasForbiddenFeed || projectionState.status !== "ready"
-      ? "border-slate-200 bg-slate-50 text-slate-700"
-      : "border-emerald-200 bg-emerald-50 text-emerald-700";
+  const openCases = countOpenCases(dashboard);
+  const health = getHealth(dashboard);
 
   return (
-    <div className="grid gap-5">
-      <section
-        aria-labelledby="health-heading"
-        className="overflow-hidden rounded-md border border-[#dedede] bg-white"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e4e4] px-4 py-3">
+    <div className="grid gap-8">
+      <section aria-labelledby="pulse-heading" className="border-b border-admin-border pb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-[#222]" id="health-heading">
-              Operations health
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-admin-text-muted">
+              Operational pulse
+            </p>
+            <h2 className="mt-2 text-base font-semibold text-admin-text-primary" id="pulse-heading">
+              Active delivery cycle
             </h2>
-            <p className="mt-0.5 text-xs text-[#777]">
-              Live signals for the active delivery cycle.
+            <p className="mt-1 max-w-[58ch] text-sm leading-5 text-admin-text-secondary">
+              Server-generated signals for the current cycle, with freshness and access context kept
+              visible.
             </p>
           </div>
-          <div
-            className={`flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${healthTone}`}
-          >
-            <span className="size-1.5 rounded-full bg-current" />
-            {healthLabel}
-          </div>
+          <HealthStatus label={health.label} tone={health.tone} />
         </div>
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            icon={<Clock3 aria-hidden="true" size={14} strokeWidth={1.8} />}
+        <div className="mt-6 grid divide-y divide-admin-border border-y border-admin-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+          <MetricSummary
+            icon={<Clock3 aria-hidden="true" size={15} strokeWidth={1.8} />}
             label="Active cycle"
             note={
-              projectionData
-                ? `Updated ${new Date(projectionData.generatedAt).toLocaleString("en-PH")}`
+              projection
+                ? `Updated ${formatDate(projection.generatedAt)}`
                 : feedStateNote(projectionState)
             }
-            value={projectionData?.cycleId ?? "Unavailable"}
+            value={projection?.cycleId ?? "Unavailable"}
           />
-          <MetricCard
-            icon={<Activity aria-hidden="true" size={14} strokeWidth={1.8} />}
+          <MetricSummary
+            icon={<Activity aria-hidden="true" size={15} strokeWidth={1.8} />}
             label="Pending outbox"
             note={
-              projectionData
-                ? `${projectionData.outbox.deadLetteredCount} dead-lettered`
+              projection
+                ? `${projection.outbox.deadLetteredCount} dead-lettered`
                 : feedStateNote(projectionState)
             }
-            value={projectionData ? String(projectionData.outbox.pendingCount) : "Unavailable"}
+            value={projection ? String(projection.outbox.pendingCount) : "Unavailable"}
           />
-          <MetricCard
-            icon={<PackageOpen aria-hidden="true" size={14} strokeWidth={1.8} />}
+          <MetricSummary
+            icon={<PackageOpen aria-hidden="true" size={15} strokeWidth={1.8} />}
             label="Open shortages"
             note={
-              projectionData
-                ? `${projectionData.procurement.exceptionalManifests} packing exceptions`
+              projection
+                ? `${projection.procurement.exceptionalManifests} packing exceptions`
                 : feedStateNote(projectionState)
             }
-            value={
-              projectionData ? String(projectionData.procurement.openShortages) : "Unavailable"
-            }
+            value={projection ? String(projection.procurement.openShortages) : "Unavailable"}
           />
-          <MetricCard
-            icon={<Truck aria-hidden="true" size={14} strokeWidth={1.8} />}
+          <MetricSummary
+            icon={<Truck aria-hidden="true" size={15} strokeWidth={1.8} />}
             label="Deliveries"
             note={
-              projectionData
-                ? `${projectionData.delivery.failed} failed`
-                : feedStateNote(projectionState)
+              projection ? `${projection.delivery.failed} failed` : feedStateNote(projectionState)
             }
-            value={
-              projectionData ? String(projectionData.delivery.totalAssignments) : "Unavailable"
-            }
+            value={projection ? String(projection.delivery.totalAssignments) : "Unavailable"}
           />
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.55fr)]">
-        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
-          <div className="flex items-center gap-2 border-b border-[#e4e4e4] px-4 py-3">
-            <BellRing aria-hidden="true" className="text-[#666]" size={15} />
-            <div>
-              <h2 className="text-sm font-semibold text-[#222]">Operational alerts</h2>
-              <p className="mt-0.5 text-xs text-[#777]">Prioritized server-generated warnings.</p>
-            </div>
-            <span className="ml-auto rounded bg-[#f0f0f0] px-2 py-0.5 text-[10px] font-semibold text-[#666]">
-              {projectionData
-                ? `${projectionData.alerts.length} open`
-                : feedStateLabel(projectionState)}
-            </span>
-          </div>
+      <section className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.55fr)]">
+        <OverviewSection
+          icon={<BellRing aria-hidden="true" size={16} />}
+          title="Attention queue"
+          description="Prioritized warnings from the operational projection."
+          meta={projection ? `${projection.alerts.length} open` : feedStateLabel(projectionState)}
+        >
           {projectionState.status === "unavailable" || projectionState.status === "forbidden" ? (
             <FeedStateNotice label="Operational alerts" state={projectionState} />
-          ) : projectionData?.alerts.length ? (
-            <ul>
-              {projectionData.alerts.map((alert) => (
-                <li
-                  className="flex flex-col gap-3 border-b border-[#ececec] px-4 py-3 last:border-0 sm:flex-row sm:items-center"
-                  key={alert.id}
-                >
-                  <span className="grid size-7 shrink-0 place-items-center rounded bg-amber-50 text-amber-700">
-                    <CircleAlert aria-hidden="true" size={15} />
+          ) : projection?.alerts.length ? (
+            <ul className="divide-y divide-admin-border">
+              {projection.alerts.map((alert) => (
+                <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center" key={alert.id}>
+                  <span className="grid size-8 shrink-0 place-items-center rounded-md bg-amber-50 text-amber-700">
+                    <CircleAlert aria-hidden="true" size={16} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-[#262626]">{alert.message}</p>
-                    <p className="mt-0.5 text-[11px] text-[#777]">
+                    <p className="text-sm font-medium text-admin-text-primary">{alert.message}</p>
+                    <p className="mt-1 text-xs text-admin-text-muted">
                       Observed {alert.observedValue} · threshold {alert.threshold}
                     </p>
                   </div>
@@ -153,21 +113,16 @@ export function AdminOverview({
               ))}
             </ul>
           ) : (
-            <div className="p-4">
+            <div className="py-4">
               <EmptyState
                 description="No alert thresholds are currently exceeded."
                 title="Operations are clear"
               />
             </div>
           )}
-        </div>
-
-        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
-          <div className="border-b border-[#e4e4e4] px-4 py-3">
-            <h2 className="text-sm font-semibold text-[#222]">Cycle activity</h2>
-            <p className="mt-0.5 text-xs text-[#777]">Current processing volume.</p>
-          </div>
-          <dl>
+        </OverviewSection>
+        <OverviewSection title="Cycle activity" description="Current processing volume.">
+          <dl className="divide-y divide-admin-border border-y border-admin-border">
             <MetricRow
               label="Packing manifests"
               value={feedCount(
@@ -185,93 +140,136 @@ export function AdminOverview({
               value={feedCount(dashboard.states.promotions, dashboard.promotions.length)}
             />
           </dl>
-        </div>
+        </OverviewSection>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
-        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
-          <div className="flex items-center justify-between border-b border-[#e4e4e4] px-4 py-3">
-            <div>
-              <h2 className="text-sm font-semibold text-[#222]">Workspaces</h2>
-              <p className="mt-0.5 text-xs text-[#777]">Tools available to your role.</p>
-            </div>
-            <span className="text-[11px] text-[#888]">{links.length} available</span>
-          </div>
-          <div className="grid sm:grid-cols-2">
+      <section className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
+        <OverviewSection
+          title="Workspaces"
+          description="Tools available to your role."
+          meta={`${links.length} available`}
+        >
+          <div className="grid divide-y divide-admin-border border-y border-admin-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
             {links.map((link) => (
               <a
-                className="group flex min-h-[82px] items-start gap-3 border-b border-[#ececec] p-4 transition-colors hover:bg-[#fafafa] sm:odd:border-r"
+                className="group flex min-h-[88px] items-start gap-3 py-4 transition-colors hover:bg-admin-surface-hover sm:px-4 sm:first:pl-0 sm:even:pr-0"
                 href={link.href}
                 key={link.href}
               >
-                <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded border border-[#dfdfdf] bg-[#fafafa] text-[#666] group-hover:border-emerald-200 group-hover:text-emerald-700">
-                  <Box aria-hidden="true" size={14} />
+                <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border border-admin-border bg-admin-surface-subtle text-admin-text-secondary transition-colors group-hover:border-admin-border-strong group-hover:text-admin-accent">
+                  <Box aria-hidden="true" size={15} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1 text-[13px] font-medium text-[#222]">
+                  <span className="flex items-center gap-1 text-sm font-medium text-admin-text-primary">
                     {link.label}
-                    <ArrowUpRight aria-hidden="true" size={12} />
+                    <ArrowUpRight aria-hidden="true" size={13} />
                   </span>
-                  <span className="mt-1 block text-[11px] leading-4 text-[#777]">
+                  <span className="mt-1 block text-xs leading-5 text-admin-text-muted">
                     {link.description}
                   </span>
                 </span>
               </a>
             ))}
           </div>
-        </div>
-
-        <div className="overflow-hidden rounded-md border border-[#dedede] bg-white">
-          <div className="flex items-center gap-2 border-b border-[#e4e4e4] px-4 py-3">
-            <CheckCircle2 aria-hidden="true" className="text-emerald-600" size={15} />
-            <div>
-              <h2 className="text-sm font-semibold text-[#222]">Recent activity</h2>
-              <p className="mt-0.5 text-xs text-[#777]">Latest visible audit events.</p>
-            </div>
-          </div>
+        </OverviewSection>
+        <OverviewSection
+          icon={<CheckCircle2 aria-hidden="true" size={16} />}
+          title="Recent activity"
+          description="Latest visible audit events."
+        >
           {dashboard.states.audit.status === "unavailable" ||
           dashboard.states.audit.status === "forbidden" ? (
             <FeedStateNotice label="Recent activity" state={dashboard.states.audit} />
           ) : dashboard.auditEvents.length ? (
-            <ul>
+            <ul className="divide-y divide-admin-border border-y border-admin-border">
               {dashboard.auditEvents.slice(0, 6).map((event) => (
-                <li
-                  className="relative border-b border-[#ececec] px-4 py-3 pl-9 last:border-0"
-                  key={event.id}
-                >
-                  <span className="absolute left-4 top-[17px] size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-50" />
-                  <p className="text-[13px] font-medium text-[#272727]">{event.action}</p>
-                  <p className="mt-0.5 text-[11px] text-[#777]">
-                    {event.targetType} · {new Date(event.occurredAt).toLocaleString("en-PH")}
+                <li className="relative py-3 pl-6" key={event.id}>
+                  <span className="absolute left-0 top-[18px] size-2 rounded-full bg-admin-accent" />
+                  <p className="text-sm font-medium text-admin-text-primary">{event.action}</p>
+                  <p className="mt-1 text-xs text-admin-text-muted">
+                    {event.targetType} · {formatDate(event.occurredAt)}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="p-4 text-xs leading-5 text-[#777]">No audit events have been recorded.</p>
+            <p className="border-y border-admin-border py-4 text-sm leading-5 text-admin-text-muted">
+              No audit events have been recorded.
+            </p>
           )}
-        </div>
+        </OverviewSection>
       </section>
     </div>
   );
 }
 
-function MetricCard({
+function OverviewSection({
+  icon,
+  title,
+  description,
+  meta,
+  children,
+}: Readonly<{
+  icon?: ReactNode;
+  title: string;
+  description: string;
+  meta?: string;
+  children: ReactNode;
+}>) {
+  return (
+    <section>
+      <div className="mb-4 flex items-start gap-2">
+        {icon ? <span className="mt-0.5 text-admin-text-secondary">{icon}</span> : null}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="text-base font-semibold text-admin-text-primary">{title}</h2>
+            {meta ? (
+              <span className="text-xs font-medium text-admin-text-muted">{meta}</span>
+            ) : null}
+          </div>
+          <p className="mt-1 text-sm text-admin-text-secondary">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function HealthStatus({
+  label,
+  tone,
+}: Readonly<{ label: string; tone: "success" | "warning" | "neutral" }>) {
+  const toneClass = {
+    success: "bg-admin-success-soft text-admin-accent",
+    warning: "bg-amber-50 text-amber-800",
+    neutral: "bg-admin-surface-subtle text-admin-text-secondary",
+  }[tone];
+  return (
+    <div
+      className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-semibold ${toneClass}`}
+    >
+      <span className="size-1.5 rounded-full bg-current" />
+      {label}
+    </div>
+  );
+}
+
+function MetricSummary({
   label,
   value,
   note,
   icon,
 }: Readonly<{ label: string; value: string; note: string; icon: ReactNode }>) {
   return (
-    <article className="min-w-0 border-b border-[#e4e4e4] p-4 sm:odd:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
-      <div className="flex items-center gap-2 text-xs font-medium text-[#666]">
+    <article className="min-w-0 py-4 sm:px-4 sm:first:pl-0 xl:py-5 xl:first:pl-0">
+      <div className="flex items-center gap-2 text-xs font-medium text-admin-text-secondary">
         {icon}
         <span>{label}</span>
       </div>
-      <p className="mt-3 break-words text-2xl font-semibold tracking-[-0.03em] text-[#202020]">
+      <p className="mt-3 break-words text-[28px] font-semibold leading-8 tracking-[-0.03em] text-admin-text-primary">
         {value}
       </p>
-      <p className="mt-1.5 truncate text-[11px] text-[#858585]" title={note}>
+      <p className="mt-1.5 truncate text-xs text-admin-text-muted" title={note}>
         {note}
       </p>
     </article>
@@ -280,37 +278,54 @@ function MetricCard({
 
 function MetricRow({ label, value }: Readonly<{ label: string; value: number | string }>) {
   return (
-    <div className="flex min-h-11 items-center justify-between gap-4 border-b border-[#ececec] px-4 py-2 last:border-0">
-      <dt className="text-xs text-[#666]">{label}</dt>
-      <dd className="rounded bg-[#f1f1f1] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#333]">
+    <div className="flex min-h-11 items-center justify-between gap-4 py-2">
+      <dt className="text-sm text-admin-text-secondary">{label}</dt>
+      <dd className="rounded-md bg-admin-surface-subtle px-2 py-0.5 text-xs font-semibold tabular-nums text-admin-text-primary">
         {value}
       </dd>
     </div>
   );
 }
 
+function countOpenCases(dashboard: AdminDashboardData): number | string {
+  const state = dashboard.states.supportCases;
+  return state.status === "ready" || state.status === "empty"
+    ? dashboard.supportCases.filter((item) => item.status !== "resolved").length
+    : "Unavailable";
+}
+function getHealth(dashboard: AdminDashboardData): {
+  label: string;
+  tone: "success" | "warning" | "neutral";
+} {
+  const states = Object.values(dashboard.states);
+  if (states.some((state) => state.status === "unavailable"))
+    return { label: "Some feeds unavailable", tone: "warning" };
+  if (
+    states.some((state) => state.status === "forbidden") ||
+    dashboard.states.projection.status !== "ready"
+  )
+    return { label: "Limited access", tone: "neutral" };
+  return { label: "Systems operational", tone: "success" };
+}
 function feedCount(state: AdminFeedState, count: number | undefined): number | string {
   return state.status === "ready" || state.status === "empty" ? (count ?? 0) : "Unavailable";
 }
-
 function feedStateNote(state: AdminFeedState): string {
   if (state.status === "forbidden") return "Permission required";
   if (state.status === "unavailable") return "Feed unavailable";
   if (state.status === "empty") return "No records";
   return "Not requested";
 }
-
 function feedStateLabel(state: AdminFeedState): string {
   if (state.status === "forbidden") return "Restricted";
   if (state.status === "unavailable") return "Unavailable";
   if (state.status === "empty") return "0 open";
   return "Not requested";
 }
-
 function FeedStateNotice({ label, state }: Readonly<{ label: string; state: AdminFeedState }>) {
   return (
     <p
-      className="p-4 text-xs leading-5 text-[#777]"
+      className="border-y border-admin-border py-4 text-sm leading-5 text-admin-text-muted"
       role={state.status === "unavailable" ? "alert" : undefined}
     >
       {label}{" "}
@@ -322,4 +337,7 @@ function FeedStateNotice({ label, state }: Readonly<{ label: string; state: Admi
       {state.correlationId ? ` Reference ${state.correlationId}.` : ""}
     </p>
   );
+}
+function formatDate(value: string) {
+  return new Date(value).toLocaleString("en-PH");
 }
