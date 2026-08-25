@@ -2,14 +2,12 @@ import type { AdminOrdersData } from "../../lib/admin-product";
 import type { AdminFeedState } from "../../lib/admin";
 
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  EmptyState,
+  AdminPanel,
+  AdminPanelHeader,
+  AdminEmptyState,
+  AdminStatus,
   ErrorState,
   LinkButton,
-  StatusPill,
   Table,
   TableBody,
   TableCell,
@@ -24,7 +22,7 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
   return (
     <div className="grid gap-6">
       <section
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid divide-y divide-admin-border border-y border-admin-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4"
         aria-label="Order operations summary"
       >
         <Metric
@@ -53,13 +51,11 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
           {data.error}
         </p>
       ) : null}
-      <Card>
-        <CardHeader>
-          <CardTitle>Order fulfillment queue</CardTitle>
-          <CardDescription>
-            Server-owned dispatch and packing statuses for the active cycle.
-          </CardDescription>
-        </CardHeader>
+      <AdminPanel>
+        <AdminPanelHeader
+          description="Server-owned dispatch and packing statuses for the active cycle."
+          title="Order fulfillment queue"
+        />
         {data.states.dispatch.status === "unavailable" ||
         data.states.dispatch.status === "forbidden" ? (
           <FeedError label="Dispatch assignments" state={data.states.dispatch} />
@@ -81,10 +77,15 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
                   <TableCell>{assignment.windowId}</TableCell>
                   <TableCell>{assignment.deliverymanUserId}</TableCell>
                   <TableCell>
-                    <StatusPill status={assignment.status} />
+                    <AdminStatus status={assignment.status} />
                   </TableCell>
                   <TableCell>
-                    <LinkButton href="/admin/dispatch" size="sm" tone="secondary">
+                    <LinkButton
+                      className="rounded-md border-admin-border-strong text-admin-text-primary hover:bg-admin-surface-hover"
+                      href="/admin/dispatch"
+                      size="sm"
+                      tone="secondary"
+                    >
                       Open dispatch
                     </LinkButton>
                   </TableCell>
@@ -93,19 +94,17 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
             </TableBody>
           </Table>
         ) : (
-          <EmptyState
+          <AdminEmptyState
             description="Dispatch assignments will appear after orders are scheduled."
             title="No active assignments"
           />
         )}
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer order requests</CardTitle>
-          <CardDescription>
-            Cancellation and refund requests requiring the matching support or finance workflow.
-          </CardDescription>
-        </CardHeader>
+      </AdminPanel>
+      <AdminPanel>
+        <AdminPanelHeader
+          description="Cancellation and refund requests requiring the matching support or finance workflow."
+          title="Customer order requests"
+        />
         {data.states.orderRequests.status === "unavailable" ||
         data.states.orderRequests.status === "forbidden" ? (
           <FeedError label="Customer requests" state={data.states.orderRequests} />
@@ -127,10 +126,15 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
                   <TableCell>{request.orderId}</TableCell>
                   <TableCell className="capitalize">{request.kind}</TableCell>
                   <TableCell>
-                    <StatusPill status={request.status} />
+                    <AdminStatus status={request.status} />
                   </TableCell>
                   <TableCell>
-                    <LinkButton href="/admin/support" size="sm" tone="secondary">
+                    <LinkButton
+                      className="rounded-md border-admin-border-strong text-admin-text-primary hover:bg-admin-surface-hover"
+                      href="/admin/support"
+                      size="sm"
+                      tone="secondary"
+                    >
                       Review request
                     </LinkButton>
                   </TableCell>
@@ -139,22 +143,24 @@ export function AdminOrders({ data }: Readonly<{ data: AdminOrdersData }>) {
             </TableBody>
           </Table>
         ) : (
-          <EmptyState
+          <AdminEmptyState
             description="There are no pending cancellation or refund requests."
             title="Request queue is clear"
           />
         )}
-      </Card>
+      </AdminPanel>
     </div>
   );
 }
 
 function Metric({ label, value }: Readonly<{ label: string; value: number | string }>) {
   return (
-    <Card>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">{label}</p>
-      <p className="mt-3 text-3xl font-bold">{value}</p>
-    </Card>
+    <div className="min-w-0 py-4 sm:px-4 sm:first:pl-0 xl:py-5">
+      <p className="text-xs font-medium text-admin-text-secondary">{label}</p>
+      <p className="mt-2 text-[28px] font-semibold leading-8 tracking-[-0.03em] text-admin-text-primary">
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -164,7 +170,7 @@ function feedCount(state: AdminFeedState, count: number): number | string {
 
 function FeedError({ label, state }: Readonly<{ label: string; state: AdminFeedState }>) {
   return state.status === "forbidden" ? (
-    <EmptyState
+    <AdminEmptyState
       description="Your role does not include this feed."
       title={`${label} access restricted`}
     />

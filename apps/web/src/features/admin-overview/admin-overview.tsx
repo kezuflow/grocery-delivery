@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { EmptyState, StatusPill } from "../../components/ui";
+import { AdminStatus, EmptyState } from "../../components/ui";
 import type { AdminDashboardData, AdminFeedState } from "../../lib/admin";
 import type { AdminPermission } from "../../lib/permissions";
 import { visibleAdminWorkspaceLinks } from "./workspace-links";
@@ -108,7 +108,7 @@ export function AdminOverview({
                       Observed {alert.observedValue} · threshold {alert.threshold}
                     </p>
                   </div>
-                  <StatusPill status={alert.severity} />
+                  <AdminStatus status={alert.severity} />
                 </li>
               ))}
             </ul>

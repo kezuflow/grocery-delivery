@@ -1,12 +1,19 @@
 "use client";
 
 import type { LaunchConfigurationApplyRequest } from "@carbon/contracts";
-import { CalendarDays, Check, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Plus, RotateCcw, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button, Input, Select } from "../../components/ui";
+import {
+  AdminButton as Button,
+  AdminInput as Input,
+  AdminPanel,
+  AdminPanelHeader,
+  AdminSaveBar,
+  AdminSelect as Select,
+} from "../../components/ui";
 import {
   ApiClientError,
   createApiClient,
@@ -42,317 +49,336 @@ export function LaunchConfigurationForm() {
   useEffect(() => setIdempotencyKey(crypto.randomUUID()), []);
 
   return (
-    <section className="border-y border-line py-5" aria-labelledby="launch-config-title">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="text-base font-bold text-ink" id="launch-config-title">
-              Launch configuration
-            </p>
-            <span className="rounded-full bg-accent/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-deep">
-              Superadmin only
+    <div className="grid items-start gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
+      <aside className="hidden lg:block">
+        <nav aria-label="Configuration sections" className="sticky top-20 grid gap-1 text-sm">
+          {[
+            ["#release", "Release approval"],
+            ["#categories", "Categories"],
+            ["#catalog-items", "Catalog items"],
+            ["#delivery-windows", "Delivery windows"],
+          ].map(([href, label]) => (
+            <a
+              className="flex min-h-9 items-center justify-between rounded-md px-3 text-admin-text-secondary hover:bg-admin-surface-hover hover:text-admin-text-primary"
+              href={href}
+              key={href}
+            >
+              {label}
+              <ChevronRight aria-hidden="true" size={13} />
+            </a>
+          ))}
+        </nav>
+      </aside>
+      <AdminPanel aria-labelledby="launch-config-title">
+        <AdminPanelHeader
+          actions={
+            <span className="inline-flex items-center gap-2 rounded-md bg-admin-accent-soft px-2.5 py-1.5 text-xs font-semibold text-admin-accent">
+              <Check aria-hidden="true" size={14} /> Draft changes are local
             </span>
-          </div>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Prepare the next catalog release and delivery schedule with structured controls. Final
-            prices are calculated by the server from procurement cost and markup.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <span className="inline-flex size-7 items-center justify-center rounded-full bg-accent/30 text-deep">
-            <Check aria-hidden="true" size={14} />
-          </span>
-          Draft changes stay local until applied
-        </div>
-      </div>
-
-      <form
-        className="mt-6 grid gap-7"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void applyConfiguration();
-        }}
-      >
-        <div className="grid gap-4 border-b border-line pb-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Input
-            label="Approval reason"
-            maxLength={500}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Approved by launch owner on 2026-08-24"
-            required
-            value={reason}
-          />
-          <div className="flex items-end">
-            <p className="rounded border border-line bg-black/[0.02] px-3 py-2 text-xs leading-5 text-muted">
-              Applying replaces the approved catalog and delivery-window set as one idempotent
-              release. Verify each section before publishing.
-            </p>
-          </div>
-        </div>
-
-        <DraftSection
-          count={categories.length}
-          description="Organize the products shoppers see in the market."
-          onAdd={() =>
-            setCategories((current) => [...current, createCategoryDraft(current.length)])
           }
-          title="Categories"
+          description="Prepare one reviewed catalog and delivery-window release. Retail prices remain calculated and validated by the server."
+          eyebrow="Protected release"
+          title="Launch configuration"
+        />
+        <form
+          className="px-4 sm:px-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void applyConfiguration();
+          }}
         >
-          <div className="grid gap-3">
-            {categories.map((category, index) => (
-              <div
-                className="grid gap-3 border-b border-line pb-4 last:border-0 last:pb-0 md:grid-cols-[1fr_1fr_1fr_auto]"
-                key={`category-row-${index}`}
-              >
-                <Input
-                  label="Name"
-                  onChange={(event) => updateCategory(index, "name", event.target.value)}
-                  placeholder="Fresh produce"
-                  required
-                  value={category.name}
-                />
-                <Input
-                  label="Slug"
-                  onChange={(event) => updateCategory(index, "slug", event.target.value)}
-                  placeholder="fresh-produce"
-                  required
-                  value={category.slug}
-                />
-                <Input
-                  label="ID"
-                  onChange={(event) => updateCategory(index, "id", event.target.value)}
-                  placeholder="category-fresh-produce"
-                  required
-                  value={category.id}
-                />
-                <DraftRowActions
-                  canRemove={categories.length > 1}
-                  onRemove={() => removeCategory(index)}
-                  active={category.active}
-                  onToggle={() => updateCategory(index, "active", !category.active)}
-                />
-              </div>
-            ))}
-          </div>
-        </DraftSection>
+          <section
+            className="grid gap-4 border-b border-admin-border py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+            id="release"
+          >
+            <Input
+              label="Approval reason"
+              maxLength={500}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Approved by launch owner on 2026-08-24"
+              required
+              value={reason}
+            />
+            <div className="flex items-end">
+              <p className="rounded-md border border-admin-border bg-admin-surface-subtle px-3 py-2 text-xs leading-5 text-admin-text-secondary">
+                Applying replaces the approved catalog and delivery-window set as one idempotent
+                release. Verify each section before publishing.
+              </p>
+            </div>
+          </section>
 
-        <DraftSection
-          count={skus.length}
-          description="Set procurement inputs and merchandising details. Retail prices remain server-owned."
-          onAdd={() => setSkus((current) => [...current, createSkuDraft(current.length)])}
-          title="Catalog items"
-        >
-          <div className="grid gap-4">
-            {skus.map((sku, index) => (
-              <div
-                className="grid gap-4 border-b border-line pb-5 last:border-0 last:pb-0"
-                key={`sku-row-${index}`}
-              >
-                <div className="grid gap-3 md:grid-cols-[1.2fr_1fr_1fr_auto]">
+          <DraftSection
+            count={categories.length}
+            description="Organize the products shoppers see in the market."
+            id="categories"
+            onAdd={() =>
+              setCategories((current) => [...current, createCategoryDraft(current.length)])
+            }
+            title="Categories"
+          >
+            <div className="grid gap-3">
+              {categories.map((category, index) => (
+                <div
+                  className="grid gap-3 border-b border-admin-border pb-4 last:border-0 last:pb-0 md:grid-cols-[1fr_1fr_1fr_auto]"
+                  key={`category-row-${index}`}
+                >
                   <Input
-                    label="Product name"
-                    onChange={(event) => updateSku(index, "name", event.target.value)}
-                    placeholder="Organic apples"
+                    label="Name"
+                    onChange={(event) => updateCategory(index, "name", event.target.value)}
+                    placeholder="Fresh produce"
                     required
-                    value={sku.name}
+                    value={category.name}
                   />
-                  <Input
-                    label="SKU ID"
-                    onChange={(event) => updateSku(index, "id", event.target.value)}
-                    placeholder="sku-apples"
-                    required
-                    value={sku.id}
-                  />
-                  <Select
-                    label="Category"
-                    onChange={(event) => updateSku(index, "categoryId", event.target.value)}
-                    required
-                    value={sku.categoryId}
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name || category.id}
-                      </option>
-                    ))}
-                  </Select>
-                  <DraftRowActions
-                    canRemove={skus.length > 1}
-                    onRemove={() => removeSku(index)}
-                    active={sku.active}
-                    onToggle={() => updateSku(index, "active", !sku.active)}
-                  />
-                </div>
-                <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
                   <Input
                     label="Slug"
-                    onChange={(event) => updateSku(index, "slug", event.target.value)}
-                    placeholder="organic-apples"
+                    onChange={(event) => updateCategory(index, "slug", event.target.value)}
+                    placeholder="fresh-produce"
                     required
-                    value={sku.slug}
-                  />
-                  <Select
-                    label="Unit"
-                    onChange={(event) => updateSku(index, "unit", event.target.value)}
-                    value={sku.unit}
-                  >
-                    {unitOptions.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </Select>
-                  <Input
-                    label="Image URL"
-                    onChange={(event) => updateSku(index, "imageUrl", event.target.value || null)}
-                    placeholder="https://..."
-                    type="url"
-                    value={sku.imageUrl ?? ""}
-                  />
-                </div>
-                <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr]">
-                  <Input
-                    label="Description"
-                    onChange={(event) => updateSku(index, "description", event.target.value)}
-                    placeholder="Crisp, sweet apples"
-                    required
-                    value={sku.description}
+                    value={category.slug}
                   />
                   <Input
-                    label="Procurement cost (centavos)"
-                    min={0}
-                    onChange={(event) =>
-                      updateSku(index, "procurementCostCentavos", Number(event.target.value))
-                    }
-                    type="number"
+                    label="ID"
+                    onChange={(event) => updateCategory(index, "id", event.target.value)}
+                    placeholder="category-fresh-produce"
                     required
-                    value={sku.procurementCostCentavos}
-                  />
-                  <Input
-                    label="Markup (basis points)"
-                    min={0}
-                    onChange={(event) =>
-                      updateSku(index, "markupBasisPoints", Number(event.target.value))
-                    }
-                    type="number"
-                    required
-                    value={sku.markupBasisPoints}
-                  />
-                  <Input
-                    label="Price effective"
-                    onChange={(event) =>
-                      updateSku(index, "priceEffectiveAt", toIso(event.target.value))
-                    }
-                    type="datetime-local"
-                    required
-                    value={toDateTimeLocal(sku.priceEffectiveAt)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </DraftSection>
-
-        <DraftSection
-          count={deliveryWindows.length}
-          description="Define the active weekly delivery slots and their capacity."
-          onAdd={() =>
-            setDeliveryWindows((current) => [...current, createDeliveryWindowDraft(current.length)])
-          }
-          title="Delivery windows"
-        >
-          <div className="grid gap-4">
-            {deliveryWindows.map((window, index) => (
-              <div
-                className="grid gap-3 border-b border-line pb-4 last:border-0 last:pb-0"
-                key={`window-row-${index}`}
-              >
-                <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                  <Input
-                    label="Label"
-                    onChange={(event) => updateWindow(index, "label", event.target.value)}
-                    placeholder="Saturday morning"
-                    required
-                    value={window.label}
-                  />
-                  <Input
-                    label="Cycle ID"
-                    onChange={(event) => updateWindow(index, "cycleId", event.target.value)}
-                    placeholder="2026-W35"
-                    required
-                    value={window.cycleId}
-                  />
-                  <Input
-                    label="Window ID"
-                    onChange={(event) => updateWindow(index, "id", event.target.value)}
-                    placeholder="window-sat-am"
-                    required
-                    value={window.id}
+                    value={category.id}
                   />
                   <DraftRowActions
-                    canRemove={deliveryWindows.length > 1}
-                    onRemove={() => removeWindow(index)}
-                    active={window.active}
-                    onToggle={() => updateWindow(index, "active", !window.active)}
+                    canRemove={categories.length > 1}
+                    onRemove={() => removeCategory(index)}
+                    active={category.active}
+                    onToggle={() => updateCategory(index, "active", !category.active)}
                   />
                 </div>
-                <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px]">
-                  <Input
-                    label="Starts"
-                    onChange={(event) => updateWindow(index, "startsAt", toIso(event.target.value))}
-                    type="datetime-local"
-                    required
-                    value={toDateTimeLocal(window.startsAt)}
-                  />
-                  <Input
-                    label="Ends"
-                    onChange={(event) => updateWindow(index, "endsAt", toIso(event.target.value))}
-                    type="datetime-local"
-                    required
-                    value={toDateTimeLocal(window.endsAt)}
-                  />
-                  <Input
-                    label="Capacity"
-                    min={1}
-                    onChange={(event) =>
-                      updateWindow(index, "capacity", Number(event.target.value))
-                    }
-                    type="number"
-                    required
-                    value={window.capacity}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </DraftSection>
+              ))}
+            </div>
+          </DraftSection>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-          <p className="text-xs text-muted">
-            <CalendarDays aria-hidden="true" className="mr-1 inline" size={14} />
-            {idempotencyKey
-              ? "Ready to apply an idempotent release."
-              : "Preparing secure retry key..."}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={resetDraft} size="sm" type="button" tone="secondary">
-              <RotateCcw aria-hidden="true" size={14} /> Reset draft
-            </Button>
-            <Button disabled={busy || !idempotencyKey} loading={busy} size="sm" type="submit">
-              Apply approved configuration
-            </Button>
-          </div>
-        </div>
-        {message ? (
-          <p
-            className="border-l-2 border-deep bg-accent/20 px-3 py-2 text-sm text-deep"
-            role="status"
+          <DraftSection
+            count={skus.length}
+            description="Set procurement inputs and merchandising details. Retail prices remain server-owned."
+            id="catalog-items"
+            onAdd={() => setSkus((current) => [...current, createSkuDraft(current.length)])}
+            title="Catalog items"
           >
-            {message}
-          </p>
-        ) : null}
-      </form>
-    </section>
+            <div className="grid gap-4">
+              {skus.map((sku, index) => (
+                <div
+                  className="grid gap-4 border-b border-admin-border pb-5 last:border-0 last:pb-0"
+                  key={`sku-row-${index}`}
+                >
+                  <div className="grid gap-3 md:grid-cols-[1.2fr_1fr_1fr_auto]">
+                    <Input
+                      label="Product name"
+                      onChange={(event) => updateSku(index, "name", event.target.value)}
+                      placeholder="Organic apples"
+                      required
+                      value={sku.name}
+                    />
+                    <Input
+                      label="SKU ID"
+                      onChange={(event) => updateSku(index, "id", event.target.value)}
+                      placeholder="sku-apples"
+                      required
+                      value={sku.id}
+                    />
+                    <Select
+                      label="Category"
+                      onChange={(event) => updateSku(index, "categoryId", event.target.value)}
+                      required
+                      value={sku.categoryId}
+                    >
+                      <option value="">Select category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name || category.id}
+                        </option>
+                      ))}
+                    </Select>
+                    <DraftRowActions
+                      canRemove={skus.length > 1}
+                      onRemove={() => removeSku(index)}
+                      active={sku.active}
+                      onToggle={() => updateSku(index, "active", !sku.active)}
+                    />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
+                    <Input
+                      label="Slug"
+                      onChange={(event) => updateSku(index, "slug", event.target.value)}
+                      placeholder="organic-apples"
+                      required
+                      value={sku.slug}
+                    />
+                    <Select
+                      label="Unit"
+                      onChange={(event) => updateSku(index, "unit", event.target.value)}
+                      value={sku.unit}
+                    >
+                      {unitOptions.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      label="Image URL"
+                      onChange={(event) => updateSku(index, "imageUrl", event.target.value || null)}
+                      placeholder="https://..."
+                      type="url"
+                      value={sku.imageUrl ?? ""}
+                    />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr]">
+                    <Input
+                      label="Description"
+                      onChange={(event) => updateSku(index, "description", event.target.value)}
+                      placeholder="Crisp, sweet apples"
+                      required
+                      value={sku.description}
+                    />
+                    <Input
+                      label="Procurement cost (centavos)"
+                      min={0}
+                      onChange={(event) =>
+                        updateSku(index, "procurementCostCentavos", Number(event.target.value))
+                      }
+                      type="number"
+                      required
+                      value={sku.procurementCostCentavos}
+                    />
+                    <Input
+                      label="Markup (basis points)"
+                      min={0}
+                      onChange={(event) =>
+                        updateSku(index, "markupBasisPoints", Number(event.target.value))
+                      }
+                      type="number"
+                      required
+                      value={sku.markupBasisPoints}
+                    />
+                    <Input
+                      label="Price effective"
+                      onChange={(event) =>
+                        updateSku(index, "priceEffectiveAt", toIso(event.target.value))
+                      }
+                      type="datetime-local"
+                      required
+                      value={toDateTimeLocal(sku.priceEffectiveAt)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DraftSection>
+
+          <DraftSection
+            count={deliveryWindows.length}
+            description="Define the active weekly delivery slots and their capacity."
+            id="delivery-windows"
+            onAdd={() =>
+              setDeliveryWindows((current) => [
+                ...current,
+                createDeliveryWindowDraft(current.length),
+              ])
+            }
+            title="Delivery windows"
+          >
+            <div className="grid gap-4">
+              {deliveryWindows.map((window, index) => (
+                <div
+                  className="grid gap-3 border-b border-admin-border pb-4 last:border-0 last:pb-0"
+                  key={`window-row-${index}`}
+                >
+                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+                    <Input
+                      label="Label"
+                      onChange={(event) => updateWindow(index, "label", event.target.value)}
+                      placeholder="Saturday morning"
+                      required
+                      value={window.label}
+                    />
+                    <Input
+                      label="Cycle ID"
+                      onChange={(event) => updateWindow(index, "cycleId", event.target.value)}
+                      placeholder="2026-W35"
+                      required
+                      value={window.cycleId}
+                    />
+                    <Input
+                      label="Window ID"
+                      onChange={(event) => updateWindow(index, "id", event.target.value)}
+                      placeholder="window-sat-am"
+                      required
+                      value={window.id}
+                    />
+                    <DraftRowActions
+                      canRemove={deliveryWindows.length > 1}
+                      onRemove={() => removeWindow(index)}
+                      active={window.active}
+                      onToggle={() => updateWindow(index, "active", !window.active)}
+                    />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px]">
+                    <Input
+                      label="Starts"
+                      onChange={(event) =>
+                        updateWindow(index, "startsAt", toIso(event.target.value))
+                      }
+                      type="datetime-local"
+                      required
+                      value={toDateTimeLocal(window.startsAt)}
+                    />
+                    <Input
+                      label="Ends"
+                      onChange={(event) => updateWindow(index, "endsAt", toIso(event.target.value))}
+                      type="datetime-local"
+                      required
+                      value={toDateTimeLocal(window.endsAt)}
+                    />
+                    <Input
+                      label="Capacity"
+                      min={1}
+                      onChange={(event) =>
+                        updateWindow(index, "capacity", Number(event.target.value))
+                      }
+                      type="number"
+                      required
+                      value={window.capacity}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DraftSection>
+
+          {message ? (
+            <p
+              className="my-4 border-l-2 border-admin-accent bg-admin-accent-soft px-3 py-2 text-sm text-admin-text-primary"
+              role="status"
+            >
+              {message}
+            </p>
+          ) : null}
+          <AdminSaveBar>
+            <p className="text-xs text-admin-text-secondary">
+              <CalendarDays aria-hidden="true" className="mr-1 inline" size={14} />
+              {idempotencyKey
+                ? "Ready to apply an idempotent release."
+                : "Preparing secure retry key..."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={resetDraft} size="sm" type="button" tone="secondary">
+                <RotateCcw aria-hidden="true" size={14} /> Reset draft
+              </Button>
+              <Button disabled={busy || !idempotencyKey} loading={busy} size="sm" type="submit">
+                Apply approved configuration
+              </Button>
+            </div>
+          </AdminSaveBar>
+        </form>
+      </AdminPanel>
+    </div>
   );
 
   function updateCategory(index: number, field: keyof CategoryDraft, value: string | boolean) {
@@ -437,30 +463,36 @@ export function LaunchConfigurationForm() {
 function DraftSection({
   count,
   description,
+  id,
   onAdd,
   title,
   children,
 }: Readonly<{
   count: number;
   description: string;
+  id: string;
   onAdd: () => void;
   title: string;
   children: ReactNode;
 }>) {
-  const id = `${title.toLowerCase().replaceAll(" ", "-")}-title`;
+  const titleId = `${id}-title`;
   return (
-    <section className="grid gap-4" aria-labelledby={id}>
+    <section
+      className="grid gap-4 border-b border-admin-border py-6 last:border-b-0"
+      aria-labelledby={titleId}
+      id={id}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-ink" id={id}>
+            <h2 className="text-sm font-semibold text-admin-text-primary" id={titleId}>
               {title}
             </h2>
-            <span className="rounded-full border border-line px-2 py-0.5 text-[10px] font-bold text-muted">
+            <span className="rounded border border-admin-border px-2 py-0.5 text-[10px] font-semibold text-admin-text-muted">
               {count}
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted">{description}</p>
+          <p className="mt-1 text-xs text-admin-text-muted">{description}</p>
         </div>
         <Button onClick={onAdd} size="sm" type="button" tone="secondary">
           <Plus aria-hidden="true" size={14} /> Add{" "}
@@ -485,12 +517,12 @@ function DraftRowActions({
 }>) {
   return (
     <div className="flex items-end gap-2 pb-0.5">
-      <label className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-ink">
+      <label className="inline-flex min-h-9 items-center gap-2 text-xs font-medium text-admin-text-primary">
         <input checked={active} onChange={onToggle} type="checkbox" /> Active
       </label>
       <button
         aria-label="Remove row"
-        className="inline-grid size-9 place-items-center rounded border border-line text-muted hover:bg-red-50 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-grid size-9 place-items-center rounded-md border border-admin-border text-admin-text-muted hover:bg-red-50 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
         disabled={!canRemove}
         onClick={onRemove}
         title="Remove row"

@@ -10,14 +10,12 @@ import {
 } from "../../lib/api/client";
 import type { AdminStaffData } from "../../lib/admin-product";
 import {
-  Button,
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Input,
-  Select,
-  StatusPill,
+  AdminButton as Button,
+  AdminInput as Input,
+  AdminPanel,
+  AdminPanelHeader,
+  AdminSelect as Select,
+  AdminStatus,
 } from "../../components/ui";
 
 const permissionOptions: readonly AdminPermission[] = [
@@ -66,15 +64,13 @@ export function AdminStaff({ data }: Readonly<{ data: AdminStaffData }>) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,.7fr)]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Assign server-owned role</CardTitle>
-          <CardDescription>
-            Only superadmins can grant authority. The API validates and audits every assignment.
-          </CardDescription>
-        </CardHeader>
+      <AdminPanel>
+        <AdminPanelHeader
+          description="Only superadmins can grant authority. The API validates and audits every assignment."
+          title="Assign server-owned role"
+        />
         <form
-          className="grid gap-4"
+          className="grid gap-4 p-4 sm:p-5"
           onSubmit={(event) => {
             event.preventDefault();
             void assignRole(event.currentTarget);
@@ -86,11 +82,16 @@ export function AdminStaff({ data }: Readonly<{ data: AdminStaffData }>) {
             <option value="deliveryman">Delivery staff</option>
             <option value="customer">Customer</option>
           </Select>
-          <fieldset className="grid gap-2">
-            <legend className="text-sm font-bold">Administrator permissions</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
+          <fieldset className="grid gap-2 border-t border-admin-border pt-4">
+            <legend className="text-xs font-semibold text-admin-text-primary">
+              Administrator permissions
+            </legend>
+            <div className="grid gap-1 sm:grid-cols-2">
               {permissionOptions.map((permission) => (
-                <label className="flex items-center gap-2 text-sm" key={permission}>
+                <label
+                  className="flex min-h-9 items-center gap-2 rounded-md px-2 text-sm text-admin-text-secondary hover:bg-admin-surface-hover"
+                  key={permission}
+                >
                   <input name="adminPermissions" type="checkbox" value={permission} />
                   {permission}
                 </label>
@@ -106,46 +107,45 @@ export function AdminStaff({ data }: Readonly<{ data: AdminStaffData }>) {
             </p>
           ) : null}
         </form>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent authority changes</CardTitle>
-          <CardDescription>
-            Audit events are the server-backed staff history until a directory read endpoint is
-            available.
-          </CardDescription>
-        </CardHeader>
-        {data.state.status === "forbidden" ? (
-          <p className="text-sm text-muted" role="status">
-            Audit activity access is restricted for this role.
-          </p>
-        ) : data.error ? (
-          <p className="text-sm text-danger" role="alert">
-            {data.error}
-            {data.state.correlationId ? ` Reference ${data.state.correlationId}.` : ""}
-          </p>
-        ) : data.auditEvents.length ? (
-          <ul className="grid gap-3 text-sm">
-            {data.auditEvents
-              .filter((event) => event.action.includes("identity") || event.targetType === "user")
-              .slice(0, 8)
-              .map((event) => (
-                <li className="border-b border-line pb-3 last:border-0" key={event.id}>
-                  <div className="flex items-center justify-between gap-3">
-                    <strong>{event.action}</strong>
-                    <StatusPill status="recorded" />
-                  </div>
-                  <p className="mt-1 text-xs text-muted">
-                    {event.targetId ?? "No target"} ·{" "}
-                    {new Date(event.occurredAt).toLocaleString("en-PH")}
-                  </p>
-                </li>
-              ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted">No staff audit events are available.</p>
-        )}
-      </Card>
+      </AdminPanel>
+      <AdminPanel>
+        <AdminPanelHeader
+          description="Audit events are the server-backed staff history until a directory read endpoint is available."
+          title="Recent authority changes"
+        />
+        <div className="p-4 sm:p-5">
+          {data.state.status === "forbidden" ? (
+            <p className="text-sm text-muted" role="status">
+              Audit activity access is restricted for this role.
+            </p>
+          ) : data.error ? (
+            <p className="text-sm text-danger" role="alert">
+              {data.error}
+              {data.state.correlationId ? ` Reference ${data.state.correlationId}.` : ""}
+            </p>
+          ) : data.auditEvents.length ? (
+            <ul className="grid gap-3 text-sm">
+              {data.auditEvents
+                .filter((event) => event.action.includes("identity") || event.targetType === "user")
+                .slice(0, 8)
+                .map((event) => (
+                  <li className="border-b border-line pb-3 last:border-0" key={event.id}>
+                    <div className="flex items-center justify-between gap-3">
+                      <strong>{event.action}</strong>
+                      <AdminStatus status="recorded" />
+                    </div>
+                    <p className="mt-1 text-xs text-muted">
+                      {event.targetId ?? "No target"} ·{" "}
+                      {new Date(event.occurredAt).toLocaleString("en-PH")}
+                    </p>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">No staff audit events are available.</p>
+          )}
+        </div>
+      </AdminPanel>
     </div>
   );
 }

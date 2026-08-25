@@ -156,6 +156,28 @@ offline, and success states where applicable.
 
 ## Admin Dashboard Recovery Program
 
+## Admin Presentation Rewrite (In Progress)
+
+- **Scope:** full authenticated admin presentation and frontend architecture rewrite, with landing,
+  marketplace, customer, and delivery surfaces excluded.
+- **Classification:** keep existing auth, RBAC, data loaders, typed API clients, server actions,
+  validation, idempotency, and domain/business rules; refactor route composition and repeated
+  presentation recipes; replace the old shell, generic workspace cards, pill-heavy controls,
+  storefront form/table styling, and launch-configuration page composition.
+- **Completed local slice:** new admin grammar primitives (`AdminPanel`, `AdminPanelHeader`,
+  `AdminToolbar`, `AdminTabs`, `AdminSettingGroup`, `AdminSaveBar`, admin controls/status/empty
+  states), reworked two-zone shell, admin table/dialog styling, overview/order/workspace/staff and
+  configuration presentation migration, plus catalog tab/toolbar/control migration.
+- **Browser evidence:** `/admin`, `/admin/configuration`, `/admin/catalog`, `/admin/orders`, and
+  `/admin/staff` render with the new shell at desktop and 390px phone width. Checked routes have no
+  document overflow; configuration now uses local section navigation and a sticky action bar.
+- **Verification:** web lint and typecheck pass; 77 web tests pass. Full `pnpm check` remains to be
+  run for this rewrite and is expected to encounter the repository's existing unrelated formatting
+  blockers if they remain present.
+- **Next resume point:** complete the remaining route-specific consistency audit (reporting,
+  procurement, packing, dispatch, support, promotions), then run full checks, commit, and push this
+  rewrite slice.
+
 **Status:** active. This program supersedes the prior direction that treated the launch
 configuration manifest as the ordinary catalog editor. Historical completion records below remain
 evidence for their original local slices, not the target product model.
@@ -1101,6 +1123,16 @@ Record detailed route and contract findings in `docs/frontend-backend-audit.md` 
 during local implementation. The audit must support development, not block it.
 
 ## Deferred Promotion
+
+### Marketplace research and foundation redesign slice
+
+- **Scope:** customer marketplace only. Marketing, admin, delivery, and backend boundaries remain unchanged.
+- **Research:** authenticated Mobbin MCP sampling covered DoorDash discovery, category/browse, search/filtering, grocery market/item detail, cart/checkout, tracking, orders, and address flows. Evidence and adaptations are recorded in `docs/design/marketplace/REFERENCES.md`.
+- **Design authority:** `docs/design/marketplace/DESIGN.md`, `COMPONENTS.md`, and `AUDIT.md` now define the Carbon marketplace grammar, reusable components, and KEEP/REFACTOR/REPLACE decisions.
+- **Implementation:** added marketplace semantic tokens, introduced `MarketplacePageShell`, migrated customer account/cart/checkout/orders/saved/support/subscription routes off the generic account shell, linked product cards to detail routes, corrected responsive bottom navigation destinations and active states, and reduced fallback promotion height to preserve product discovery.
+- **Local evidence:** `/shop` verified at desktop and 390px phone width; `/shop/apple` verified at 390px phone width; API served locally on `127.0.0.1:8788`; existing web server served locally on `localhost:3000`. Unauthenticated `/account` correctly redirected to `/forbidden`.
+- **Verification:** web lint, typecheck, 23 Vitest files / 77 tests, and `git diff --check` pass. Full authenticated cart/checkout/order browser evidence remains pending a customer fixture session.
+- **Next resume point:** complete authenticated marketplace regression coverage and migrate remaining customer account feature styling to the new primitives before starting unrelated work.
 
 Existing staging and production configuration, deployment scripts, runbooks, and historical evidence
 remain in the repository. They are dormant until the user explicitly starts VS-MKT-14 or another

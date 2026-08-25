@@ -9,11 +9,13 @@ export function Sheet({
   onClose,
   title,
   children,
+  variant = "default",
 }: Readonly<{
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  variant?: "default" | "admin";
 }>) {
   return (
     <Dialog
@@ -21,6 +23,7 @@ export function Sheet({
       onClose={onClose}
       open={open}
       title={title}
+      variant={variant}
     >
       {children}
     </Dialog>

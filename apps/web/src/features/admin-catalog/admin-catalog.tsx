@@ -21,21 +21,20 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import { useRouter } from "next/navigation";
 
 import {
-  Button,
-  CardDescription,
-  CardTitle,
+  AdminButton as Button,
+  AdminInput as Input,
+  AdminSelect as Select,
+  AdminStatus as StatusPill,
+  AdminTabs,
+  AdminTextarea as Textarea,
   Dialog,
   EmptyState,
-  Input,
-  Select,
   Sheet,
-  StatusPill,
   Table,
   TableBody,
   TableCell,
   TableHeader,
   TableHeaderCell,
-  Textarea,
 } from "../../components/ui";
 import type { AdminFeedState } from "../../lib/admin";
 import {
@@ -183,18 +182,10 @@ export function AdminCatalog({
   return (
     <div className="grid min-w-0 gap-5">
       <section className="min-w-0">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <CardTitle>Catalog</CardTitle>
-              <span className="rounded bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-muted">
-                {catalogItems.length} products
-              </span>
-            </div>
-            <CardDescription className="mt-1">
-              Create products, organize categories, and reuse product images in one place.
-            </CardDescription>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-admin-border pb-3">
+          <span className="text-xs font-medium text-admin-text-muted">
+            {catalogItems.length} products · {categories.length} categories
+          </span>
           {canManage && !(view === "categories" && selectedCategory) ? (
             <div className="flex gap-2">
               <Button onClick={() => openCategoryEditor()} size="sm" tone="secondary">
@@ -209,29 +200,14 @@ export function AdminCatalog({
           ) : null}
         </div>
 
-        <div
-          aria-label="Catalog sections"
-          className="flex gap-1 border-b border-line pt-3"
-          role="tablist"
-        >
-          {(["products", "categories", "images"] as const).map((tab) => (
-            <button
-              aria-selected={view === tab}
-              className={`border-b-2 px-3 py-2 text-sm font-bold capitalize ${
-                view === tab ? "border-deep text-deep" : "border-transparent text-muted"
-              }`}
-              key={tab}
-              onClick={() => {
-                setView(tab);
-                if (tab !== "categories") setSelectedCategoryId(null);
-              }}
-              role="tab"
-              type="button"
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        <AdminTabs
+          active={view}
+          onChange={(tab) => {
+            setView(tab as typeof view);
+            if (tab !== "categories") setSelectedCategoryId(null);
+          }}
+          tabs={["products", "categories", "images"]}
+        />
 
         {state.status === "forbidden" ? (
           <Notice tone="warning">
@@ -245,7 +221,7 @@ export function AdminCatalog({
 
         {view === "products" ? (
           <>
-            <div className="mt-4 grid gap-3 border-b border-line pb-4 md:grid-cols-[minmax(0,1fr)_200px_auto]">
+            <div className="mt-4 grid gap-3 border-b border-admin-border bg-admin-surface-subtle p-3 md:grid-cols-[minmax(0,1fr)_200px_auto]">
               <Input
                 aria-label="Search catalog"
                 onChange={(event) => setQuery(event.target.value)}
@@ -265,7 +241,9 @@ export function AdminCatalog({
                   </option>
                 ))}
               </Select>
-              <span className="self-center text-xs text-muted">{items.length} shown</span>
+              <span className="self-center text-xs text-admin-text-muted">
+                {items.length} shown
+              </span>
             </div>
             {state.status === "unavailable" ? (
               <EmptyState description="Try again shortly." title="Catalog unavailable" />
@@ -472,6 +450,7 @@ export function AdminCatalog({
         onClose={closeEditor}
         open={editor === "product"}
         title={editingId ? "Edit product" : "Add product"}
+        variant="admin"
       >
         <form className="grid gap-5" onSubmit={(event) => void saveProduct(event)}>
           <EditorSection
@@ -634,6 +613,7 @@ export function AdminCatalog({
         onClose={closeEditor}
         open={editor === "category"}
         title={editingId ? "Edit category" : "Add category"}
+        variant="admin"
       >
         <form className="grid gap-5" onSubmit={(event) => void saveCategory(event)}>
           <EditorSection
@@ -676,6 +656,7 @@ export function AdminCatalog({
         onClose={closeAttachProducts}
         open={attachOpen}
         title="Add existing products"
+        variant="admin"
       >
         <Input
           label="Search products"
@@ -735,6 +716,7 @@ export function AdminCatalog({
         onClose={() => setLibraryOpen(false)}
         open={libraryOpen}
         title="Image library"
+        variant="admin"
       >
         <Input
           label="Search images"
