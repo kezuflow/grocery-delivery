@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "../../../components/layout";
+import { MarketplacePageShell } from "../../../components/layout";
 import { CheckoutReview } from "../../../features/checkout";
 import { requireCustomerSession } from "../../../lib/auth";
 import { loadCheckoutData } from "../../../lib/checkout";
@@ -15,13 +15,7 @@ export default async function CheckoutPage() {
     data.subscription?.status === "active" && data.subscription.billingStatus === "current";
 
   return (
-    <AppShell
-      breadcrumbs={[
-        { href: "/", label: "Storefront" },
-        { href: "/account", label: "Account" },
-        { href: "/account/cart", label: "Cart" },
-        { label: "Checkout" },
-      ]}
+    <MarketplacePageShell
       description="Confirm delivery details, payment readiness, discounts, and server-owned totals before locking the order."
       eyebrow="Final review"
       session={session}
@@ -41,6 +35,6 @@ export default async function CheckoutPage() {
           windows={data.deliveryWindows}
         />
       </div>
-    </AppShell>
+    </MarketplacePageShell>
   );
 }

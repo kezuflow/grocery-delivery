@@ -29,6 +29,26 @@
   --color-market-soft-value: #f6f6f6;
   --color-market-banner-value: #dcfce7;
 
+  /* Customer marketplace semantic tokens. Keep these distinct from admin tokens. */
+  --marketplace-canvas: var(--color-market-paper-value);
+  --marketplace-surface: var(--color-market-paper-value);
+  --marketplace-surface-subtle: var(--color-market-soft-value);
+  --marketplace-surface-hover: #eef7ef;
+  --marketplace-text-primary: var(--color-market-ink-value);
+  --marketplace-text-secondary: var(--color-market-muted-value);
+  --marketplace-border: var(--color-market-line-value);
+  --marketplace-accent: var(--color-market-green-value);
+  --marketplace-accent-strong: var(--color-market-green-dark-value);
+  --marketplace-space-1: 4px;
+  --marketplace-space-2: 8px;
+  --marketplace-space-3: 12px;
+  --marketplace-space-4: 16px;
+  --marketplace-space-5: 24px;
+  --marketplace-radius-control: 10px;
+  --marketplace-radius-card: 14px;
+  --marketplace-radius-media: 16px;
+  --marketplace-radius-overlay: 20px;
+
   /* Admin-only operational shell tokens. */
   --color-admin-canvas-value: #f7f7f5;
   --color-admin-surface-value: #ffffff;

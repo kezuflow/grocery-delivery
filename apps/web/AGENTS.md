@@ -19,6 +19,23 @@ Before changing frontend structure or styling, read `../../docs/frontend-standar
 - Follow this dependency order: tokens -> UI primitives -> layouts -> features -> routes.
 - Reuse an existing token, primitive, or feature component before creating another one.
 - Keep route files focused on data loading, authorization, metadata, and composition.
+
+## Customer Marketplace Design Authority
+
+For customer-facing marketplace routes (`/shop`, `/shop/[slug]`, and customer shopping flows under
+`/account`), follow this order after product requirements and repository-wide brand rules:
+
+1. `../../docs/design/marketplace/DESIGN.md`
+2. existing semantic design tokens and marketplace primitives
+3. `../../docs/design/marketplace/COMPONENTS.md`
+4. `../../docs/design/marketplace/REFERENCES.md`
+
+DoorDash/Mobbin is a research and UX reference. `../../docs/design/marketplace/DESIGN.md` is the
+implementation authority. DoorDash-derived rules apply only to customer marketplace routes and
+must not leak into marketing or admin surfaces. Before creating a new marketplace screen, identify
+the established page archetype and reusable components that should generate it. Do not design pages
+independently.
+
 - Keep generic UI components free of API calls, sessions, permissions, and business rules.
 - Use semantic design tokens and named component variants instead of repeated arbitrary values.
 - Keep Tailwind classes local when they describe one-off layout; extract repeated visual behavior.

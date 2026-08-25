@@ -1,6 +1,6 @@
 export { AppShell } from "./app-shell";
 export { AppShellLoading } from "./app-shell-loading";
-export { MarketplaceShell } from "./marketplace-shell";
+export { MarketplacePageShell, MarketplaceShell } from "./marketplace-shell";
 export { BrandLink } from "./brand-link";
 export { Breadcrumbs, type Breadcrumb } from "./breadcrumbs";
 export { getNavigation, getRoleLabel, type NavigationItem } from "./navigation";

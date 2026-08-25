@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AppShell } from "../../../../components/layout";
+import { MarketplacePageShell } from "../../../../components/layout";
 import { CustomerOrderDetailView } from "../../../../features/orders";
 import { requireCustomerSession } from "../../../../lib/auth";
 import { loadCustomerOrderDetail } from "../../../../lib/orders";
@@ -17,19 +17,13 @@ export default async function OrderDetailPage({
   const detail = await loadCustomerOrderDetail(orderId);
   if (!detail) notFound();
   return (
-    <AppShell
-      breadcrumbs={[
-        { href: "/", label: "Storefront" },
-        { href: "/account", label: "Account" },
-        { href: "/account/orders", label: "Orders" },
-        { label: orderId },
-      ]}
+    <MarketplacePageShell
       description="Track this customer-owned order and review its server-confirmed receipt."
       eyebrow="Order details"
       session={session}
       title={orderId}
     >
       <CustomerOrderDetailView customerId={session.customerId!} detail={detail} />
-    </AppShell>
+    </MarketplacePageShell>
   );
 }

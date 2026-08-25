@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { loadCustomerAccount } from "../../lib/account";
 import { requireCustomerSession } from "../../lib/auth";
-import { AppShell } from "../../components/layout";
+import { MarketplacePageShell } from "../../components/layout";
 import { DeliveryAddressEditor } from "./delivery-address-editor";
 import { DeliveryAddressBook } from "./delivery-address-book";
 import { DeliveryWindowSelector } from "./delivery-window-selector";
@@ -38,12 +38,10 @@ export default async function AccountPage() {
     : null;
 
   return (
-    <AppShell
-      breadcrumbs={[{ href: "/", label: "Storefront" }, { label: "Account" }]}
+    <MarketplacePageShell
       description="Manage your weekly plan, delivery details, orders, and support requests."
       eyebrow="Your weekly shop"
       session={session}
-      status={<span className="account-status">Customer</span>}
       title="Account"
     >
       {account.error ? (
@@ -251,6 +249,6 @@ export default async function AccountPage() {
           <PrivacyPanel privacy={account.privacy} />
         </section>
       )}
-    </AppShell>
+    </MarketplacePageShell>
   );
 }

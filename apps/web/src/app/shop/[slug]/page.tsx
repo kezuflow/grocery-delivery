@@ -27,7 +27,10 @@ export default async function ProductPage({
 
   return (
     <MarketplaceShell session={auth.session}>
-      <a className="mb-6 inline-flex items-center gap-2 text-sm font-semibold" href="/shop">
+      <a
+        className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[var(--marketplace-text-secondary)] hover:text-[var(--marketplace-accent-strong)]"
+        href="/shop"
+      >
         <ArrowLeft size={17} /> Back to shop
       </a>
       {data.error || !data.item ? (
@@ -36,8 +39,8 @@ export default async function ProductPage({
           <p className="mt-2 text-market-muted">{data.error}</p>
         </section>
       ) : (
-        <article className="grid gap-8 bg-white p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:items-center">
-          <div className="aspect-square overflow-hidden bg-market-soft">
+        <article className="grid gap-8 rounded-[var(--marketplace-radius-card)] border border-[var(--marketplace-border)] bg-[var(--marketplace-surface)] p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:items-center">
+          <div className="aspect-square overflow-hidden rounded-[var(--marketplace-radius-media)] bg-[var(--marketplace-surface-subtle)]">
             {data.item.imageUrl ? (
               <img
                 alt={data.item.name}
@@ -55,13 +58,17 @@ export default async function ProductPage({
               {data.categories.find((category) => category.id === data.item?.categoryId)?.name ??
                 "Carbon Market"}
             </p>
-            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">{data.item.name}</h1>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.04em] sm:text-5xl">
+              {data.item.name}
+            </h1>
             <p className="mt-4 leading-7 text-market-muted">{data.item.description}</p>
             <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-market-green-dark">
               <PackageCheck size={18} /> Available this week
             </p>
             <p className="mt-6">
-              <strong className="text-3xl text-coral">{formatPhp(data.item.price.centavos)}</strong>
+              <strong className="text-3xl font-extrabold tabular-nums text-coral">
+                {formatPhp(data.item.price.centavos)}
+              </strong>
               <span className="ml-2 text-market-muted">per {data.item.unit}</span>
             </p>
             <div className="mt-8 grid max-w-sm gap-3">

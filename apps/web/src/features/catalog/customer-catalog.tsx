@@ -744,42 +744,42 @@ function MerchandisingRail({
     <section
       aria-label="Featured offers"
       aria-roledescription="carousel"
-      className="mb-10 scroll-mt-24"
+      className="mb-9 scroll-mt-24"
       id="featured-offers"
     >
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         {[activeCampaign, secondaryCampaign].map((campaign, index) => (
           <a
             aria-label={`${campaign.headline} ${campaign.subheadline}: ${campaign.ctaLabel}`}
-            className={`group relative isolate min-h-[320px] overflow-hidden rounded-[28px] px-6 py-7 shadow-[0_22px_60px_rgba(21,61,48,0.17)] sm:min-h-[340px] sm:items-center sm:px-10 sm:py-9 lg:min-h-[370px] lg:px-8 ${campaign.backgroundClassName} ${index === 0 ? "flex" : "hidden lg:flex"}`}
+            className={`group relative isolate min-h-[176px] overflow-hidden rounded-[var(--marketplace-radius-card)] px-5 py-5 shadow-[0_10px_28px_rgba(21,61,48,0.1)] sm:min-h-[188px] sm:items-center sm:px-7 sm:py-6 lg:min-h-[200px] lg:px-7 ${campaign.backgroundClassName} ${index === 0 ? "flex" : "hidden lg:flex"}`}
             href={campaign.href}
             key={campaign.id}
           >
             <span
               aria-hidden="true"
-              className="absolute -left-14 -top-20 size-52 rounded-full bg-white/20 blur-sm"
+              className="absolute -left-14 -top-20 size-44 rounded-full bg-white/20 blur-sm"
             />
             <span
               aria-hidden="true"
-              className="absolute -bottom-28 left-[37%] size-72 rounded-full bg-white/15"
+              className="absolute -bottom-24 left-[37%] size-56 rounded-full bg-white/15"
             />
             <span
               aria-hidden="true"
-              className="absolute right-[8%] top-5 size-16 rounded-full border-[14px] border-white/20 transition-transform duration-300 group-hover:rotate-12"
+              className="absolute right-[8%] top-4 size-12 rounded-full border-[10px] border-white/20 transition-transform duration-300 group-hover:rotate-12"
             />
             <div className="relative z-20 flex w-[61%] max-w-[560px] flex-col items-start justify-center self-stretch sm:w-[56%] lg:w-[58%]">
               <h2
                 className={`!m-0 flex flex-col font-black tracking-[-0.055em] ${campaign.headlineClassName}`}
               >
-                <span className="max-w-[9ch] text-[clamp(2.7rem,6.4vw,5.6rem)] leading-[0.82] text-inherit lg:text-[clamp(2.7rem,3.6vw,3.65rem)]">
+                <span className="max-w-[9ch] text-[clamp(2rem,4.2vw,3.2rem)] leading-[0.86] text-inherit lg:text-[clamp(2rem,2.5vw,2.75rem)]">
                   {campaign.headline}
                 </span>
-                <span className="mt-3 max-w-[11ch] text-[clamp(1.45rem,3.2vw,2.55rem)] leading-[0.92] text-inherit lg:text-[clamp(1.35rem,1.9vw,1.8rem)]">
+                <span className="mt-2 max-w-[11ch] text-[clamp(1.1rem,2.2vw,1.55rem)] leading-[0.96] text-inherit lg:text-[clamp(1.05rem,1.4vw,1.35rem)]">
                   {campaign.subheadline}
                 </span>
               </h2>
               <span
-                className={`mt-6 inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-extrabold shadow-sm transition-transform group-hover:translate-x-1 sm:px-5 sm:text-sm ${campaign.ctaClassName}`}
+                className={`mt-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-extrabold shadow-sm transition-transform group-hover:translate-x-1 ${campaign.ctaClassName}`}
               >
                 {campaign.ctaLabel} <ChevronRight size={16} />
               </span>
@@ -787,7 +787,7 @@ function MerchandisingRail({
 
             <img
               alt={campaign.imageAlt}
-              className="pointer-events-none absolute bottom-0 right-2 z-10 h-[94%] w-auto max-w-none origin-bottom-right object-contain object-right-bottom transition-transform duration-300 group-hover:scale-[1.015] sm:right-3 sm:h-[96%] lg:right-4"
+              className="pointer-events-none absolute bottom-0 right-2 z-10 h-[98%] w-auto max-w-[53%] origin-bottom-right object-contain object-right-bottom transition-transform duration-300 group-hover:scale-[1.015] sm:right-3 sm:h-[102%] lg:right-4"
               height="1024"
               src={campaign.imageUrl}
               width="1024"

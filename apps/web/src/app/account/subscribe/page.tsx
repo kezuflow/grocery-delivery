@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "../../../components/layout";
+import { MarketplacePageShell } from "../../../components/layout";
 import { loadCustomerAccount } from "../../../lib/account";
 import { requireCustomerSession } from "../../../lib/auth";
 import { normalizeSubscriptionReturnTo } from "../../../lib/subscription-onboarding";
@@ -17,12 +17,7 @@ export default async function SubscribePage({
   const returnTo = normalizeSubscriptionReturnTo((await searchParams).returnTo);
 
   return (
-    <AppShell
-      breadcrumbs={[
-        { href: "/", label: "Storefront" },
-        { href: "/account", label: "Account" },
-        { label: "Weekly plan" },
-      ]}
+    <MarketplacePageShell
       description="Choose a server-owned weekly plan, then return to your saved shopping flow."
       eyebrow="Your weekly shop"
       session={session}
@@ -40,6 +35,6 @@ export default async function SubscribePage({
           subscription={account.subscription}
         />
       )}
-    </AppShell>
+    </MarketplacePageShell>
   );
 }

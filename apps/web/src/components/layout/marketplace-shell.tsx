@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Bookmark,
   ChevronRight,
@@ -47,6 +48,7 @@ export function MarketplaceShell({
 }>) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const pathname = usePathname();
   const cartCount = cart?.lines.reduce((total, line) => total + line.quantity, 0) ?? 0;
   const aisles = categories.length
     ? categories
@@ -76,7 +78,7 @@ export function MarketplaceShell({
   }, [accountOpen, cartOpen]);
 
   return (
-    <main className="marketplace-shell min-h-screen bg-white pb-20 text-market-ink lg:pb-0">
+    <main className="marketplace-shell min-h-screen bg-[var(--marketplace-canvas)] pb-20 text-[var(--marketplace-text-primary)] lg:pb-0">
       <OnlineStatus />
       <header className="sticky top-0 z-40 bg-white">
         <div
@@ -199,8 +201,18 @@ export function MarketplaceShell({
         <aside className="hidden bg-white lg:block">
           <div className="sticky top-16 px-3 py-6">
             <nav aria-label="Store categories" className="grid gap-0.5 text-[13px]">
-              <CategoryLink active href="/shop" icon={<Home size={17} />} label="Home" />
-              <CategoryLink href="/shop" icon={<Store size={17} />} label="Grocery" />
+              <CategoryLink
+                active={pathname === "/shop"}
+                href="/shop"
+                icon={<Home size={17} />}
+                label="Home"
+              />
+              <CategoryLink
+                active={pathname.startsWith("/shop/")}
+                href="/shop"
+                icon={<Store size={17} />}
+                label="Grocery"
+              />
               {categoryItems.map((category) => (
                 <CategoryLink
                   href={`/shop?category=${category.slug}`}
@@ -213,7 +225,7 @@ export function MarketplaceShell({
             </nav>
           </div>
         </aside>
-        <div className="min-w-0 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">{children}</div>
+        <div className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</div>
       </div>
       <nav
         aria-label="Customer navigation"
@@ -221,16 +233,30 @@ export function MarketplaceShell({
       >
         <ul className="mx-auto grid max-w-md grid-cols-4 gap-1">
           <li>
-            <BottomLink active={true} href="/shop" icon={<Store size={19} />} label="Shop" />
+            <BottomLink
+              active={pathname.startsWith("/shop")}
+              href="/shop"
+              icon={<Store size={19} />}
+              label="Shop"
+            />
           </li>
           <li>
-            <BottomLink href="/shop" icon={<SlidersHorizontal size={19} />} label="Aisles" />
+            <BottomLink
+              href="/shop#categories"
+              icon={<SlidersHorizontal size={19} />}
+              label="Aisles"
+            />
           </li>
           <li>
-            <BottomLink href="/shop" icon={<Tag size={19} />} label="Deals" />
+            <BottomLink href="/shop#featured-offers" icon={<Tag size={19} />} label="Deals" />
           </li>
           <li>
-            <BottomLink href="/account/cart" icon={<Bookmark size={19} />} label="My list" />
+            <BottomLink
+              active={pathname.startsWith("/account")}
+              href="/account"
+              icon={<Bookmark size={19} />}
+              label="Account"
+            />
           </li>
         </ul>
       </nav>
@@ -241,6 +267,43 @@ export function MarketplaceShell({
         <CartPopup cart={cart} onClose={() => setCartOpen(false)} session={session} />
       ) : null}
     </main>
+  );
+}
+
+export function MarketplacePageShell({
+  session,
+  title,
+  eyebrow,
+  description,
+  children,
+}: Readonly<{
+  session: SessionSummary;
+  title: string;
+  eyebrow?: string;
+  description?: string;
+  children: ReactNode;
+}>) {
+  return (
+    <MarketplaceShell session={session}>
+      <div className="mx-auto w-full max-w-[1180px]">
+        <header className="mb-7 border-b border-[var(--marketplace-border)] pb-6">
+          {eyebrow ? (
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--marketplace-accent-strong)]">
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1 className="m-0 text-[clamp(1.85rem,3vw,2.8rem)] font-extrabold tracking-[-0.04em] text-[var(--marketplace-text-primary)]">
+            {title}
+          </h1>
+          {description ? (
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--marketplace-text-secondary)]">
+              {description}
+            </p>
+          ) : null}
+        </header>
+        {children}
+      </div>
+    </MarketplaceShell>
   );
 }
 

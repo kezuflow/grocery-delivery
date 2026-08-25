@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "../../../components/layout";
+import { MarketplacePageShell } from "../../../components/layout";
 import { SupportWorkspace } from "../../../features/support";
 import { requireCustomerSession } from "../../../lib/auth";
 import { loadCustomerAccount } from "../../../lib/account";
@@ -12,12 +12,7 @@ export default async function SupportPage() {
   const session = await requireCustomerSession();
   const account = await loadCustomerAccount();
   return (
-    <AppShell
-      breadcrumbs={[
-        { href: "/", label: "Storefront" },
-        { href: "/account", label: "Account" },
-        { label: "Support" },
-      ]}
+    <MarketplacePageShell
       description="Ask about an order, delivery, billing, or your account."
       eyebrow="Customer care"
       session={session}
@@ -28,6 +23,6 @@ export default async function SupportPage() {
         orderRequests={account.orderRequests}
         orders={account.orderHistory}
       />
-    </AppShell>
+    </MarketplacePageShell>
   );
 }
